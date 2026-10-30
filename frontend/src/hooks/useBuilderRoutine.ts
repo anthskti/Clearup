@@ -10,9 +10,9 @@ import {
 export interface RoutineSlot {
   id: ProductCategory;
   label: string;
-  // Allow multiple products per slot now
   products: Array<
-    Product & {
+    Omit<Product, "price"> & {
+      price: number | null;
       merchant?: string;
       merchantLogo?: string;
       merchantLink?: string;
@@ -138,6 +138,7 @@ export const useBuilderRoutine = () => {
                       ...slot.products,
                       {
                         ...product,
+                        price: null,
                         merchant: "-",
                         merchantLogo: "-",
                       },
@@ -150,49 +151,27 @@ export const useBuilderRoutine = () => {
       // Fetch merchant info for this product and update only that product entry
       try {
         const merchants = await getMerchantsByProductId(String(product.id));
-        if (merchants && merchants.length > 0) {
-          const bestOffer = pickLowestPriceOffer(merchants)!;
-
-          setRoutine((prev) =>
-            prev.map((slot) =>
-              slot.id === category
-                ? {
-                    ...slot,
-                    products: slot.products.map((p) =>
-                      p.id === product.id
-                        ? {
-                            ...p,
-                            price: bestOffer.price,
-                            merchant: bestOffer.merchant?.name || "Unknown",
-                            merchantLogo: bestOffer.merchant?.logo || "-",
-                            merchantLink: bestOffer.website,
-                          }
-                        : p,
-                    ),
-                  }
-                : slot,
-            ),
-          );
-        } else {
-          setRoutine((prev) =>
-            prev.map((slot) =>
-              slot.id === category
-                ? {
-                    ...slot,
-                    products: slot.products.map((p) =>
-                      p.id === product.id
-                        ? {
-                            ...p,
-                            merchant: "-",
-                            merchantLogo: "/placeholder-logo.png",
-                          }
-                        : p,
-                    ),
-                  }
-                : slot,
-            ),
-          );
-        }
+        const bestOffer = pickLowestPriceOffer(merchants ?? []);
+        setRoutine((prev) =>
+          prev.map((slot) =>
+            slot.id === category
+              ? {
+                  ...slot,
+                  products: slot.products.map((p) =>
+                    p.id === product.id
+                      ? {
+                          ...p,
+                          price: bestOffer?.price ?? null,
+                          merchant: bestOffer?.merchant?.name || "-",
+                          merchantLogo: bestOffer?.merchant?.logo || "-",
+                          merchantLink: bestOffer?.website,
+                        }
+                      : p,
+                  ),
+                }
+              : slot,
+          ),
+        );
       } catch (e: any) {
         console.error("Failed to fetch merchants details for product", e);
       }

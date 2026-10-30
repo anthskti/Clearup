@@ -19,7 +19,7 @@ export default function FAQPage() {
         <h2>Why do I need to create an account?</h2>
         <p>
           While anyone can browse public guides and routines, creating an
-          account allows you to see your old routines you've made and update
+          account allows you to see your old routines you&apos;ve made and update
           your them too. Also, users with an account will be eligible to be
           featured on the guides page or the landing page features guides. Your
           account securely stores your routine data across your devices.
@@ -37,7 +37,7 @@ export default function FAQPage() {
           </li>
           <li>
             Password Resets: A secure link sent only when you explicitly click
-            "Forgot Password." We do not send marketing newsletters, promotional
+            &quot;Forgot Password.&quot; We do not send marketing newsletters, promotional
             blasts, or bulk emails.
           </li>
         </ul>
@@ -56,7 +56,7 @@ export default function FAQPage() {
           removes your personal information, email address, and all your
           personal routines from our active database.
         </p>
-        <h2>I received an email I didn't request. What should I do?</h2>
+        <h2>I received an email I didn&apos;t request. What should I do?</h2>
         <p>
           If you received a verification or password reset email but did not
           attempt to sign up or log in, someone may have entered your email by

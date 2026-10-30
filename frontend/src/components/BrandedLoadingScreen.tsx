@@ -24,7 +24,8 @@ export default function BrandedLoadingScreen({
       role="status"
       aria-live="polite"
       className={cn(
-        "flex w-full items-center justify-center bg-[#F8F8F8] px-6 py-16 text-center min-h-screen",
+        "flex w-full items-center justify-center bg-[#F8F8F8] px-6 py-16 text-center",
+        fullScreen && "min-h-screen",
         className,
       )}
     >

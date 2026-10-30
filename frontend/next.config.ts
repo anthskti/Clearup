@@ -1,5 +1,3 @@
-import type { NextConfig } from "next";
-
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true", // Only runs if ANALYZE=true
 });

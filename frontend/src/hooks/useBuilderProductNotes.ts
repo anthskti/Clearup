@@ -9,7 +9,7 @@ import type { TimeOfDay } from "@/types/routine";
 const STORAGE_KEY = "builder-product-notes";
 
 function emptyEntry(
-  product: Product,
+  product: Pick<Product, "id" | "name" | "brand">,
   category: ProductCategory,
 ): BuilderProductNoteEntry {
   return {
@@ -114,7 +114,7 @@ export function useBuilderProductNotes() {
 
   const addProductNote = useCallback(
     (
-      product: Product,
+      product: Pick<Product, "id" | "name" | "brand">,
       category: ProductCategory,
       timeOfDay: TimeOfDay,
       userNote: string,

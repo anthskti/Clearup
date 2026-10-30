@@ -36,11 +36,17 @@ export const MERCHANT_OFFERS_REVALIDATE_SEC =
   BATCH_MERCHANT_OFFERS_REVALIDATE_SEC;
 
 // Same rule as builder: lowest product_merchant.price gets shown.
+type PricedMerchantOffer = ProductMerchantWithDetails & { price: number };
+
 export function pickLowestPriceOffer(
   offers: ProductMerchantWithDetails[],
-): ProductMerchantWithDetails | null {
-  if (!offers?.length) return null;
-  return [...offers].sort((a, b) => a.price - b.price)[0];
+): PricedMerchantOffer | null {
+  const pricedOffers = (offers ?? []).filter(
+    (offer): offer is PricedMerchantOffer =>
+      typeof offer.price === "number" && Number.isFinite(offer.price),
+  );
+  if (!pricedOffers.length) return null;
+  return pricedOffers.sort((a, b) => a.price - b.price)[0];
 }
 
 // Lazy recompute on read: one request returns current offers per product id.

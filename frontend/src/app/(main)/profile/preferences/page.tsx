@@ -8,8 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Trash2, ChevronDown } from "lucide-react";
 import BrandedLoadingScreen from "@/components/BrandedLoadingScreen";
 
-import { getRoutinesByUserId } from "@/lib/routines";
-
 export default function ProfilePage() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
@@ -21,7 +19,6 @@ export default function ProfilePage() {
   useEffect(() => {
     if (session?.user) {
       setUsername(session.user.name || "");
-      const routineList = getRoutinesByUserId(session.user.id);
     }
   }, [session]);
 

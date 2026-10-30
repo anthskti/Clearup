@@ -115,7 +115,7 @@ export default function CreatedRoutinesPage() {
           </div>
           <h3 className="text-xl font-semibold mb-2">No routines yet</h3>
           <p className="text-zinc-500 max-w-md mb-6">
-            You haven't created any skincare routines. Head over to the builder
+            You haven&apos;t created any skincare routines. Head over to the builder
             to create your first personalized routine.
           </p>
           <Link href="/builder">

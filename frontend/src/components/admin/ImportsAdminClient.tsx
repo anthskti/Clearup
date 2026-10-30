@@ -141,7 +141,7 @@ export function ImportsAdminClient() {
           placeholder={
             tab === "products"
               ? "Paste scraper CSV: name, brand, category, labels, skinType, country, capacity, price, instructions, ingredients, imageUrls, averageRating, url, status"
-              : "Paste columns: name, brand, merchant, price…"
+              : "Reviewed merchant master: productId, brand, name, merchant, website, price, status (matched rows only). Legacy refresh: name, brand, merchant, price, stock. Use -1 for unavailable price."
           }
         />
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Search, Check, Loader2 } from "lucide-react";
+import { X, Check, Loader2 } from "lucide-react";
 import { getAllMerchants } from "@/lib/merchants";
 import { addMerchantByProductId } from "@/lib/products";
 import { Merchant } from "@/types/merchant";
