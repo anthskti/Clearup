@@ -24,7 +24,7 @@ Product *──* Merchant
 
 Master list of storefronts (name, logo, base URL, etc.). Linked to products through `ProductMerchant`.
 
-**Lowest offer wins** in the UI: `pickLowestPriceOffer` sorts `product_merchant.price` ascending. The builder and PDP use the same rule.
+**Lowest priced offer wins** in the UI: null-priced `product_merchant` rows are excluded from price selection. A null price means unavailable; the PDP keeps the retailer link visible and reports availability as unverified.
 
 ## API
 
@@ -68,6 +68,9 @@ This keeps catalog pages fast without stale prices living forever on high-churn 
 ## Admin import
 
 Admins import catalog data via CSV:
+
+- The Price Updates import accepts reviewed merchant master CSVs with `productId, brand, name, merchant, website, price, status`. Only `status=matched` rows are imported. Product IDs are authoritative and brand/name are validated against the identified product; invalid IDs never fall back to name lookup. The merchant must already exist in ClearUp (`Amazon.ca` maps to the seeded `Amazon` merchant). The scraper sentinel `-1` is stored as `NULL`.
+- Legacy refresh CSVs without `productId` and `status` continue to match by product name and brand. Their `stock` value is imported when provided; blank prices are invalid.
 
 - Backend parses CSV in `ProductService` (admin endpoints + `parseCsvBody` middleware).
 - UI: `/admin/imports` (`ImportsAdminClient`) — status, manual triggers, error logs for scraper quirks.

@@ -314,6 +314,10 @@ export class ProductRepository {
     });
   }
 
+  async findModelById(id: number): Promise<any | null> {
+    return ProductModel.findByPk(id);
+  }
+
   private mapToProductType(dbProduct: any): Product {
     return {
       id: dbProduct.id,

@@ -55,7 +55,7 @@ export class ProductMerchantRepository {
 
   async getLowestPriceByProductId(productId: number): Promise<number | null> {
     const lowestPrice = await ProductMerchantModel.min("price", {
-      where: { productId },
+      where: { productId, price: { [Op.ne]: null } },
     });
     return typeof lowestPrice === "number" && Number.isFinite(lowestPrice)
       ? lowestPrice

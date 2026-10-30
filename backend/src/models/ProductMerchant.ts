@@ -7,7 +7,7 @@ interface ProductMerchantAttributes {
   productId: number;
   merchantId: number;
   website: string;
-  price: number;
+  price: number | null;
   stock: boolean;
   shipping?: string;
   lastUpdated: Date;
@@ -23,7 +23,7 @@ class ProductMerchant
   declare productId: number;
   declare merchantId: number;
   declare website: string;
-  declare price: number;
+  declare price: number | null;
   declare stock: boolean;
   declare shipping?: string;
   declare lastUpdated: Date;
@@ -48,7 +48,7 @@ ProductMerchant.init(
     website: { type: DataTypes.STRING, allowNull: false },
     price: {
       type: DataTypes.FLOAT,
-      allowNull: false,
+      allowNull: true,
     },
     stock: {
       type: DataTypes.BOOLEAN,

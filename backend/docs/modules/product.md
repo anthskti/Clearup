@@ -18,6 +18,8 @@ To support high volume production data, all large response queries implement **p
 - Product Repository (`ProductRepository.ts`): Executes CRUD operations for products. It also contains complex queries for category filtering and search functionality.
 - A Product's Merchant Repository (`ProductMerchantRepository.ts`): Handles database operations specific to merchant links, including updating prices and external vendor URLs for specific products.
 
+Price imports accept reviewed merchant master rows (`productId`, product brand/name, merchant, website, price, status) and legacy refresh rows. Master rows are imported only when matched, resolve existing merchants by name (Amazon.ca maps to the seeded Amazon merchant), and validate product identity by ID. The scraper sentinel `price=-1` means unavailable and is stored as null, which is excluded from lowest-price calculations. Legacy `price=-1` refresh values are also imported as null.
+
 ## Type Definitions
 
 To enforce strict type safety and prevent repetitive inline object declarations, this file contains the core interfaces and Data Transfer Objects (DTOs) used across the module. This helps negate code smells (like repeated code in the repository or service).

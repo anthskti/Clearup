@@ -13,7 +13,7 @@ export interface ProductMerchant {
   productId: number;
   merchantId: number;
   website: string;
-  price: number;
+  price: number | null;
   stock: boolean;
   shipping: string;
   lastUpdated: Date;

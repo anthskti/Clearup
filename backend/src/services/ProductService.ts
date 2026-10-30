@@ -534,8 +534,7 @@ export class ProductService {
     };
   }
 
-  // POST batch post price updates via csv 
-  // name, brand, merchant, price
+  // Import reviewed merchant master rows or legacy price refresh rows.
   async importPriceUpdatesCsv(csv: string): Promise<CsvImportResult> {
     const startedAt = Date.now();
     const rows = parseCsvText(csv);
@@ -551,16 +550,43 @@ export class ProductService {
       const row = rows[i];
       const productName = row.name;
       const brand = row.brand;
-      const merchantName = row.merchant;
-      const incomingPrice = Number(row.price);
+      const rawMerchantName = row.merchant;
+      const isMasterRow = "productid" in row || "status" in row;
+      const isMatchedMasterRow = isMasterRow && row.status?.toLowerCase() === "matched";
 
-      if (!productName || !brand || !merchantName || Number.isNaN(incomingPrice)) {
+      if (isMasterRow && !isMatchedMasterRow) {
+        skipped += 1;
+        continue;
+      }
+
+      const parsedPrice = Number(row.price);
+      const priceIsValid = Number.isFinite(parsedPrice);
+      const incomingPrice = parsedPrice === -1 ? null : parsedPrice;
+      const merchantName = rawMerchantName?.trim().toLowerCase() === "amazon.ca"
+        ? "Amazon"
+        : rawMerchantName;
+      const stockValue = row.stock?.trim().toLowerCase();
+      const parsedStock = stockValue === "true"
+        ? true
+        : stockValue === "false"
+          ? false
+          : stockValue === "1"
+            ? true
+            : stockValue === "0"
+              ? false
+              : undefined;
+
+      if (
+        !productName || !brand || !merchantName || !priceIsValid ||
+        (isMatchedMasterRow && (!row.productid?.trim() || !row.website?.trim())) ||
+        (Boolean(stockValue) && parsedStock === undefined)
+      ) {
         skipped += 1;
         errors.push({
           row: rowNumber,
           code: "INVALID_REQUIRED_FIELDS",
           message:
-            "Row skipped because product_name, brand, merchant, or price was invalid.",
+            "Row skipped because product, merchant, website, or price fields were invalid.",
         });
         continue;
       }
@@ -568,19 +594,21 @@ export class ProductService {
       processed += 1;
 
       try {
-        const product = await this.productRepository.findModelByNameAndBrand(
-          productName,
-          brand,
-        );
+        const product = isMatchedMasterRow
+          ? await this.productRepository.findModelById(Number(row.productid))
+          : await this.productRepository.findModelByNameAndBrand(productName, brand);
         const merchant = await this.merchantRepository.findModelByName(merchantName);
 
-        if (!product || !merchant) {
+        const productMatches = product &&
+          String(product.getDataValue("name")).trim().toLowerCase() === productName.trim().toLowerCase() &&
+          String(product.getDataValue("brand")).trim().toLowerCase() === brand.trim().toLowerCase();
+        if (!product || !merchant || (isMatchedMasterRow && !productMatches)) {
           skipped += 1;
           errors.push({
             row: rowNumber,
             code: "PRODUCT_OR_MERCHANT_NOT_FOUND",
             message:
-              "Row skipped because matching product or merchant was not found.",
+              "Row skipped because the product ID/details or merchant did not match an existing record.",
           });
           continue;
         }
@@ -599,7 +627,7 @@ export class ProductService {
               merchantId: merchantId,
               website: row.website || "",
               price: incomingPrice,
-              stock: true,
+              stock: parsedStock ?? true,
               shipping: row.shipping || "",
               lastUpdated: new Date(),
             },
@@ -611,6 +639,7 @@ export class ProductService {
           await productMerchant.update({
             price: incomingPrice,
             website: row.website || productMerchant.getDataValue("website"),
+            stock: parsedStock ?? productMerchant.getDataValue("stock"),
             shipping: row.shipping || productMerchant.getDataValue("shipping"),
             lastUpdated: new Date(),
           });

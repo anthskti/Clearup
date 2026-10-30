@@ -124,7 +124,7 @@ erDiagram
         int     productId   FK
         int     merchantId  FK
         string  website     "buy link"
-        float   price       "merchant-specific price"
+        float   price       "merchant-specific price; nullable when unavailable"
         boolean stock
         string  shipping
         date    lastUpdated
