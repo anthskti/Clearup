@@ -1,11 +1,13 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { X, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SkinType } from "@/types/product";
 import RoutineShareLink from "./RoutineShareLink";
+
+const emptySubscribe = () => () => {};
 
 export type SaveRoutinePayload = {
   name: string;
@@ -20,27 +22,15 @@ interface SaveRoutineModalProps {
   onSave: (payload: SaveRoutinePayload) => Promise<number>;
 }
 
-function SaveRoutineModal({
-  isOpen,
+function SaveRoutineModalBody({
   onClose,
   skinTypeTags,
   onSave,
-}: SaveRoutineModalProps) {
+}: Omit<SaveRoutineModalProps, "isOpen">) {
   const [routineName, setRoutineName] = useState("");
   const [routineDescription, setRoutineDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [savedRoutineId, setSavedRoutineId] = useState<number | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setRoutineName("");
-    setRoutineDescription("");
-    setSavedRoutineId(null);
-    setIsSaving(false);
-  }, [isOpen]);
 
   const handleConfirmSave = useCallback(async () => {
     setIsSaving(true);
@@ -63,13 +53,7 @@ function SaveRoutineModal({
     }
   }, [routineName, routineDescription, skinTypeTags, onSave]);
 
-  const handleCloseAfterSave = useCallback(() => {
-    onClose();
-  }, [onClose]);
-
-  if (!isOpen || !mounted) return null;
-
-  return createPortal(
+  return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onMouseDown={(e) => {
@@ -100,7 +84,7 @@ function SaveRoutineModal({
             <Button
               variant="outline"
               className="border-zinc-200 shadow-sm w-full"
-              onClick={handleCloseAfterSave}
+              onClick={onClose}
             >
               Close
             </Button>
@@ -148,8 +132,27 @@ function SaveRoutineModal({
           </div>
         )}
       </div>
-    </div>,
-    document.body,  // Put the portal at the front of the DOM
+    </div>
+  );
+}
+
+function SaveRoutineModal({
+  isOpen,
+  onClose,
+  skinTypeTags,
+  onSave,
+}: SaveRoutineModalProps) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <SaveRoutineModalBody
+      onClose={onClose}
+      skinTypeTags={skinTypeTags}
+      onSave={onSave}
+    />,
+    document.body, // Put the portal at the front of the DOM
   );
 }
 

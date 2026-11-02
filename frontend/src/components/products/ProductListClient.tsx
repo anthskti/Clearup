@@ -92,10 +92,7 @@ export default function ProductListClient({
   useEffect(() => {
     let cancelled = false;
     const productIds = products.map((product) => product.id);
-    if (!productIds.length) {
-      setOfferPrices({});
-      return;
-    }
+    if (!productIds.length) return;
 
     void getMerchantOffersByProductIds(productIds).then((offersByProductId) => {
       if (cancelled) return;

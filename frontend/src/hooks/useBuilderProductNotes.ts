@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type {
   BuilderProductNoteEntry,
   RoutineNoteDisplay,
@@ -7,6 +13,7 @@ import type { Product, ProductCategory } from "@/types/product";
 import type { TimeOfDay } from "@/types/routine";
 
 const STORAGE_KEY = "builder-product-notes";
+const emptySubscribe = () => () => {};
 
 function emptyEntry(
   product: Pick<Product, "id" | "name" | "brand">,
@@ -86,25 +93,27 @@ function persistNotes(entries: BuilderProductNoteEntry[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(active));
 }
 
+function readStoredEntries(): BuilderProductNoteEntry[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as BuilderProductNoteEntry[]) : [];
+  } catch (e) {
+    console.error("Failed to parse product notes", e);
+    return [];
+  }
+}
+
 export function useBuilderProductNotes() {
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [entries, setEntries] = useState<BuilderProductNoteEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setEntries(parsed as BuilderProductNoteEntry[]);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to parse product notes", e);
-    }
+  if (isClient && !isLoaded) {
+    setEntries(readStoredEntries());
     setIsLoaded(true);
-  }, []);
+  }
 
   useEffect(() => {
     if (!isLoaded) return;

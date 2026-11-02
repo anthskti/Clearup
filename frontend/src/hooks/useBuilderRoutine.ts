@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { Product, ProductCategory } from "@/types/product";
 import { getMerchantsByProductId, pickLowestPriceOffer } from "@/lib/products";
 import {
@@ -6,6 +6,8 @@ import {
   normalizeStoredSlots,
   slimRoutineForStorage,
 } from "@/lib/slimBuilderRoutineStorage";
+
+const emptySubscribe = () => () => {};
 
 export interface RoutineSlot {
   id: ProductCategory;
@@ -85,26 +87,28 @@ function dedupeProductsById<T extends { id: number }>(products: T[]): T[] {
   });
 }
 
+function readStoredRoutine(): RoutineSlot[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return createEmptyRoutine();
+    const parsed = JSON.parse(saved);
+    const normalized = expandStoredRoutine(normalizeStoredSlots(parsed));
+    return mergeStoredRoutine(normalized);
+  } catch (e) {
+    console.error("Failed to parse saved routine", e);
+    return createEmptyRoutine();
+  }
+}
+
 export const useBuilderRoutine = () => {
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [routine, setRoutine] = useState<RoutineSlot[]>(createEmptyRoutine);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const normalized = expandStoredRoutine(normalizeStoredSlots(parsed));
-          setRoutine(mergeStoredRoutine(normalized));
-        } catch (e) {
-          console.error("Failed to parse saved routine", e);
-        }
-      }
-      setIsLoaded(true);
-    }
-  }, []);
+  if (isClient && !isLoaded) {
+    setRoutine(readStoredRoutine());
+    setIsLoaded(true);
+  }
 
   useEffect(() => {
     if (!isLoaded || typeof window === "undefined") return;

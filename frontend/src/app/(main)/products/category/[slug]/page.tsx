@@ -38,8 +38,15 @@ export default async function ProductListPage({
     fetchCategoryBrands(slug),
   ]);
 
+  const listKey = `${slug}?${new URLSearchParams(
+    Object.entries(flatParams).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  ).toString()}`;
+
   return (
     <ProductListClient
+      key={listKey}
       scope={{ type: "category", slug }}
       initialProducts={productsPage.products}
       initialTotal={productsPage.total}

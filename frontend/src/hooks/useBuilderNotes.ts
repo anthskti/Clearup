@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 
 export interface ClientNote {
   title: string;
@@ -11,6 +11,7 @@ export interface ClientNotes {
 }
 
 const NOTES_STORAGE_KEY = "builder-notes";
+const emptySubscribe = () => () => {};
 
 const DEFAULT_NOTES: ClientNotes = {
   morning: [
@@ -28,25 +29,26 @@ const DEFAULT_NOTES: ClientNotes = {
   ],
 };
 
+function readStoredNotes(): ClientNotes {
+  try {
+    const savedNotes = localStorage.getItem(NOTES_STORAGE_KEY);
+    if (!savedNotes) return DEFAULT_NOTES;
+    return JSON.parse(savedNotes) as ClientNotes;
+  } catch (e) {
+    console.error("Failed to parse saved notes", e);
+    return DEFAULT_NOTES;
+  }
+}
+
 export const useBuilderNotes = () => {
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [notes, setNotes] = useState<ClientNotes>(DEFAULT_NOTES);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedNotes = localStorage.getItem(NOTES_STORAGE_KEY);
-      if (savedNotes) {
-        try {
-          const parsed = JSON.parse(savedNotes);
-          setNotes(parsed);
-        } catch (e) {
-          console.error("Failed to parse saved notes", e);
-        }
-      }
-      setIsLoaded(true);
-    }
-  }, []);
+  if (isClient && !isLoaded) {
+    setNotes(readStoredNotes());
+    setIsLoaded(true);
+  }
 
   // Save notes to localStorage whenever notes change
   useEffect(() => {

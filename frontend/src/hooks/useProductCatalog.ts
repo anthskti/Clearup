@@ -147,21 +147,6 @@ export function useProductCatalog({
     void fetchPage(offset, true);
   }, [fetchPage, hasMore, isLoading, offset]);
 
-  const scopeKey = scope.type === "all" ? "all" : scope.slug;
-
-  useEffect(() => {
-    skipInitialFetch.current = true;
-    const next = (initialProducts ?? []).filter(isValidProduct);
-    setFilters(initialFilters);
-    setDraftPriceRange(priceRangeFromFilters(initialFilters));
-    setSearchQuery(initialSearch);
-    setInputValue(initialSearch);
-    setProducts(next);
-    setTotalCount(initialTotal);
-    setOffset(next.length);
-    setHasMore(next.length === PAGE_SIZE && next.length < initialTotal);
-  }, [scopeKey, initialProducts, initialTotal, initialFilters, initialSearch]);
-
   useEffect(() => {
     if (skipInitialFetch.current) {
       skipInitialFetch.current = false;

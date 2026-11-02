@@ -1,12 +1,14 @@
 // Modal for adding a product note to a routine
 "use client";
 
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ProductCategory } from "@/types/product";
 import type { TimeOfDay } from "@/types/routine";
+
+const emptySubscribe = () => () => {};
 
 // Lean list for the picker — avoids passing full Product blobs into the modal.
 export type ModalProductOption = {
@@ -29,25 +31,15 @@ interface AddProductNoteModalProps {
   ) => void;
 }
 
-function AddProductNoteModal({
-  isOpen,
+function AddProductNoteModalBody({
   onClose,
   timeOfDay,
   products,
   excludedProductIds,
   onConfirm,
-}: AddProductNoteModalProps) {
+}: Omit<AddProductNoteModalProps, "isOpen">) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [userNote, setUserNote] = useState("");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setSelectedId(null);
-    setUserNote("");
-  }, [isOpen, timeOfDay]);
 
   const excluded = useMemo(
     () => new Set(excludedProductIds),
@@ -69,8 +61,6 @@ function AddProductNoteModal({
     [uniqueProducts, excluded],
   );
 
-  if (!isOpen || !mounted) return null;
-
   const selected = available.find((p) => p.productId === selectedId);
   const label = timeOfDay === "AM" ? "Morning" : "Night";
 
@@ -80,7 +70,7 @@ function AddProductNoteModal({
     onClose();
   };
 
-  return createPortal(
+  return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onMouseDown={(e) => {
@@ -124,7 +114,7 @@ function AddProductNoteModal({
                   {product.category}
                 </div>
                 <div className="text-sm font-medium text-zinc-900">
-                {product.brand} {product.name}
+                  {product.brand} {product.name}
                 </div>
               </button>
             ))}
@@ -153,7 +143,31 @@ function AddProductNoteModal({
           </Button>
         </div>
       </div>
-    </div>,
+    </div>
+  );
+}
+
+function AddProductNoteModal({
+  isOpen,
+  onClose,
+  timeOfDay,
+  products,
+  excludedProductIds,
+  onConfirm,
+}: AddProductNoteModalProps) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <AddProductNoteModalBody
+      key={timeOfDay}
+      onClose={onClose}
+      timeOfDay={timeOfDay}
+      products={products}
+      excludedProductIds={excludedProductIds}
+      onConfirm={onConfirm}
+    />,
     document.body,
   );
 }

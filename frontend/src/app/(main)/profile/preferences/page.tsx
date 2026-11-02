@@ -12,15 +12,16 @@ export default function ProfilePage() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
 
-  const [username, setUsername] = useState("");
+  const sessionName = session?.user?.name || "";
+  const [username, setUsername] = useState(sessionName);
+  const [prevSessionName, setPrevSessionName] = useState(sessionName);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (session?.user) {
-      setUsername(session.user.name || "");
-    }
-  }, [session]);
+  if (sessionName !== prevSessionName) {
+    setPrevSessionName(sessionName);
+    setUsername(sessionName);
+  }
 
   // TODO
   const handleUpdateProfile = async () => {
