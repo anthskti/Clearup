@@ -12,13 +12,13 @@ import {
   parseImageUrls,
   parseInstructions,
   parseLabels,
+  parseOfferPrice,
+  parseOfferStock,
   parseScraperPrice,
   parseSkinTypes,
   isScraperRowSuccessful,
-  parseMerchantName,
 } from "../lib/csvProductImport";
 import ProductModel from "../models/Product";
-import ProductMerchantModel from "../models/ProductMerchant";
 import RoutineProductModel from "../models/RoutineProduct";
 import {
   Merchant,
@@ -37,6 +37,36 @@ import {
   hasProductListFilters,
 } from "../lib/productFilterQuery";
 import type { ProductCatalogResult } from "../types/product";
+
+function invalidCsvHeaders(
+  rows: Record<string, string>[],
+  required: string[],
+  importType: "offers" | "prices",
+  startedAt: number,
+): CsvImportResult | null {
+  const missing = required.filter((column) => !(column in (rows[0] ?? {})));
+  if (!missing.length) return null;
+  const message = `Missing required CSV columns: ${missing.join(", ")}.`;
+  return {
+    ok: false,
+    importType,
+    message,
+    totals: {
+      received: rows.length,
+      processed: 0,
+      created: 0,
+      updated: 0,
+      skipped: rows.length,
+      failed: 0,
+    },
+    errors: [{ row: 1, code: "INVALID_HEADERS", message }],
+    durationMs: Date.now() - startedAt,
+    processed: 0,
+    created: 0,
+    updated: 0,
+    skipped: rows.length,
+  };
+}
 
 export class ProductService {
   private productRepository: ProductRepository;
@@ -309,42 +339,6 @@ export class ProductService {
     return deleted;
   }
 
-  /** Link scraper `url` + `price` to a merchant by name (must exist in DB). */
-  private async upsertScraperMerchantOffer(
-    productId: number,
-    website: string,
-    price: number,
-    merchantName: string,
-  ): Promise<boolean> {
-    const merchant = await this.merchantRepository.findModelByName(merchantName);
-    if (!merchant) return false;
-
-    const merchantId = Number(merchant.getDataValue("id"));
-    const [offer, wasCreated] = await ProductMerchantModel.findOrCreate({
-      where: { productId, merchantId },
-      defaults: {
-        productId,
-        merchantId,
-        website,
-        price,
-        stock: true,
-        shipping: "",
-        lastUpdated: new Date(),
-      },
-    });
-
-    if (!wasCreated) {
-      await offer.update({
-        website,
-        price,
-        lastUpdated: new Date(),
-      });
-    }
-
-    await this.syncProductPriceFromLowestOffer(productId);
-    return true;
-  }
-
   private async syncProductPriceFromLowestOffer(productId: number): Promise<void> {
     const lowestPrice =
       await this.productMerchantRepository.getLowestPriceByProductId(productId);
@@ -355,7 +349,7 @@ export class ProductService {
 
   // POST batch import from datascraper CSV:
   // name, brand, category, labels, skinType, country, capacity, price, instructions,
-  // ingredients, imageUrls, averageRating, url, merchant, status
+  // ingredients, imageUrls, averageRating, status
   async importProductsCsv(csv: string): Promise<CsvImportResult> {
     const startedAt = Date.now();
     const rows = parseCsvText(csv);
@@ -421,8 +415,6 @@ export class ProductService {
       const ingredients = row.ingredients?.trim() || undefined;
       const imageUrls = parseImageUrls(row.imageurls);
       const averageRating = Number(row.averagerating || 0);
-      const storeUrl = row.url?.trim() || "";
-      const merchantName = parseMerchantName(row.merchant);
 
       processed += 1;
 
@@ -446,7 +438,6 @@ export class ProductService {
               : existing.getDataValue("skinType"),
             capacity: capacity || existing.getDataValue("capacity"),
             country: country || existing.getDataValue("country"),
-            price: price > 0 ? price : existing.getDataValue("price"),
             instructions: instructions.length
               ? instructions
               : existing.getDataValue("instructions"),
@@ -488,21 +479,6 @@ export class ProductService {
           created += 1;
         }
 
-        if (storeUrl && price > 0) {
-          const linked = await this.upsertScraperMerchantOffer(
-            productId,
-            storeUrl,
-            price,
-            merchantName,
-          );
-          if (!linked) {
-            errors.push({
-              row: rowNumber,
-              code: "MERCHANT_NOT_FOUND",
-              message: `Product saved but merchant "${merchantName}" was not found — offer link skipped.`,
-            });
-          }
-        }
       } catch (error: any) {
         failed += 1;
         errors.push({
@@ -534,10 +510,17 @@ export class ProductService {
     };
   }
 
-  // Import reviewed merchant master rows or legacy price refresh rows.
-  async importPriceUpdatesCsv(csv: string): Promise<CsvImportResult> {
+  // Link reviewed merchant master rows to products already in the catalog.
+  async importMerchantOffersCsv(csv: string): Promise<CsvImportResult> {
     const startedAt = Date.now();
     const rows = parseCsvText(csv);
+    const invalidHeaders = invalidCsvHeaders(
+      rows,
+      ["productid", "brand", "name", "merchant", "website", "price", "status"],
+      "offers",
+      startedAt,
+    );
+    if (invalidHeaders) return invalidHeaders;
     const errors: CsvRowError[] = [];
     let processed = 0;
     let created = 0;
@@ -551,35 +534,23 @@ export class ProductService {
       const productName = row.name;
       const brand = row.brand;
       const rawMerchantName = row.merchant;
-      const isMasterRow = "productid" in row || "status" in row;
-      const isMatchedMasterRow = isMasterRow && row.status?.toLowerCase() === "matched";
-
-      if (isMasterRow && !isMatchedMasterRow) {
+      if (row.status?.toLowerCase() !== "matched") {
         skipped += 1;
         continue;
       }
 
-      const parsedPrice = Number(row.price);
-      const priceIsValid = Number.isFinite(parsedPrice);
-      const incomingPrice = parsedPrice === -1 ? null : parsedPrice;
+      const incomingPrice = parseOfferPrice(row.price);
       const merchantName = rawMerchantName?.trim().toLowerCase() === "amazon.ca"
         ? "Amazon"
         : rawMerchantName;
-      const stockValue = row.stock?.trim().toLowerCase();
-      const parsedStock = stockValue === "true"
-        ? true
-        : stockValue === "false"
-          ? false
-          : stockValue === "1"
-            ? true
-            : stockValue === "0"
-              ? false
-              : undefined;
+      const parsedStock = parseOfferStock(row.stock);
+      const productId = Number(row.productid);
 
       if (
-        !productName || !brand || !merchantName || !priceIsValid ||
-        (isMatchedMasterRow && (!row.productid?.trim() || !row.website?.trim())) ||
-        (Boolean(stockValue) && parsedStock === undefined)
+        !productName || !brand || !merchantName || !row.website?.trim() ||
+        !Number.isInteger(productId) || productId <= 0 ||
+        incomingPrice === undefined ||
+        (Boolean(row.stock?.trim()) && parsedStock === undefined)
       ) {
         skipped += 1;
         errors.push({
@@ -594,15 +565,13 @@ export class ProductService {
       processed += 1;
 
       try {
-        const product = isMatchedMasterRow
-          ? await this.productRepository.findModelById(Number(row.productid))
-          : await this.productRepository.findModelByNameAndBrand(productName, brand);
+        const product = await this.productRepository.findModelById(productId);
         const merchant = await this.merchantRepository.findModelByName(merchantName);
 
         const productMatches = product &&
           String(product.getDataValue("name")).trim().toLowerCase() === productName.trim().toLowerCase() &&
           String(product.getDataValue("brand")).trim().toLowerCase() === brand.trim().toLowerCase();
-        if (!product || !merchant || (isMatchedMasterRow && !productMatches)) {
+        if (!product || !merchant || !productMatches) {
           skipped += 1;
           errors.push({
             row: rowNumber,
@@ -613,36 +582,17 @@ export class ProductService {
           continue;
         }
 
-        const productId = Number(product.getDataValue("id"));
         const merchantId = Number(merchant.getDataValue("id"));
-
-        const [productMerchant, wasCreated] =
-          await ProductMerchantModel.findOrCreate({
-            where: {
-              productId: productId,
-              merchantId: merchantId,
-            },
-            defaults: {
-              productId: productId,
-              merchantId: merchantId,
-              website: row.website || "",
-              price: incomingPrice,
-              stock: parsedStock ?? true,
-              shipping: row.shipping || "",
-              lastUpdated: new Date(),
-            },
-          });
-
+        const wasCreated = await this.productMerchantRepository.upsertImportedOffer({
+          productId,
+          merchantId,
+          website: row.website,
+          price: incomingPrice,
+          stock: parsedStock,
+        });
         if (wasCreated) {
           created += 1;
         } else {
-          await productMerchant.update({
-            price: incomingPrice,
-            website: row.website || productMerchant.getDataValue("website"),
-            stock: parsedStock ?? productMerchant.getDataValue("stock"),
-            shipping: row.shipping || productMerchant.getDataValue("shipping"),
-            lastUpdated: new Date(),
-          });
           updated += 1;
         }
 
@@ -659,8 +609,8 @@ export class ProductService {
 
     return {
       ok: failed === 0,
-      importType: "prices",
-      message: "CSV price update completed",
+      importType: "offers",
+      message: "CSV merchant offer import completed",
       totals: {
         received: rows.length,
         processed,
@@ -676,6 +626,117 @@ export class ProductService {
       updated,
       skipped,
       updatedOffers: created + updated,
+    };
+  }
+
+  // Refresh prices and stock for merchant offers that already have a link.
+  async importPriceUpdatesCsv(csv: string): Promise<CsvImportResult> {
+    const startedAt = Date.now();
+    const rows = parseCsvText(csv);
+    const invalidHeaders = invalidCsvHeaders(
+      rows,
+      ["brand", "name", "price", "merchant", "stock"],
+      "prices",
+      startedAt,
+    );
+    if (invalidHeaders) return invalidHeaders;
+
+    const errors: CsvRowError[] = [];
+    let processed = 0;
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i];
+      const rowNumber = i + 2;
+      const productName = row.name?.trim();
+      const brand = row.brand?.trim();
+      const merchantName = row.merchant?.trim().toLowerCase() === "amazon.ca"
+        ? "Amazon"
+        : row.merchant?.trim();
+      const price = parseOfferPrice(row.price);
+      const stock = parseOfferStock(row.stock);
+
+      if (
+        "productid" in row || "status" in row || !productName || !brand ||
+        !merchantName || price === undefined || stock === undefined
+      ) {
+        skipped += 1;
+        errors.push({
+          row: rowNumber,
+          code: "INVALID_REFRESH_ROW",
+          message: "Expected brand, name, price, merchant, and stock for an existing offer.",
+        });
+        continue;
+      }
+
+      processed += 1;
+      try {
+        const product = await this.productRepository.findModelByNameAndBrand(
+          productName,
+          brand,
+        );
+        const merchant = await this.merchantRepository.findModelByName(merchantName);
+        if (!product || !merchant) {
+          skipped += 1;
+          errors.push({
+            row: rowNumber,
+            code: "PRODUCT_OR_MERCHANT_NOT_FOUND",
+            message: "Row skipped because the product or merchant was not found.",
+          });
+          continue;
+        }
+
+        const productId = Number(product.getDataValue("id"));
+        const merchantId = Number(merchant.getDataValue("id"));
+        const offerFound = await this.productMerchantRepository.refreshImportedPrice({
+          productId,
+          merchantId,
+          price,
+          stock,
+        });
+        if (!offerFound) {
+          skipped += 1;
+          errors.push({
+            row: rowNumber,
+            code: "OFFER_NOT_FOUND",
+            message: "Row skipped because this product has no offer for that merchant.",
+          });
+          continue;
+        }
+
+        updated += 1;
+        await this.syncProductPriceFromLowestOffer(productId);
+      } catch (error: any) {
+        failed += 1;
+        errors.push({
+          row: rowNumber,
+          code: "ROW_PROCESS_FAILED",
+          message: error?.message || "Failed to process row.",
+        });
+      }
+    }
+
+    return {
+      ok: failed === 0,
+      importType: "prices",
+      message: "CSV price refresh completed",
+      totals: {
+        received: rows.length,
+        processed,
+        created: 0,
+        updated,
+        skipped,
+        failed,
+      },
+      errors: errors.slice(0, 50),
+      durationMs: Date.now() - startedAt,
+      processed,
+      created: 0,
+      updated,
+      skipped,
+      updatedOffers: updated,
     };
   }
 }

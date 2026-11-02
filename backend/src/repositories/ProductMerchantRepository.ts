@@ -62,6 +62,54 @@ export class ProductMerchantRepository {
       : null;
   }
 
+  async upsertImportedOffer(data: {
+    productId: number;
+    merchantId: number;
+    website: string;
+    price: number | null;
+    stock?: boolean;
+  }): Promise<boolean> {
+    const [offer, created] = await ProductMerchantModel.findOrCreate({
+      where: { productId: data.productId, merchantId: data.merchantId },
+      defaults: {
+        productId: data.productId,
+        merchantId: data.merchantId,
+        website: data.website,
+        price: data.price,
+        stock: data.stock ?? (data.price !== null),
+        shipping: "",
+        lastUpdated: new Date(),
+      },
+    });
+    if (!created) {
+      await offer.update({
+        website: data.website,
+        price: data.price,
+        ...(data.stock === undefined ? {} : { stock: data.stock }),
+        lastUpdated: new Date(),
+      });
+    }
+    return created;
+  }
+
+  async refreshImportedPrice(data: {
+    productId: number;
+    merchantId: number;
+    price: number | null;
+    stock: boolean;
+  }): Promise<boolean> {
+    const offer = await ProductMerchantModel.findOne({
+      where: { productId: data.productId, merchantId: data.merchantId },
+    });
+    if (!offer) return false;
+    await offer.update({
+      price: data.price,
+      stock: data.stock,
+      lastUpdated: new Date(),
+    });
+    return true;
+  }
+
   // POST new merchant on product list
   async create(
     productMerchantData: CreateProductMerchantInput,

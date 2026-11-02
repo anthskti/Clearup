@@ -16,6 +16,12 @@ router.post(
   (req, res) => productController.importProductsCsv(req, res),
 );
 router.post(
+  "/admin/import/offers",
+  requireAdmin,
+  parseImportCsvBody,
+  (req, res) => productController.importMerchantOffersCsv(req, res),
+);
+router.post(
   "/admin/import/prices",
   requireAdmin,
   parseImportCsvBody,

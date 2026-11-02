@@ -277,6 +277,23 @@ export class ProductController {
     }
   }
 
+  // POST /api/products/admin/import/offers
+  async importMerchantOffersCsv(req: Request, res: Response): Promise<void> {
+    try {
+      const csv = csvFromRequestBody(req.body);
+      if (!csv) {
+        res.status(400).json({
+          error: "Missing CSV body. Send raw text/csv or application/json { csv }.",
+        });
+        return;
+      }
+      const result = await this.productService.importMerchantOffersCsv(csv);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      handleInternalError(res, "ProductController.importMerchantOffersCsv", error);
+    }
+  }
+
   // POST /api/products/admin/import/prices
   async importPriceUpdatesCsv(req: Request, res: Response): Promise<void> {
     try {

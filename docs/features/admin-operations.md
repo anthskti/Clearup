@@ -19,7 +19,7 @@ Frontend gate: `frontend/src/app/admin/layout.tsx` redirects to `/login` or `/` 
 |------|---------|
 | `/admin/dashboard` | Trends: new users vs guides created (`AdminTrendChart`) |
 | `/admin/content` | Toggle **featured** routines for the landing page |
-| `/admin/imports` | Product CSV import monitoring and controls |
+| `/admin/imports` | Product initialization, merchant offer import, and price refresh CSV controls |
 | `/admin/users` | User listing / management surface |
 
 ## Admin API (summary)
@@ -31,7 +31,7 @@ Frontend gate: `frontend/src/app/admin/layout.tsx` redirects to `/login` or `/` 
 | `POST /api/routines/admin/featured/:id` | Feature a guide |
 | `DELETE /api/routines/admin/featured/:id` | Unfeature |
 | `GET /api/users/admin` | User admin listing |
-| Product POST/PUT/DELETE, CSV import | Catalog management |
+| Product POST/PUT/DELETE, `/api/products/admin/import/csv`, `/offers`, `/prices` | Catalog management and imports |
 | `/api/merchant` POST/PUT/DELETE | Merchant master data |
 
 All of the above require an admin session cookie on fetch (`credentials: "include"` in `frontend/src/lib/admin-server.ts` and routine admin helpers).
@@ -50,10 +50,10 @@ The imports page is built for operational reality: scrapers hit heterogeneous re
 
 Typical flow:
 
-1. Run or schedule scraper → CSV.
-2. Upload or POST CSV via admin import endpoint.
-3. Review logs in `ImportsAdminClient`.
-4. Fix rows and re-run; use product/merchant admin APIs for one-off corrections.
+1. Initialize catalog products with the product CSV, or create them in the client.
+2. Import matched rows from a reviewed merchant master to add links and offers to existing products.
+3. Refresh prices and stock from `brand,name,price,merchant,stock` CSVs. Refreshes require an existing offer and preserve its link.
+4. Review skipped and failed row counts in `ImportsAdminClient`; correct rows and re-run as needed.
 
 `bun run seed` in development uses `sequelize.sync({ force: true })` and is **destructive**—never run against production.
 

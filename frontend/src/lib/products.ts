@@ -3,6 +3,7 @@ import { ProductMerchantWithDetails } from "@/types/merchant";
 import { appendProductListFiltersToQuery, productListFiltersNeedDynamicFetch } from "@/lib/productListFilters";
 import { PRODUCT_PRICE_SLIDER_MAX } from "@/constants/productFilters";
 import { parseSkinTypeTagsFromParam } from "@/lib/routineSkinTypeTags";
+import { mutationHeaders } from "@/lib/mutationHeaders";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
 
@@ -59,23 +60,33 @@ export async function getMerchantOffersByProductIds(
   ];
   if (!unique.length) return {};
 
-  const qs = unique.sort((a, b) => a - b).join(",");
-  const res = await fetch(
-    `${API_URL}/api/products/merchants/batch?ids=${encodeURIComponent(qs)}`,
-    { next: { revalidate: BATCH_MERCHANT_OFFERS_REVALIDATE_SEC } },
+  const sortedIds = unique.sort((a, b) => a - b);
+  const out: Record<number, ProductMerchantWithDetails[]> = Object.fromEntries(
+    sortedIds.map((id) => [id, []]),
   );
-  if (!res.ok) {
-    console.error("getMerchantOffersByProductIds: batch request failed");
-    return Object.fromEntries(unique.map((id) => [id, []]));
-  }
+  const batchSize = 25;
 
-  const json = (await res.json()) as Record<
-    string,
-    ProductMerchantWithDetails[]
-  >;
-  const out: Record<number, ProductMerchantWithDetails[]> = {};
-  for (const id of unique) {
-    out[id] = json[String(id)] ?? [];
+  for (let start = 0; start < sortedIds.length; start += batchSize) {
+    const batch = sortedIds.slice(start, start + batchSize);
+    const qs = batch.join(",");
+    const res = await fetch(
+      `${API_URL}/api/products/merchants/batch?ids=${encodeURIComponent(qs)}`,
+      { next: { revalidate: BATCH_MERCHANT_OFFERS_REVALIDATE_SEC } },
+    );
+    if (!res.ok) {
+      console.error(
+        `getMerchantOffersByProductIds: batch request failed (${res.status})`,
+      );
+      continue;
+    }
+
+    const json = (await res.json()) as Record<
+      string,
+      ProductMerchantWithDetails[]
+    >;
+    for (const id of batch) {
+      out[id] = json[String(id)] ?? [];
+    }
   }
   return out;
 }
@@ -314,10 +325,12 @@ async function postCsvImport(
     method: "POST",
     credentials: "include",
     body: csvOrFile,
+    headers: mutationHeaders(
+      typeof csvOrFile === "string"
+        ? { "Content-Type": "text/csv; charset=utf-8" }
+        : undefined,
+    ),
   };
-  if (typeof csvOrFile === "string") {
-    init.headers = { "Content-Type": "text/csv; charset=utf-8" };
-  }
   return fetch(`${API_URL}${path}`, init);
 }
 
@@ -332,15 +345,19 @@ export const importProductsCsv = async (
   return res.json();
 };
 
+export const importMerchantOffersCsv = async (
+  csvOrFile: string | File,
+): Promise<CsvImportResponse> => {
+  const res = await postCsvImport("/api/products/admin/import/offers", csvOrFile);
+  if (!res.ok) {
+    throw new Error(await readImportError(res));
+  }
+  return res.json();
+};
+
 export const importPriceUpdatesCsv = async (
   csvOrFile: string | File,
-): Promise<{
-  ok: boolean;
-  processed: number;
-  updatedOffers: number;
-  skipped: number;
-  message: string;
-}> => {
+): Promise<CsvImportResponse> => {
   const res = await postCsvImport(
     "/api/products/admin/import/prices",
     csvOrFile,

@@ -102,6 +102,24 @@ export function parseScraperPrice(raw: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Merchant offer CSV prices: undefined is invalid, null is the -1 sentinel. */
+export function parseOfferPrice(raw: string | undefined): number | null | undefined {
+  const value = raw?.trim();
+  if (value === "-1") return null;
+  if (!value) return undefined;
+  const match = /^(?:(?:CA)?\$\s*)?(\d+(?:\.\d{1,2})?)$/.exec(value);
+  if (!match) return undefined;
+  const price = Number(match[1]);
+  return Number.isFinite(price) && price > 0 ? price : undefined;
+}
+
+export function parseOfferStock(raw: string | undefined): boolean | undefined {
+  const value = raw?.trim().toLowerCase();
+  if (value === "true" || value === "1") return true;
+  if (value === "false" || value === "0") return false;
+  return undefined;
+}
+
 // Periods in these tokens must not start a new instruction step (e.g. "Dr. Althea").
 // Extend when scraper copy includes other dotted names or abbreviations.
 const INSTRUCTION_PERIOD_EXCEPTIONS = [

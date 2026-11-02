@@ -41,7 +41,9 @@ Base path: `/api/products`
 | PUT/DELETE | `/id/:id` | Admin | Update/delete |
 | POST | `/id/:id/merchants` | Admin | Link merchant to product |
 | PUT/DELETE | `/product-merchant/:id` | Admin | Update/remove offer row |
-| POST | `/import` (and related) | Admin | CSV import pipeline |
+| POST | `/admin/import/csv` | Admin | Initialize or update catalog products |
+| POST | `/admin/import/offers` | Admin | Add reviewed merchant offers to existing products |
+| POST | `/admin/import/prices` | Admin | Refresh prices and stock on existing offers |
 
 Merchant CRUD: `/api/merchant` (admin for writes).
 
@@ -67,10 +69,13 @@ This keeps catalog pages fast without stale prices living forever on high-churn 
 
 ## Admin import
 
-Admins import catalog data via CSV:
+The admin imports page has three CSV flows:
 
-- The Price Updates import accepts reviewed merchant master CSVs with `productId, brand, name, merchant, website, price, status`. Only `status=matched` rows are imported. Product IDs are authoritative and brand/name are validated against the identified product; invalid IDs never fall back to name lookup. The merchant must already exist in ClearUp (`Amazon.ca` maps to the seeded `Amazon` merchant). The scraper sentinel `-1` is stored as `NULL`.
-- Legacy refresh CSVs without `productId` and `status` continue to match by product name and brand. Their `stock` value is imported when provided; blank prices are invalid.
+1. **Initialize Products** creates or updates `products` from the catalog scraper CSV. The CSV price is used for new products; reimporting an existing product preserves its current price. It does not add merchant offers. The reviewed Amazon master lacks the category required by this flow.
+2. **Add Merchant Offers** accepts reviewed merchant masters with `productId,brand,name,merchant,website,price,status` (extra columns are ignored). Only `status=matched` rows import. The product ID is authoritative, and brand/name must match that product. The merchant must already exist (`Amazon.ca` maps to `Amazon`). Rows upsert `product_merchants` by product and merchant, including the website.
+3. **Refresh Prices** accepts `brand,name,price,merchant,stock`. It updates only an existing offer, preserving its website; unknown products, merchants, and offers are skipped with row errors.
+
+Offer prices may be positive plain numbers or dollar-prefixed values such as `$30.23` and `CA$ 30.23`. The exact sentinel `-1` is stored as `NULL`. Blank, zero, and malformed prices are rejected. Refresh stock accepts `true`/`false` or `1`/`0`. A new master offer without stock defaults to false when its price is null and true when priced; existing stock is preserved when the master has no stock column.
 
 - Backend parses CSV in `ProductService` (admin endpoints + `parseCsvBody` middleware).
 - UI: `/admin/imports` (`ImportsAdminClient`) — status, manual triggers, error logs for scraper quirks.

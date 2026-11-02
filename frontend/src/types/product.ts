@@ -49,6 +49,7 @@ export type CsvImportResponse = {
   created: number;
   updated: number;
   skipped?: number;
+  updatedOffers?: number;
   message: string;
   totals?: {
     received: number;
