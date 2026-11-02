@@ -6,6 +6,7 @@ import type { SkinType } from "@/types/product";
 import type { RoutineWithProducts } from "@/types/routine";
 import { skinTypeLabel } from "@/lib/routineSkinTypeTags";
 import { Button } from "@/components/ui/button";
+import ProductImage from "@/components/ui/ProductImage";
 import { cn } from "@/lib/utils";
 
 export function previewUrlsFromRoutineProducts(
@@ -111,11 +112,12 @@ export default function RoutinePreviewCard({
                     key={`${routineId}-${i}-${url.slice(-24)}`}
                     className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-zinc-100 bg-zinc-50"
                   >
-                    <img
+                    <ProductImage
                       src={url}
                       alt=""
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
+                      width={48}
+                      height={48}
+                      sizes="48px"
                       className="h-full w-full object-cover"
                     />
                   </div>

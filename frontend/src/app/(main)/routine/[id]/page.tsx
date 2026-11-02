@@ -248,10 +248,13 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                           {logo &&
                           logo !== "-" &&
                           /^https?:\/\//i.test(logo) ? (
-                            <img
+                            <ProductImage
                               src={logo}
                               alt={merchantName}
+                              width={20}
+                              height={20}
                               className="w-5 h-5 rounded object-cover shrink-0"
+                              sizes="20px"
                             />
                           ) : (
                             <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-[10px] text-blue-700 shrink-0">
