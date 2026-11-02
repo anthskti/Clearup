@@ -78,9 +78,9 @@ function VerifyEmailContent() {
           return;
         }
         setState("success");
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) {
-          const msg = (e?.message || "").toLowerCase();
+          const msg = (e instanceof Error ? e.message : "").toLowerCase();
           if (msg.includes("expired") || msg.includes("expire")) {
             setState("expired");
           } else if (msg.includes("invalid") || msg.includes("token")) {
@@ -95,7 +95,7 @@ function VerifyEmailContent() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, callbackURL]);
 
   const handleResend = async () => {
     const targetEmail = session?.user?.email || emailFromQuery;

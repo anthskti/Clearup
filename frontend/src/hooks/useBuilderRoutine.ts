@@ -172,7 +172,7 @@ export const useBuilderRoutine = () => {
               : slot,
           ),
         );
-      } catch (e: any) {
+      } catch (e) {
         console.error("Failed to fetch merchants details for product", e);
       }
     },

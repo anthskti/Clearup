@@ -70,8 +70,10 @@ export default function ProfilePage() {
       }
 
       router.push("/");
-    } catch (err: any) {
-      setDeleteError(err?.message || "Could not delete account.");
+    } catch (err: unknown) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Could not delete account.",
+      );
       setIsDeleting(false);
     }
   };
