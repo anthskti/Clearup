@@ -65,7 +65,7 @@ Typical flow:
 
 - Keep `ADMIN_EMAILS` minimal; prefer persisting `role: "admin"` in the database for long-term operators.
 - Admin routes inherit global rate limits but are not anonymous—session required.
-- Do not expose import endpoints without `requireAdmin`; CSV upload can mutate large parts of the catalog.
+- CSV import endpoints require both `requireAdmin` and the `x-clearup-client: 1` mutation header; CSV uploads can change catalog data.
 
 ## Local admin setup
 

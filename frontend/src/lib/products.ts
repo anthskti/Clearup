@@ -50,8 +50,7 @@ export function pickLowestPriceOffer(
   return pricedOffers.sort((a, b) => a.price - b.price)[0];
 }
 
-// Lazy recompute on read: one request returns current offers per product id.
-// Cached at the HTTP/Data Cache layer (not a DB cron).
+// One request returns current offers per product id without serving cached prices.
 export async function getMerchantOffersByProductIds(
   productIds: number[],
 ): Promise<Record<number, ProductMerchantWithDetails[]>> {
@@ -71,7 +70,7 @@ export async function getMerchantOffersByProductIds(
     const qs = batch.join(",");
     const res = await fetch(
       `${API_URL}/api/products/merchants/batch?ids=${encodeURIComponent(qs)}`,
-      { next: { revalidate: BATCH_MERCHANT_OFFERS_REVALIDATE_SEC } },
+      { cache: "no-store" },
     );
     if (!res.ok) {
       console.error(

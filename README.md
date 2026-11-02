@@ -128,13 +128,13 @@ Hooks + Better Auth + Next.js cache only.
 
 **Loading**: Each important async page has skeleton loaders (`loading.tsx`), inspired by apps like YouTube.
 
-**Reduced API calls + speed**: Tiered `revalidate` caching in `src/lib/products.ts`:
+**Product data caching** in `src/lib/products.ts`:
 
 | Constant | TTL | Use |
 | -------- | --- | --- |
 | `CATALOG_REVALIDATE_SEC` | 1h | Category grids + PDP product body |
 | `PRODUCT_MERCHANTS_REVALIDATE_SEC` | 30m | Per-product merchant offers on PDP |
-| `BATCH_MERCHANT_OFFERS_REVALIDATE_SEC` | 6h | Batched offers on routine pages |
+| Batched offer requests | None (`no-store`) | Fresh merchant offers on routine pages |
 
 Mutations always use `cache: "no-store"` and `mutationHeaders()` (`x-clearup-client: 1`).
 

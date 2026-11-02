@@ -100,16 +100,20 @@ export default async function ViewRoutine({ params }: RoutineProps) {
     };
   }).filter((step) => step.products.length > 0);
 
-  const getDisplayPrice = (productId: number, fallbackPrice: number) => {
+  const getDisplayPrice = (productId: number): number | null => {
     const best = pickLowestPriceOffer(offersByProductId[productId] ?? []);
-    return best?.price ?? fallbackPrice ?? 0;
+    return best?.price ?? null;
   };
 
-  const totalPrice = finalRoutine.reduce(
-    (acc, step) =>
-      acc +
-      step.products.reduce((sum, p) => sum + getDisplayPrice(p.id, p.price), 0),
-    0,
+  const sumDisplayPrices = (products: { id: number }[]): number | null => {
+    const prices = products
+      .map((product) => getDisplayPrice(product.id))
+      .filter((price): price is number => price !== null);
+    return prices.length ? prices.reduce((sum, price) => sum + price, 0) : null;
+  };
+
+  const totalPrice = sumDisplayPrices(
+    finalRoutine.flatMap((step) => step.products),
   );
   const totalItems = finalRoutine.reduce(
     (acc, step) => acc + step.products.length,
@@ -153,14 +157,16 @@ export default async function ViewRoutine({ params }: RoutineProps) {
 
         {/* Showing Route */}
         <div className="space-y-4 md:space-y-0">
-          {finalRoutine.map((step) => (
-            <div
-              key={step.id}
-              className={`
+          {finalRoutine.map((step) => {
+            const stepPrice = sumDisplayPrices(step.products);
+            return (
+              <div
+                key={step.id}
+                className={`
               group bg-white rounded-xl border border-zinc-200 shadow-sm p-4 grid grid-cols-1 gap-4 transition-all hover:bg-zinc-50/50
               md:bg-transparent md:rounded-none md:border-0 md:border-b md:border-zinc-200 md:shadow-none md:px-2 md:py-5 md:grid-cols-12 md:gap-y-4 md:items-center
               `}
-            >
+              >
               {/* Category Label */}
               <div
                 className="col-span-1 md:col-span-2 flex justify-between md:block md:self-start"
@@ -176,10 +182,7 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                 {/* Mobile Price Display, top corner */}
                 {step.products.length > 0 && (
                   <span className="md:hidden font-bold text-zinc-900">
-                    $
-                    {step.products
-                      .reduce((s, p) => s + getDisplayPrice(p.id, p.price), 0)
-                      .toFixed(2)}
+                    {stepPrice === null ? "-" : `$${stepPrice.toFixed(2)}`}
                   </span>
                 )}
               </div>
@@ -189,6 +192,7 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                   const best = pickLowestPriceOffer(
                     offersByProductId[prod.id] ?? [],
                   );
+                  const displayPrice = getDisplayPrice(prod.id);
                   const merchantName = best?.merchant?.name ?? "Direct";
                   const merchantHref = best?.website?.trim() || undefined;
                   const logo = best?.merchant?.logo?.trim();
@@ -265,7 +269,9 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                       </div>
 
                       <div className="hidden md:block md:col-span-1 text-right text-lg font-bold text-zinc-900">
-                        ${getDisplayPrice(prod.id, prod.price).toFixed(2)}
+                        {displayPrice === null
+                          ? "-"
+                          : `$${displayPrice.toFixed(2)}`}
                       </div>
 
                       <div className="hidden md:flex md:col-span-1 items-center justify-end">
@@ -283,8 +289,9 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                   );
                 })
               ) : null}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
         {canEditRoutine ? (
           <RoutineProductsNotesEditor
@@ -324,7 +331,7 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                 Estimated Total
               </div>
               <div className="text-2xl font-extrabold text-black">
-                CA ${totalPrice.toFixed(2)}
+                {totalPrice === null ? "-" : `CA $${totalPrice.toFixed(2)}`}
               </div>
               <span className="hidden sm:flex items-center text-sm font-medium text-zinc-500 mr-2">
                 {totalItems} items selected

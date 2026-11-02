@@ -1,6 +1,7 @@
 import express, { Router } from "express";
 import { ProductController } from "../controllers/productController";
 import { requireAdmin } from "../middleware/requireAuth";
+import { requireMutationHeader } from "../middleware/requireMutationHeader";
 import { parseImportCsvBody } from "../middleware/parseCsvBody";
 
 const router = express.Router();
@@ -12,18 +13,21 @@ const productController = new ProductController();
 router.post(
   "/admin/import/csv",
   requireAdmin,
+  requireMutationHeader,
   parseImportCsvBody,
   (req, res) => productController.importProductsCsv(req, res),
 );
 router.post(
   "/admin/import/offers",
   requireAdmin,
+  requireMutationHeader,
   parseImportCsvBody,
   (req, res) => productController.importMerchantOffersCsv(req, res),
 );
 router.post(
   "/admin/import/prices",
   requireAdmin,
+  requireMutationHeader,
   parseImportCsvBody,
   (req, res) => productController.importPriceUpdatesCsv(req, res),
 );
