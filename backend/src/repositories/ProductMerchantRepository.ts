@@ -68,6 +68,7 @@ export class ProductMerchantRepository {
     website: string;
     price: number | null;
     stock?: boolean;
+    preserveExistingPrice?: boolean;
   }): Promise<boolean> {
     const [offer, created] = await ProductMerchantModel.findOrCreate({
       where: { productId: data.productId, merchantId: data.merchantId },
@@ -84,7 +85,7 @@ export class ProductMerchantRepository {
     if (!created) {
       await offer.update({
         website: data.website,
-        price: data.price,
+        ...(data.preserveExistingPrice ? {} : { price: data.price }),
         ...(data.stock === undefined ? {} : { stock: data.stock }),
         lastUpdated: new Date(),
       });

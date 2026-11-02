@@ -50,8 +50,8 @@ The imports page is built for operational reality: scrapers hit heterogeneous re
 
 Typical flow:
 
-1. Initialize catalog products with the product CSV, or create them in the client.
-2. Import matched rows from a reviewed merchant master to add links and offers to existing products.
+1. Initialize catalog products with the product CSV, including its initial merchant link when `url`, `merchant`, and a positive price are supplied; or create products in the client. A blank merchant defaults to YesStyle.
+2. Import matched rows from a reviewed merchant master to add offers to existing products.
 3. Refresh prices and stock from `brand,name,price,merchant,stock` CSVs. Refreshes require an existing offer and preserve its link.
 4. Review skipped and failed row counts in `ImportsAdminClient`; correct rows and re-run as needed.
 

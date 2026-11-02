@@ -17,6 +17,7 @@ import {
   parseScraperPrice,
   parseSkinTypes,
   isScraperRowSuccessful,
+  parseMerchantName,
 } from "../lib/csvProductImport";
 import ProductModel from "../models/Product";
 import RoutineProductModel from "../models/RoutineProduct";
@@ -349,7 +350,7 @@ export class ProductService {
 
   // POST batch import from datascraper CSV:
   // name, brand, category, labels, skinType, country, capacity, price, instructions,
-  // ingredients, imageUrls, averageRating, status
+  // ingredients, imageUrls, averageRating, url, merchant, status
   async importProductsCsv(csv: string): Promise<CsvImportResult> {
     const startedAt = Date.now();
     const rows = parseCsvText(csv);
@@ -415,6 +416,8 @@ export class ProductService {
       const ingredients = row.ingredients?.trim() || undefined;
       const imageUrls = parseImageUrls(row.imageurls);
       const averageRating = Number(row.averagerating || 0);
+      const storeUrl = row.url?.trim() || "";
+      const merchantName = parseMerchantName(row.merchant);
 
       processed += 1;
 
@@ -479,6 +482,25 @@ export class ProductService {
           created += 1;
         }
 
+        if (storeUrl && price > 0) {
+          const merchant = await this.merchantRepository.findModelByName(merchantName);
+          if (!merchant) {
+            errors.push({
+              row: rowNumber,
+              code: "MERCHANT_NOT_FOUND",
+              message: `Product saved but merchant "${merchantName}" was not found — offer link skipped.`,
+            });
+          } else {
+            await this.productMerchantRepository.upsertImportedOffer({
+              productId,
+              merchantId: Number(merchant.getDataValue("id")),
+              website: storeUrl,
+              price,
+              preserveExistingPrice: true,
+            });
+            await this.syncProductPriceFromLowestOffer(productId);
+          }
+        }
       } catch (error: any) {
         failed += 1;
         errors.push({

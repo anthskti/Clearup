@@ -71,7 +71,7 @@ This keeps catalog pages fast without stale prices living forever on high-churn 
 
 The admin imports page has three CSV flows:
 
-1. **Initialize Products** creates or updates `products` from the catalog scraper CSV. The CSV price is used for new products; reimporting an existing product preserves its current price. It does not add merchant offers. The reviewed Amazon master lacks the category required by this flow.
+1. **Initialize Products** creates or updates `products` from the catalog scraper CSV. The CSV price is used for new products; reimporting an existing product preserves its current price. A row with `url` and a positive price creates or updates the initial offer for the supplied `merchant` (blank defaults to YesStyle). Reimporting preserves an existing offer's price and stock. The merchant must already exist. The reviewed Amazon master lacks the category required by this flow.
 2. **Add Merchant Offers** accepts reviewed merchant masters with `productId,brand,name,merchant,website,price,status` (extra columns are ignored). Only `status=matched` rows import. The product ID is authoritative, and brand/name must match that product. The merchant must already exist (`Amazon.ca` maps to `Amazon`). Rows upsert `product_merchants` by product and merchant, including the website.
 3. **Refresh Prices** accepts `brand,name,price,merchant,stock`. It updates only an existing offer, preserving its website; unknown products, merchants, and offers are skipped with row errors.
 
