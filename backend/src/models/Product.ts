@@ -4,6 +4,7 @@ import { DataTypes, Model, Optional } from "sequelize";
 import sequelize from "../db";
 import { PRODUCT_CATEGORY_VALUES } from "../config/productCategories";
 
+export type ProductSkinTypeSource = "inferred" | "manual";
 
 interface ProductAttributes {
   id: number;
@@ -13,6 +14,7 @@ interface ProductAttributes {
   category: string;
   labels: string[];
   skinType: string[];
+  skinTypeSource: ProductSkinTypeSource;
   country?: string;
   capacity: string;
   price: number;
@@ -26,7 +28,8 @@ interface ProductAttributes {
   tags?: string[];
 }
 
-interface ProductCreationAttributes extends Optional<ProductAttributes, "id"> {}
+interface ProductCreationAttributes
+  extends Optional<ProductAttributes, "id" | "skinTypeSource"> {}
 
 class Product
   extends Model<ProductAttributes, ProductCreationAttributes>
@@ -39,6 +42,7 @@ class Product
   declare category: string;
   declare labels: string[];
   declare skinType: string[];
+  declare skinTypeSource: ProductSkinTypeSource;
   declare country: string;
   declare capacity: string;
   declare price: number;
@@ -81,6 +85,11 @@ Product.init(
         )
       ),
       allowNull: false,
+    },
+    skinTypeSource: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "manual",
     },
     country: { type: DataTypes.STRING },
     capacity: { type: DataTypes.STRING, defaultValue: "0ml" },

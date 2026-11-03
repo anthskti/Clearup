@@ -19,7 +19,7 @@ import {
   isScraperRowSuccessful,
   parseMerchantName,
 } from "../lib/csvProductImport";
-import ProductModel from "../models/Product";
+import ProductModel, { type ProductSkinTypeSource } from "../models/Product";
 import RoutineProductModel from "../models/RoutineProduct";
 import {
   Merchant,
@@ -237,7 +237,15 @@ export class ProductService {
     id: number,
     updates: UpdateProductInput,
   ): Promise<Product | null> {
-    const updated = await this.productRepository.update(id, updates);
+    const editedSkinTypes = Object.prototype.hasOwnProperty.call(
+      updates,
+      "skinType",
+    );
+    const updated = await this.productRepository.update(
+      id,
+      updates,
+      editedSkinTypes ? { skinTypeSource: "manual" } : undefined,
+    );
     if (updated && updates.category) {
       await this.routineProductRepository.updateCategoryForProduct(
         id,
@@ -407,6 +415,24 @@ export class ProductService {
         continue;
       }
 
+      const rawSkinTypeSource = row.skintypesource?.trim().toLowerCase();
+      if (
+        rawSkinTypeSource &&
+        rawSkinTypeSource !== "inferred" &&
+        rawSkinTypeSource !== "manual"
+      ) {
+        skipped += 1;
+        errors.push({
+          row: rowNumber,
+          code: "INVALID_SKIN_TYPE_SOURCE",
+          message: 'Row skipped because skinTypeSource must be "inferred" or "manual".',
+        });
+        continue;
+      }
+      const incomingSkinTypeSource = rawSkinTypeSource
+        ? (rawSkinTypeSource as ProductSkinTypeSource)
+        : undefined;
+
       const labels = parseLabels(row.labels);
       const skinType = parseSkinTypes(row.skintype);
       const country = row.country?.trim() || "";
@@ -433,12 +459,27 @@ export class ProductService {
           const previousCategory = existing.getDataValue(
             "category",
           ) as ProductCategory;
+          const existingSkinTypeSource = existing.getDataValue(
+            "skinTypeSource",
+          ) as ProductSkinTypeSource | null;
+          const preserveManualSkinTypes =
+            existingSkinTypeSource === "manual" &&
+            incomingSkinTypeSource !== "manual";
+          const importedSkinTypes = preserveManualSkinTypes
+            ? existing.getDataValue("skinType")
+            : incomingSkinTypeSource
+              ? skinType
+              : skinType.length
+                ? skinType
+                : existing.getDataValue("skinType");
+          const nextSkinTypeSource = preserveManualSkinTypes
+            ? "manual"
+            : incomingSkinTypeSource ?? existingSkinTypeSource ?? "manual";
           await existing.update({
             category,
             labels: labels.length ? labels : existing.getDataValue("labels"),
-            skinType: skinType.length
-              ? skinType
-              : existing.getDataValue("skinType"),
+            skinType: importedSkinTypes,
+            skinTypeSource: nextSkinTypeSource,
             capacity: capacity || existing.getDataValue("capacity"),
             country: country || existing.getDataValue("country"),
             instructions: instructions.length
@@ -469,6 +510,7 @@ export class ProductService {
             category,
             labels,
             skinType,
+            skinTypeSource: incomingSkinTypeSource ?? "manual",
             country,
             capacity,
             price,
