@@ -437,7 +437,17 @@ export class ProductService {
       const skinType = parseSkinTypes(row.skintype);
       const country = row.country?.trim() || "";
       const capacity = row.capacity?.trim() || "0ml";
-      const price = parseScraperPrice(row.price);
+      const parsedPrice = parseScraperPrice(row.price);
+      if (parsedPrice === undefined) {
+        skipped += 1;
+        errors.push({
+          row: rowNumber,
+          code: "INVALID_PRICE",
+          message: "Row skipped because the product price was malformed.",
+        });
+        continue;
+      }
+      const price = parsedPrice === -1 ? 0 : parsedPrice;
       const instructions = parseInstructions(row.instructions);
       const ingredients = row.ingredients?.trim() || undefined;
       const imageUrls = parseImageUrls(row.imageurls);
@@ -524,7 +534,7 @@ export class ProductService {
           created += 1;
         }
 
-        if (storeUrl && price > 0) {
+        if (storeUrl && (price > 0 || parsedPrice === -1)) {
           const merchant = await this.merchantRepository.findModelByName(merchantName);
           if (!merchant) {
             errors.push({
@@ -537,7 +547,7 @@ export class ProductService {
               productId,
               merchantId: Number(merchant.getDataValue("id")),
               website: storeUrl,
-              price,
+              price: parsedPrice === -1 ? null : price,
               preserveExistingPrice: true,
             });
             await this.syncProductPriceFromLowestOffer(productId);

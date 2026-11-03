@@ -36,7 +36,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfigEntry> = {
       { id: "add", labels: "", width: "col-span-1 text-right" },
     ],
   },
-  // TODO: Implement Toner Pads with backend
   toner: {
     category: "Toners",
     specificFilters: [

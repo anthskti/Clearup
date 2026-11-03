@@ -23,7 +23,6 @@ export default function ProfilePage() {
     setUsername(sessionName);
   }
 
-  // TODO
   const handleUpdateProfile = async () => {
     await authClient.updateUser({
       name: username,
@@ -91,8 +90,8 @@ export default function ProfilePage() {
         title="Loading session"
         subtitle="Checking your preferences."
       />
-    ); // TODO: PROCEDURAL WAVE LOAD
-  if (!session) return <div className="p-10 text-center">Please log in.</div>; // TODO: REDIRECT
+    );
+  if (!session) return <div className="p-10 text-center">Please log in.</div>; 
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen pt-20">
