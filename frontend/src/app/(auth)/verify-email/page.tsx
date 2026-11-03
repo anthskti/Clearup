@@ -11,6 +11,18 @@ import BrandedLoadingScreen from "@/components/BrandedLoadingScreen";
 
 type UiState = "loading" | "success" | "invalid" | "expired" | "error" | "idle";
 
+function stateFromVerifyError(
+  verifyError: string | null,
+): { state: UiState; message: string | null } | null {
+  if (!verifyError) return null;
+  const msg = verifyError.toLowerCase();
+  if (msg.includes("expired")) return { state: "expired", message: null };
+  if (msg.includes("invalid") || msg.includes("token")) {
+    return { state: "invalid", message: null };
+  }
+  return { state: "error", message: "Verification failed. Try again." };
+}
+
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,9 +36,12 @@ function VerifyEmailContent() {
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { data: session } = authClient.useSession();
+  const fromQuery = stateFromVerifyError(verifyError);
+  const uiState = fromQuery?.state ?? state;
+  const uiErrorMessage = fromQuery?.message ?? errorMessage;
 
   useEffect(() => {
-    if (state !== "success") return;
+    if (uiState !== "success") return;
     const id = window.setTimeout(() => {
       if (session?.user?.id) {
         router.push("/");
@@ -35,22 +50,7 @@ function VerifyEmailContent() {
       }
     }, 2500);
     return () => window.clearTimeout(id);
-  }, [state, session, router]);
-
-  useEffect(() => {
-    if (!verifyError) return;
-    const msg = verifyError.toLowerCase();
-    if (msg.includes("expired")) {
-      setState("expired");
-      return;
-    }
-    if (msg.includes("invalid") || msg.includes("token")) {
-      setState("invalid");
-      return;
-    }
-    setState("error");
-    setErrorMessage("Verification failed. Try again.");
-  }, [verifyError]);
+  }, [uiState, session, router]);
 
   useEffect(() => {
     if (!token) return;
@@ -78,9 +78,9 @@ function VerifyEmailContent() {
           return;
         }
         setState("success");
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) {
-          const msg = (e?.message || "").toLowerCase();
+          const msg = (e instanceof Error ? e.message : "").toLowerCase();
           if (msg.includes("expired") || msg.includes("expire")) {
             setState("expired");
           } else if (msg.includes("invalid") || msg.includes("token")) {
@@ -95,7 +95,7 @@ function VerifyEmailContent() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, callbackURL]);
 
   const handleResend = async () => {
     const targetEmail = session?.user?.email || emailFromQuery;
@@ -121,7 +121,7 @@ function VerifyEmailContent() {
     }
   };
 
-  if (state === "loading" && token) {
+  if (uiState === "loading" && token) {
     return (
       <p className="p-8 text-center text-sm text-zinc-500">
         Verifying your email…
@@ -129,7 +129,7 @@ function VerifyEmailContent() {
     );
   }
 
-  if (state === "success") {
+  if (uiState === "success") {
     return (
       <div className="mx-auto max-w-md p-8 text-center space-y-4">
         <p className="font-medium text-green-700">Email verified successfully.</p>
@@ -148,11 +148,11 @@ function VerifyEmailContent() {
     );
   }
 
-  if (state === "invalid" || state === "expired") {
+  if (uiState === "invalid" || uiState === "expired") {
     return (
       <div className="mx-auto max-w-md p-8 text-center space-y-4">
         <p className="text-sm text-zinc-700">
-          {state === "expired"
+          {uiState === "expired"
             ? "This link has expired. Request a new verification email."
             : "This link is invalid or was already used."}
         </p>
@@ -178,7 +178,9 @@ function VerifyEmailContent() {
         <p className="text-xs text-zinc-500">
           If you do not see it, check spam and promotions.
         </p>
-        {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+        {uiErrorMessage && (
+          <p className="text-sm text-red-600">{uiErrorMessage}</p>
+        )}
         {(session?.user?.email || emailFromQuery) && (
           <Button type="button" onClick={handleResend}>
             Resend verification email
@@ -197,7 +199,7 @@ function VerifyEmailContent() {
   return (
     <div className="mx-auto max-w-md p-8 text-center">
       <p className="text-sm text-red-600">
-        {errorMessage ||
+        {uiErrorMessage ||
           "Verification failed. Try again or request a new link."}
       </p>
       <Link href="/login" className="mt-4 inline-block text-sm underline">

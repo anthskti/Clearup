@@ -177,7 +177,7 @@ export const createRoutine = async (data: {
   // Check content type before trying to parse JSON
   const contentType = res.headers.get("content-type");
   if (!contentType || !contentType.includes("application/json")) {
-    const text = await res.text();
+    await res.text();
     throw new Error(
       `Server returned ${res.status} ${res.statusText}. Expected JSON but got ${contentType}.`,
     );

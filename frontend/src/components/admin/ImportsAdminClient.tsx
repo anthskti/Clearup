@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import {
+  importMerchantOffersCsv,
   importProductsCsv,
   importPriceUpdatesCsv,
 } from "@/lib/products";
 
-// Tab state for products and prices
-type Tab = "products" | "prices";
+type Tab = "products" | "offers" | "prices";
 
 export function ImportsAdminClient() {
   const [tab, setTab] = useState<Tab>("products");
@@ -16,6 +16,14 @@ export function ImportsAdminClient() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
+
+  const selectTab = (nextTab: Tab) => {
+    setTab(nextTab);
+    setCsv("");
+    setFile(null);
+    setMessage(null);
+    setDetail(null);
+  };
 
   const runImport = async () => {
     setMessage(null);
@@ -27,40 +35,29 @@ export function ImportsAdminClient() {
     }
     setBusy(true);
     try {
-      if (tab === "products") {
-        const r = await importProductsCsv(payload);
-        const totals = r.totals;
-        const failed = totals?.failed ?? 0;
-        const skipped = totals?.skipped ?? r.skipped ?? 0;
-        setMessage(
-          r.ok
-            ? r.message || "Import finished"
-            : r.message || "Import finished with errors",
-        );
-        setDetail(
-          [
-            `Received ${totals?.received ?? "?"}, processed ${r.processed}, created ${r.created}, updated ${r.updated}.`,
-            skipped ? `Skipped ${skipped}.` : null,
-            failed ? `Failed ${failed}.` : null,
-            r.errors?.length
-              ? `First errors: ${r.errors
-                  .slice(0, 3)
-                  .map((e) => `row ${e.row} (${e.code})`)
-                  .join("; ")}`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" "),
-        );
-      } else {
-        const r = await importPriceUpdatesCsv(payload);
-        setMessage(r.message || "Price update finished");
-        const extra =
-          "updatedOffers" in r && r.updatedOffers != null
-            ? ` Updated offers: ${r.updatedOffers}.`
-            : "";
-        setDetail(`Processed ${r.processed}.${extra}`);
-      }
+      const r = tab === "products"
+        ? await importProductsCsv(payload)
+        : tab === "offers"
+          ? await importMerchantOffersCsv(payload)
+          : await importPriceUpdatesCsv(payload);
+      const totals = r.totals;
+      const skipped = totals?.skipped ?? r.skipped ?? 0;
+      setMessage(r.message || "Import finished");
+      setDetail(
+        [
+          `Received ${totals?.received ?? "?"}, processed ${r.processed}, created ${r.created}, updated ${r.updated}.`,
+          skipped ? `Skipped ${skipped}.` : null,
+          totals?.failed ? `Failed ${totals.failed}.` : null,
+          r.errors?.length
+            ? `First errors: ${r.errors
+                .slice(0, 3)
+                .map((error) => `row ${error.row} (${error.code})`)
+                .join("; ")}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
     } catch (e: unknown) {
       setMessage(e instanceof Error ? e.message : "Import failed");
     } finally {
@@ -77,25 +74,39 @@ export function ImportsAdminClient() {
       <div className="flex gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-1">
         <button
           type="button"
-          onClick={() => setTab("products")}
+          disabled={busy}
+          onClick={() => selectTab("products")}
           className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             tab === "products"
               ? "bg-white text-zinc-900 shadow-sm"
               : "text-zinc-500 hover:text-zinc-800"
           }`}
         >
-          Product Imports CSV
+          Initialize Products
         </button>
         <button
           type="button"
-          onClick={() => setTab("prices")}
+          disabled={busy}
+          onClick={() => selectTab("offers")}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            tab === "offers"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          Add Merchant Offers
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => selectTab("prices")}
           className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             tab === "prices"
               ? "bg-white text-zinc-900 shadow-sm"
               : "text-zinc-500 hover:text-zinc-800"
           }`}
         >
-          Price Updates CSV
+          Refresh Prices
         </button>
       </div>
 
@@ -104,6 +115,7 @@ export function ImportsAdminClient() {
           Upload CSV file
         </label>
         <input
+          key={tab}
           type="file"
           accept=".csv,text/csv,text/plain"
           disabled={busy}
@@ -140,8 +152,10 @@ export function ImportsAdminClient() {
           className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-4 font-mono text-xs text-zinc-900 shadow-sm outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400"
           placeholder={
             tab === "products"
-              ? "Paste scraper CSV: name, brand, category, labels, skinType, country, capacity, price, instructions, ingredients, imageUrls, averageRating, url, status"
-              : "Paste columns: name, brand, merchant, price…"
+              ? "Product catalog: name, brand, category, labels, skinType, country, capacity, price, instructions, ingredients, imageUrls, averageRating, url, merchant, status. A URL and positive price create the initial merchant offer; reimports preserve its refreshed price."
+              : tab === "offers"
+                ? "Reviewed merchant master: productId, brand, name, merchant, website, price, status. Only matched rows import; -1 means price unavailable."
+                : "Price refresh: brand, name, price, merchant, stock. Updates existing offers only; -1 means price unavailable."
           }
         />
       </div>
@@ -152,7 +166,13 @@ export function ImportsAdminClient() {
         onClick={() => void runImport()}
         className="rounded-md bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 disabled:opacity-50"
       >
-        {busy ? "Running…" : tab === "products" ? "Import products" : "Update prices"}
+        {busy
+          ? "Running…"
+          : tab === "products"
+            ? "Initialize products"
+            : tab === "offers"
+              ? "Import merchant offers"
+              : "Refresh prices"}
       </button>
 
       {message && (

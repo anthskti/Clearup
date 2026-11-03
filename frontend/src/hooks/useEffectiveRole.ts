@@ -15,19 +15,14 @@ type EffectiveUser = {
 
 export function useEffectiveRole() {
   const { data: session, isPending } = authClient.useSession();
+  const sessionId = session?.user?.id ?? null;
   const [user, setUser] = useState<EffectiveUser | null>(null);
-  const [isLoadingRole, setIsLoadingRole] = useState(true);
+  const [loadedSessionId, setLoadedSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isPending) return;
-    if (!session) {
-      setUser(null);
-      setIsLoadingRole(false);
-      return;
-    }
+    if (isPending || !sessionId) return;
 
     let isCancelled = false;
-    setIsLoadingRole(true);
 
     const run = async () => {
       try {
@@ -37,21 +32,22 @@ export function useEffectiveRole() {
         });
 
         if (!res.ok) {
-          setUser(null);
+          if (!isCancelled) {
+            setUser(null);
+            setLoadedSessionId(sessionId);
+          }
           return;
         }
 
         const data = (await res.json()) as EffectiveUser;
         if (!isCancelled) {
           setUser(data);
+          setLoadedSessionId(sessionId);
         }
       } catch {
         if (!isCancelled) {
           setUser(null);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingRole(false);
+          setLoadedSessionId(sessionId);
         }
       }
     };
@@ -61,13 +57,18 @@ export function useEffectiveRole() {
     return () => {
       isCancelled = true;
     };
-  }, [session, isPending]);
+  }, [sessionId, isPending]);
+
+  const effectiveUser =
+    sessionId && loadedSessionId === sessionId ? user : null;
+  const isLoadingRole =
+    isPending || (sessionId !== null && loadedSessionId !== sessionId);
 
   return {
     isPendingSession: isPending,
     isLoadingRole,
-    effectiveUser: user,
-    effectiveRole: user?.role ?? null,
-    isAdmin: user?.role === "admin",
+    effectiveUser,
+    effectiveRole: effectiveUser?.role ?? null,
+    isAdmin: effectiveUser?.role === "admin",
   };
 }

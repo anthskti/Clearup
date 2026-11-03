@@ -8,24 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Trash2, ChevronDown } from "lucide-react";
 import BrandedLoadingScreen from "@/components/BrandedLoadingScreen";
 
-import { getRoutinesByUserId } from "@/lib/routines";
-
 export default function ProfilePage() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
 
-  const [username, setUsername] = useState("");
+  const sessionName = session?.user?.name || "";
+  const [username, setUsername] = useState(sessionName);
+  const [prevSessionName, setPrevSessionName] = useState(sessionName);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (session?.user) {
-      setUsername(session.user.name || "");
-      const routineList = getRoutinesByUserId(session.user.id);
-    }
-  }, [session]);
+  if (sessionName !== prevSessionName) {
+    setPrevSessionName(sessionName);
+    setUsername(sessionName);
+  }
 
-  // TODO
   const handleUpdateProfile = async () => {
     await authClient.updateUser({
       name: username,
@@ -73,8 +70,10 @@ export default function ProfilePage() {
       }
 
       router.push("/");
-    } catch (err: any) {
-      setDeleteError(err?.message || "Could not delete account.");
+    } catch (err: unknown) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Could not delete account.",
+      );
       setIsDeleting(false);
     }
   };
@@ -91,8 +90,8 @@ export default function ProfilePage() {
         title="Loading session"
         subtitle="Checking your preferences."
       />
-    ); // TODO: PROCEDURAL WAVE LOAD
-  if (!session) return <div className="p-10 text-center">Please log in.</div>; // TODO: REDIRECT
+    );
+  if (!session) return <div className="p-10 text-center">Please log in.</div>; 
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen pt-20">

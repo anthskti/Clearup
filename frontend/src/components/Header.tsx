@@ -3,7 +3,9 @@
 import Link from "next/link";
 import ClearupLogoLink from "@/components/ClearupLogoLink";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useSyncExternalStore } from "react";
+
+const emptySubscribe = () => () => {};
 import {
   UserIcon,
   ChevronDown,
@@ -44,11 +46,19 @@ function Header() {
   const [isProductsOpen, setIsProductsOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const [navPath, setNavPath] = useState(path);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const productsDropdownRef = useRef<HTMLDivElement>(null);
   const { data: session, isPending } = authClient.useSession();
   const { isAdmin } = useEffectiveRole();
+
+  if (path !== navPath) {
+    setNavPath(path);
+    setMobileNavOpen(false);
+    setMobileProductsOpen(false);
+    setIsProductsOpen(false);
+  }
 
   useEffect(() => {
     const scrolling = () => {
@@ -78,16 +88,6 @@ function Header() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setMobileNavOpen(false);
-    setMobileProductsOpen(false);
-    setIsProductsOpen(false);
-  }, [path]);
 
   useEffect(() => {
     document.body.style.overflow = mobileNavOpen ? "hidden" : "";

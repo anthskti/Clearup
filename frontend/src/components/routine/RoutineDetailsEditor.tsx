@@ -111,7 +111,7 @@ export default function RoutineDetailsEditor({
                 variant="secondary"
               >
                 {isSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> // TODO: Update to themed icon bounce loader
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}

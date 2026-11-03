@@ -1,6 +1,6 @@
 // Translates storage format to application format
 
-import ProductModel from "../models/Product";
+import ProductModel, { type ProductSkinTypeSource } from "../models/Product";
 import type {
   CreateProductInput,
   Product,
@@ -153,11 +153,15 @@ export class ProductRepository {
   async update(
     id: number,
     updates: UpdateProductInput,
+    options?: { skinTypeSource?: ProductSkinTypeSource },
   ): Promise<Product | null> {
-    const [rows, [updatedProduct]] = await ProductModel.update(updates, {
-      where: { id },
-      returning: true,
-    });
+    const [rows, [updatedProduct]] = await ProductModel.update(
+      { ...updates, ...options },
+      {
+        where: { id },
+        returning: true,
+      },
+    );
     return rows > 0 ? this.mapToProductType(updatedProduct) : null;
   }
 
@@ -312,6 +316,10 @@ export class ProductRepository {
         brand: { [Op.iLike]: brand },
       },
     });
+  }
+
+  async findModelById(id: number): Promise<any | null> {
+    return ProductModel.findByPk(id);
   }
 
   private mapToProductType(dbProduct: any): Product {

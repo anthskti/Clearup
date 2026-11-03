@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -124,10 +124,12 @@ export default function RoutineUsageNotesEditor({
     [initialProducts],
   );
   const [notes, setNotes] = useState<RoutineNoteDisplay[]>(initialNotes);
+  const [prevInitialNotes, setPrevInitialNotes] = useState(initialNotes);
 
-  useEffect(() => {
+  if (initialNotes !== prevInitialNotes) {
+    setPrevInitialNotes(initialNotes);
     setNotes(initialNotes);
-  }, [initialNotes]);
+  }
 
   const productInfoById = useMemo(() => {
     const map = new Map<

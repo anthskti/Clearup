@@ -1,13 +1,7 @@
 "use client";
 import Link from "next/link";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
-import { Copy, Plus, ExternalLink, X } from "lucide-react";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { Plus, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProceduralWave from "@/components/themes/ProceduralWave";
 import ProductImage from "@/components/ui/ProductImage";
@@ -178,8 +172,12 @@ export default function Builder() {
   };
 
   const totalPrice = routine.reduce(
-    (acc, step) => acc + step.products.reduce((s, p) => s + (p.price || 0), 0),
+    (acc, step) =>
+      acc + step.products.reduce((s, p) => s + (p.price ?? 0), 0),
     0,
+  );
+  const hasPricedProduct = routine.some((step) =>
+    step.products.some((product) => product.price != null),
   );
   const totalItems = routine.reduce(
     (acc, step) => acc + step.products.length,
@@ -265,10 +263,11 @@ export default function Builder() {
                 {/* Mobile Price Display */}
                 {step.products.length > 0 && (
                   <span className="md:hidden font-bold text-zinc-900">
-                    $
-                    {step.products
-                      .reduce((s, p) => s + (p.price || 0), 0)
-                      .toFixed(2)}
+                    {step.products.some((product) => product.price != null)
+                      ? `$${step.products
+                          .reduce((s, p) => s + (p.price ?? 0), 0)
+                          .toFixed(2)}`
+                      : "-"}
                   </span>
                 )}
               </div>
@@ -346,7 +345,7 @@ export default function Builder() {
                       </div>
 
                       <div className="hidden md:block md:col-span-2 text-right text-lg font-bold text-zinc-900">
-                        ${(prod.price || 0).toFixed(2)}
+                        {prod.price == null ? "-" : `$${prod.price.toFixed(2)}`}
                       </div>
                     </div>
                   ))}
@@ -408,7 +407,7 @@ export default function Builder() {
                 Estimated Total
               </div>
               <div className="text-2xl font-extrabold text-black">
-                CA ${totalPrice.toFixed(2)}
+                {hasPricedProduct ? `CA $${totalPrice.toFixed(2)}` : "-"}
               </div>
             </div>
             <div className="flex gap-3">

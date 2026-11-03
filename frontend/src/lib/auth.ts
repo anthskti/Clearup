@@ -1,6 +1,14 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
 
-export const getSession = async (cookieString: string): Promise<any> => {
+type AuthSession = {
+  user?: {
+    id: string;
+  } | null;
+} | null;
+
+export const getSession = async (
+  cookieString: string,
+): Promise<AuthSession> => {
   const res = await fetch(`${API_URL}/api/auth/get-session`, {
     headers: { cookie: cookieString },
     cache: "no-store",

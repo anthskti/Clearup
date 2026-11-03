@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import ProductImage from "@/components/ui/ProductImage";
 import Link from "next/link";
 import { Search } from "lucide-react";
@@ -18,6 +18,10 @@ import type { Product, ProductListFilters } from "@/types/product";
 import AddToRoutineButton from "@/components/routine/AddToRoutineButton";
 import { SkinTypeTags } from "./SkinTypeTags";
 import ProductListFiltersSidebar from "./ProductListFiltersSidebar";
+import {
+  getMerchantOffersByProductIds,
+  pickLowestPriceOffer,
+} from "@/lib/products";
 import {
   type CatalogScope,
   useProductCatalog,
@@ -45,6 +49,9 @@ export default function ProductListClient({
   initialSearch = "",
   availableBrands,
 }: ProductListClientProps) {
+  const [offerPrices, setOfferPrices] = useState<Record<number, number | null>>(
+    {},
+  );
   const {
     products,
     filters,
@@ -81,6 +88,29 @@ export default function ProductListClient({
       loadMore();
     }
   }, [inView, hasMore, isLoading, loadMore]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const productIds = products.map((product) => product.id);
+    if (!productIds.length) return;
+
+    void getMerchantOffersByProductIds(productIds).then((offersByProductId) => {
+      if (cancelled) return;
+      setOfferPrices(
+        Object.fromEntries(
+          productIds.map((productId) => [
+            productId,
+            pickLowestPriceOffer(offersByProductId[productId] ?? [])?.price ??
+              null,
+          ]),
+        ),
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [products]);
 
   const config =
     scope.type === "all"
@@ -188,7 +218,9 @@ export default function ProductListClient({
       case "price":
         return (
           <span className="font-bold text-zinc-900 block">
-            ${product.price.toFixed(2)}
+            {offerPrices[product.id] == null
+              ? "-"
+              : `$${offerPrices[product.id]!.toFixed(2)}`}
           </span>
         );
       case "add":
@@ -415,7 +447,7 @@ export default function ProductListClient({
             )}
             {!hasMore && products.length > 0 && (
               <p className="text-sm italic text-zinc-400 mb-8">
-                You've reached the end of the shelf.
+                You&apos;ve reached the end of the shelf.
               </p>
             )}
           </div>

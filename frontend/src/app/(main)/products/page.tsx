@@ -31,8 +31,15 @@ export default async function AllProductsPage({ searchParams }: PageProps) {
     fetchAllBrands(),
   ]);
 
+  const listKey = new URLSearchParams(
+    Object.entries(flatParams).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  ).toString();
+
   return (
     <ProductListClient
+      key={listKey}
       scope={{ type: "all" }}
       initialProducts={productsPage.products}
       initialTotal={productsPage.total}

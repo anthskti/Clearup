@@ -47,7 +47,7 @@ export default function TermsOfServicePage() {
             Data Accuracy: While we strive to keep marketplace data updated,
             product prices and availability are subject to change without
             notice. The price and availability displayed on the respective
-            third-party merchant's site at the time of purchase will strictly
+            third-party merchant&apos;s site at the time of purchase will strictly
             dictate the final transaction.
           </li>
           <li>
@@ -61,7 +61,7 @@ export default function TermsOfServicePage() {
             Affiliate Disclosure: Clearup may participate in affiliate marketing
             programs and may allow affiliate links to be encoded on some of our
             pages. This means that we may earn a commission when you click on or
-            make purchases via third-party links. We'll tell you this once it
+            make purchases via third-party links. We&apos;ll tell you this once it
             happens though
           </li>
         </ul>

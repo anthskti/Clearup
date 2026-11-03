@@ -14,7 +14,6 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
 
   const [isVisible, setIsVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -24,7 +23,6 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
     const { error } = await authClient.signUp.email({
       email,
@@ -40,9 +38,7 @@ export default function RegisterPage() {
         "Account created. Redirecting to email verification...",
       );
       router.replace(`/verify-email?email=${encodeURIComponent(email.trim())}`);
-      return;
     }
-    setLoading(false);
   };
 
   return (
@@ -68,7 +64,6 @@ export default function RegisterPage() {
           variant="outline"
           className="w-full mb-4 flex items-center justify-center gap-2"
           onClick={handleGoogleSignIn}
-          disabled={loading}
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path

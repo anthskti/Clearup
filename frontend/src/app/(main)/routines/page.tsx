@@ -66,6 +66,7 @@ export default async function CommunityRoutinesPage({ searchParams }: Props) {
 
         <div className="mb-10">
           <GuidesFilters
+            key={`tags=${tagsParam}|min=${minPriceParam}|max=${maxPriceParam}`}
             initialTags={initialTags}
             initialMinPrice={minPriceParam}
             initialMaxPrice={maxPriceParam}

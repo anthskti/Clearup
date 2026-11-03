@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
-const withBundleAnalyzer = require("@next/bundle-analyzer")({
+const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true", // Only runs if ANALYZE=true
 });
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   async redirects() {
     return [
       {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SkinType } from "@/types/product";
 import RoutineSkinTypeTagPicker from "@/components/routine/RoutineSkinTypeTagPicker";
@@ -25,13 +25,6 @@ export default function GuidesFilters({
   const [priceRange, setPriceRange] = useState<[number, number]>(() =>
     toPriceRange(initialMinPrice, initialMaxPrice, GUIDES_PRICE_SLIDER_MAX),
   );
-
-  useEffect(() => {
-    setTags(initialTags);
-    setPriceRange(
-      toPriceRange(initialMinPrice, initialMaxPrice, GUIDES_PRICE_SLIDER_MAX),
-    );
-  }, [initialTags, initialMinPrice, initialMaxPrice]);
 
   const toggle = (t: SkinType) => {
     setTags((prev) =>

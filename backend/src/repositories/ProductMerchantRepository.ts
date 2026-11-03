@@ -55,11 +55,60 @@ export class ProductMerchantRepository {
 
   async getLowestPriceByProductId(productId: number): Promise<number | null> {
     const lowestPrice = await ProductMerchantModel.min("price", {
-      where: { productId },
+      where: { productId, price: { [Op.ne]: null } },
     });
     return typeof lowestPrice === "number" && Number.isFinite(lowestPrice)
       ? lowestPrice
       : null;
+  }
+
+  async upsertImportedOffer(data: {
+    productId: number;
+    merchantId: number;
+    website: string;
+    price: number | null;
+    stock?: boolean;
+    preserveExistingPrice?: boolean;
+  }): Promise<boolean> {
+    const [offer, created] = await ProductMerchantModel.findOrCreate({
+      where: { productId: data.productId, merchantId: data.merchantId },
+      defaults: {
+        productId: data.productId,
+        merchantId: data.merchantId,
+        website: data.website,
+        price: data.price,
+        stock: data.stock ?? (data.price !== null),
+        shipping: "",
+        lastUpdated: new Date(),
+      },
+    });
+    if (!created) {
+      await offer.update({
+        website: data.website,
+        ...(data.preserveExistingPrice ? {} : { price: data.price }),
+        ...(data.stock === undefined ? {} : { stock: data.stock }),
+        lastUpdated: new Date(),
+      });
+    }
+    return created;
+  }
+
+  async refreshImportedPrice(data: {
+    productId: number;
+    merchantId: number;
+    price: number | null;
+    stock: boolean;
+  }): Promise<boolean> {
+    const offer = await ProductMerchantModel.findOne({
+      where: { productId: data.productId, merchantId: data.merchantId },
+    });
+    if (!offer) return false;
+    await offer.update({
+      price: data.price,
+      stock: data.stock,
+      lastUpdated: new Date(),
+    });
+    return true;
   }
 
   // POST new merchant on product list

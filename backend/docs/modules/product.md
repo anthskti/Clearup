@@ -18,6 +18,8 @@ To support high volume production data, all large response queries implement **p
 - Product Repository (`ProductRepository.ts`): Executes CRUD operations for products. It also contains complex queries for category filtering and search functionality.
 - A Product's Merchant Repository (`ProductMerchantRepository.ts`): Handles database operations specific to merchant links, including updating prices and external vendor URLs for specific products.
 
+The three admin CSV flows have separate responsibilities. Product initialization creates or updates catalog products and links the initial merchant from `url` and `merchant` when the CSV price is positive or the `-1` no-price sentinel. Blank merchant names default to YesStyle; reimports preserve existing offer prices and stock. Merchant offer import accepts matched reviewed master rows, validates `productId` against brand/name, resolves an existing merchant (`Amazon.ca` maps to `Amazon`), and upserts the offer link and price. Price refresh accepts `brand,name,price,merchant,stock` and updates only an existing offer without changing its link. Price parsers strip only recognized leading currency prefixes (`$`, `CA`, `CA$`, `CAD`), preserve signs, and reject malformed numeric values. The scraper sentinel `price=-1` is stored as null and excluded from lowest-price calculations.
+
 ## Type Definitions
 
 To enforce strict type safety and prevent repetitive inline object declarations, this file contains the core interfaces and Data Transfer Objects (DTOs) used across the module. This helps negate code smells (like repeated code in the repository or service).

@@ -24,7 +24,7 @@ export default function DeleteRoutineModal({
   const handleConfirmDelete = async () => {
     setIsDeleting(true);
     try {
-      const response = await deleteRoutineById(routineId);
+      await deleteRoutineById(routineId);
       onSuccess();
       onClose();
     } catch (error) {
@@ -57,6 +57,7 @@ export default function DeleteRoutineModal({
               variant="destructive"
               //   className="border-zinc-200 shadow-sm w-full"
               onClick={handleConfirmDelete}
+              disabled={isDeleting}
             >
               Delete Routine
             </Button>

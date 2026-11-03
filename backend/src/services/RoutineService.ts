@@ -342,7 +342,6 @@ export class RoutineService {
     routineProductId: number,
     // userId: number
   ): Promise<boolean> {
-    // TODO: security check when Auth is implemented
     /*
     const item = await this.routineProductRepository.findById(routineProductId.toString());
     const routine = await this.routineRepository.findById(item.routineId.toString());

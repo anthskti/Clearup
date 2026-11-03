@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { Product, ProductCategory } from "@/types/product";
 import { getMerchantsByProductId, pickLowestPriceOffer } from "@/lib/products";
 import {
@@ -7,12 +7,14 @@ import {
   slimRoutineForStorage,
 } from "@/lib/slimBuilderRoutineStorage";
 
+const emptySubscribe = () => () => {};
+
 export interface RoutineSlot {
   id: ProductCategory;
   label: string;
-  // Allow multiple products per slot now
   products: Array<
-    Product & {
+    Omit<Product, "price"> & {
+      price: number | null;
       merchant?: string;
       merchantLogo?: string;
       merchantLink?: string;
@@ -85,26 +87,28 @@ function dedupeProductsById<T extends { id: number }>(products: T[]): T[] {
   });
 }
 
+function readStoredRoutine(): RoutineSlot[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return createEmptyRoutine();
+    const parsed = JSON.parse(saved);
+    const normalized = expandStoredRoutine(normalizeStoredSlots(parsed));
+    return mergeStoredRoutine(normalized);
+  } catch (e) {
+    console.error("Failed to parse saved routine", e);
+    return createEmptyRoutine();
+  }
+}
+
 export const useBuilderRoutine = () => {
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [routine, setRoutine] = useState<RoutineSlot[]>(createEmptyRoutine);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const normalized = expandStoredRoutine(normalizeStoredSlots(parsed));
-          setRoutine(mergeStoredRoutine(normalized));
-        } catch (e) {
-          console.error("Failed to parse saved routine", e);
-        }
-      }
-      setIsLoaded(true);
-    }
-  }, []);
+  if (isClient && !isLoaded) {
+    setRoutine(readStoredRoutine());
+    setIsLoaded(true);
+  }
 
   useEffect(() => {
     if (!isLoaded || typeof window === "undefined") return;
@@ -138,6 +142,7 @@ export const useBuilderRoutine = () => {
                       ...slot.products,
                       {
                         ...product,
+                        price: null,
                         merchant: "-",
                         merchantLogo: "-",
                       },
@@ -150,50 +155,28 @@ export const useBuilderRoutine = () => {
       // Fetch merchant info for this product and update only that product entry
       try {
         const merchants = await getMerchantsByProductId(String(product.id));
-        if (merchants && merchants.length > 0) {
-          const bestOffer = pickLowestPriceOffer(merchants)!;
-
-          setRoutine((prev) =>
-            prev.map((slot) =>
-              slot.id === category
-                ? {
-                    ...slot,
-                    products: slot.products.map((p) =>
-                      p.id === product.id
-                        ? {
-                            ...p,
-                            price: bestOffer.price,
-                            merchant: bestOffer.merchant?.name || "Unknown",
-                            merchantLogo: bestOffer.merchant?.logo || "-",
-                            merchantLink: bestOffer.website,
-                          }
-                        : p,
-                    ),
-                  }
-                : slot,
-            ),
-          );
-        } else {
-          setRoutine((prev) =>
-            prev.map((slot) =>
-              slot.id === category
-                ? {
-                    ...slot,
-                    products: slot.products.map((p) =>
-                      p.id === product.id
-                        ? {
-                            ...p,
-                            merchant: "-",
-                            merchantLogo: "/placeholder-logo.png",
-                          }
-                        : p,
-                    ),
-                  }
-                : slot,
-            ),
-          );
-        }
-      } catch (e: any) {
+        const bestOffer = pickLowestPriceOffer(merchants ?? []);
+        setRoutine((prev) =>
+          prev.map((slot) =>
+            slot.id === category
+              ? {
+                  ...slot,
+                  products: slot.products.map((p) =>
+                    p.id === product.id
+                      ? {
+                          ...p,
+                          price: bestOffer?.price ?? null,
+                          merchant: bestOffer?.merchant?.name || "-",
+                          merchantLogo: bestOffer?.merchant?.logo || "-",
+                          merchantLink: bestOffer?.website,
+                        }
+                      : p,
+                  ),
+                }
+              : slot,
+          ),
+        );
+      } catch (e) {
         console.error("Failed to fetch merchants details for product", e);
       }
     },

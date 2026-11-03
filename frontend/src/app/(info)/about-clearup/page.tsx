@@ -13,9 +13,9 @@ export default function AboutUsPage() {
         <p>
           When I was a teenager, I faced moments where my acne was terrible, so
           I got into skincare to take care of my skin, but the endless amount of
-          products become overwhelming; I didn't know what my skin type was, I
-          didn't have much to spend, and I didn't know how to use half of the
-          products I've received. So, I wanted to make a website that can help
+          products become overwhelming; I didn&apos;t know what my skin type was, I
+          didn&apos;t have much to spend, and I didn&apos;t know how to use half of the
+          products I&apos;ve received. So, I wanted to make a website that can help
           anybody learn how to take care of their skin via sharing their
           routines with others to learn about skincare.
         </p>
@@ -23,14 +23,14 @@ export default function AboutUsPage() {
           The skincare industry is massive, yet there was no centralized place
           to organize products, remember application orders (AM vs PM), or
           calculate costs without relying on messy spreadsheets. Building an
-          effective routine shouldn't require spending hundreds of dollars on a
+          effective routine shouldn&apos;t require spending hundreds of dollars on a
           whim or guessing what combinations are safe.
         </p>
         <h2>The Solution</h2>
         <p>
-          If you've ever built a computer, you've probably used PCPartPicker to
+          If you&apos;ve ever built a computer, you&apos;ve probably used PCPartPicker to
           check compatibility, track prices, and share builds. I realized
-          skincare needed the exact same thing: a "PCPartPicker for skincare."
+          skincare needed the exact same thing: a &quot;PCPartPicker for skincare.&quot;
         </p>
         <p>
           Clearup is a community-driven routine builder and discovery platform.

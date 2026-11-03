@@ -24,6 +24,7 @@ import RoutinePreviewCard, {
   estimatedPriceFromRoutineProducts,
   previewUrlsFromRoutineProducts,
 } from "@/components/guides/RoutinePreviewCard";
+import ProductImage from "@/components/ui/ProductImage";
 
 export default function CreatedRoutinesPage() {
   const { data: session, isPending } = authClient.useSession();
@@ -115,7 +116,7 @@ export default function CreatedRoutinesPage() {
           </div>
           <h3 className="text-xl font-semibold mb-2">No routines yet</h3>
           <p className="text-zinc-500 max-w-md mb-6">
-            You haven't created any skincare routines. Head over to the builder
+            You haven&apos;t created any skincare routines. Head over to the builder
             to create your first personalized routine.
           </p>
           <Link href="/builder">
@@ -182,10 +183,13 @@ export default function CreatedRoutinesPage() {
                             title={rp.product?.name || category}
                           >
                             {rp.product?.imageUrls?.[0] ? (
-                              <img
+                              <ProductImage
                                 src={rp.product.imageUrls[0]}
-                                alt="product preview"
+                                alt={rp.product?.name || "product preview"}
+                                width={40}
+                                height={40}
                                 className="w-full h-full object-cover"
+                                sizes="40px"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-400 bg-zinc-100 uppercase">

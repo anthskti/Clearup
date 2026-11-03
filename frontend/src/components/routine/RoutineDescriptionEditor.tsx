@@ -86,8 +86,10 @@ export default function RoutineDescriptionEditor({
     try {
       await updateRoutineById(routineId, { description: serializedNotes });
       router.refresh();
-    } catch (err: any) {
-      setError(err?.message || "Failed to save routine notes.");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Failed to save routine notes.",
+      );
     } finally {
       setIsSaving(false);
     }
