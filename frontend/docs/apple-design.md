@@ -14,7 +14,7 @@ Clearup's strongest asset is its friendly illustrated hero. The product experien
 | --- | --- | --- |
 | Palette | Keep deep Clearup blue (`#0E4B84`) for primary actions and active state; pair with warm off-white, a restrained pale blue, and neutral text. Use amber/violet only for AM/PM semantics and red for destructive actions. | The current hero is warm beige and blue, while application pages are cool gray with several unrelated badge colors. A smaller palette will make the whole journey feel connected. |
 | Surfaces | Use a white or warm-white content canvas. Reserve blue waves for a page introduction or one illustration per journey, rather than repeating a large wave behind every utility page. Use borders for structure and shadows only for floating layers. | Repeated decoration competes with dense data and dilutes the hero's character. |
-| Type | Pick one UI face. The body currently uses Red Hat Display while `font-sans` is set to Inter, and the hero uses Edu QLD Beginner. Keep the expressive face for one short display line only; use a consistent UI face for navigation, forms, data, and routine names. | Consistent type makes the application feel related to the landing page without forcing playful lettering into functional screens. |
+| Type | Red Hat Display now serves as the shared interface face. Keep the expressive hero lettering for short display copy. | Consistent type makes the application feel related to the landing page without forcing playful lettering into functional screens. |
 | Type scale | Suggested starting point: display 40–56/1.08, page title 30–36/1.15, section 22–26/1.25, card title 17–20/1.3, body 16/1.5, metadata 13–14/1.4. Small labels should not routinely be 10px. | The current mix of 10–12px uppercase labels and large heavy uppercase titles makes the hierarchy jumpy and harms phone legibility. |
 | Tracking | Tighten large titles slightly (`-0.02em` as a starting point); keep body close to zero; use positive tracking only on short overlines. | One tracking treatment across sizes does not read equally well. |
 | Controls | Give primary touch targets roughly 44px minimum height and visible pressed, focus, loading, success, and error states. A control's label should say what happens: “Add to routine”, “Copy link”, “Show 20 products”. | Several icon buttons and tiny chips rely on hover or browser alerts, leaving touch and keyboard users with weak feedback. |
@@ -24,38 +24,23 @@ The values above are design targets, not an implementation spec. Check contrast 
 
 ## 1. Global navigation and footer
 
-**Evidence:** `src/components/Header.tsx`, `src/components/Footer.tsx`, `src/components/ClearupLogoLink.tsx`.
+**Current files:** `src/components/header/Header.tsx` coordinates menu and scroll state; `DesktopNav.tsx`, `MobileNavDrawer.tsx`, `ProfileMenu.tsx`, and `navConfig.ts` contain the related UI and links. `src/components/Footer.tsx` and `src/components/ClearupLogoLink.tsx` remain shared components.
 
-### Header: hierarchy and wayfinding
+**Implemented:** Builder is first. Products is a direct catalog link with an attached desktop category shelf and an expandable category list in the phone drawer. The account control uses an avatar fallback and includes Saved Routines. The header has a solid background from first paint, hides on downward scroll, and returns when scrolling toward the top; open menus and visible keyboard focus keep it available. The footer now links to `/products` and aligns its content consistently across sizes.
 
-- **Desktop — medium impact.** The primary links are 12px, bold, and uppercase. The Products item is only a dropdown trigger, so reaching “All Products” requires an extra step while Builder and Routines are direct links. Give the catalog a direct “Products” destination; category browsing can be a secondary popover. Use sentence case at approximately 14–15px and a clear active state beyond a slight gray change.
-- **Desktop — medium impact.** The signed-in control reads `hi {name}!` and is capped at 9rem on smaller widths. A friendly greeting is fine in content, but the navigation should describe its destination. A compact avatar/name or “Account” label gives clearer wayfinding, especially for long names.
-- **Phone — high impact.** The drawer is a fixed 300px panel with a dark scrim. It has click-outside dismissal and a close button, but the source does not show Escape handling, focus containment, or focus return. Design it as a proper navigation sheet with a visible title, active destination, keyboard dismissal, and a short slide that can be interrupted. Keep the menu button at least 44px square.
-- **Phone — medium impact.** Products expands into eight destinations inside the drawer. Put “All products” first as the main row and group category links in a clearly labeled section; consider fewer visible categories with a “See all categories” route if the drawer is longer than one screen.
-- **Across sizes.** The header becomes frosted only after scrolling. Keep text contrast reliable over the hero art. If translucency remains, provide solid backgrounds for reduced transparency and strong contrast modes. The frosted layer should be a functional navigation surface, not another decorative layer.
-
-### Footer: destination clarity
-
-- “View Products” points to `/products/category/other`, which makes a broad label land on a narrow category. Point the label at the catalog concept when this is cleaned up.
-- The large deep-blue footer is a good closing anchor, but its logo, support text, links, and legal row use multiple alignments. On phone, use a single left alignment and compact vertical rhythm; on desktop, align each group to the same top baseline. Keep link tap areas larger than the 12px text itself.
-
-**Layout sketch**
-
-```text
-Desktop:  [logo]      Products  Routines  Builder       [Account]
-Phone:    [menu] [logo]                            [Account]
-Drawer:   Explore / Products / Routines / Builder / Account
-```
+**Still to review:** The solid header partly covers lettering embedded in the phone hero art; address that in the home page batch. Signed-in account behavior and touch feel on a real phone have not been checked after the navigation work. The Saved Routines destination still needs useful page content.
 
 ## 2. Home page
 
-**Evidence:** `src/components/home/HeroSection.tsx`, `HowItWorks.tsx`, `FeaturedRoutinesSection.tsx`, `Matches.tsx`, `TrustBanner.tsx`, `src/components/ui/Carousel.tsx`, `src/components/animations/ScrollReveal.tsx`, and `public/assets/landingpagedesktop.png`, `culandingmobile.png`.
+**Current direction:** Keep the hero artwork and slogan. The trust banner has been removed. Matches uses a horizontal scroll rail with arrow controls on phone and tablet and keeps the desktop grid; imagery is optional for a later pass. The phone hero begins below the fixed header, and its base color matches the next section. Motion and wave changes are deferred.
+
+**Evidence:** `src/components/home/HeroSection.tsx`, `HowItWorks.tsx`, `FeaturedRoutinesSection.tsx`, `Matches.tsx`, `src/components/animations/ScrollReveal.tsx`, and `public/assets/landingpagedesktop.png`, `culandingmobile.png`.
 
 ### Hero and imagery
 
 - **Desktop — high impact.** The hero image already contains a centered white Clearup wordmark, while the fixed header also carries the logo. This creates competing brand marks. The artwork also places products on the right, which works well with left-aligned copy; preserve that left/right division but remove the embedded wordmark in a future art revision or use a crop that does not repeat it.
-- **Phone — high impact.** The portrait asset also has a wordmark near the top, then large product illustrations occupying the lower half. With an `80vh` container and `object-cover`, the exact crop will vary by phone height. The three-line 40px headline plus two stacked buttons may overlap the illustration or force the important products out of view. Use a content-first phone composition: short headline, one sentence of value, one primary button, then the illustration in its own aspect-ratio region. Avoid fixed viewport height for this block.
-- **Copy — medium impact.** “Pick Products / Build Your Routine / Improve Your Skin!” promises an outcome that the app cannot directly show or guarantee. “Choose products. Build a routine that fits your skin.” is more specific and credible. “Start Your Build” could become “Build a routine”. The subtitle is hidden on phone, removing the clearest explanation of the product at the moment it is needed most.
+- **Phone — later review.** The portrait asset has a wordmark near the top and product illustrations below. The hero now starts below the header, and its lower fade meets the next section's color. The embedded wordmark duplicates the header logo, and some title/art overlap remains on narrow phones. Review the `object-cover` crop before deciding whether to edit the asset.
+- **Copy — later review.** The hero slogan stays as written. The subtitle is hidden on phone, so check whether the first screen explains the product clearly enough without it.
 - **Image treatment.** The hand-painted hero is distinctive. Use it as the lead visual, then let real product photography and actual routine previews take over. Avoid adding another large full-bleed product collage in the same viewport. If the artwork is updated, export clean desktop and portrait compositions with text-safe areas and no baked-in UI copy or logo.
 
 ### How it works
@@ -67,9 +52,9 @@ Drawer:   Explore / Products / Routines / Builder / Account
 ### Featured routines, matches, and trust banner
 
 - **Featured routines — medium impact.** Cards are primarily text, 48px product thumbnails, skin type pills, a price badge, and a full-width “View Routine” button. Give the routine a stronger visual preview: a horizontal lineup of 3–4 product images on a neutral stage, with title and author below. Keep the price as secondary metadata. The card or title should be the primary navigation target so the full-width button does not consume a large share of every card.
-- **Find your match — high impact on phone.** The six cards are tall `aspect-2/3` blocks containing only one label. On phone they are shown one at a time through arrow/dot controls; the carousel does not track a finger swipe. This spends a lot of screen space to reveal little information. Use a two-column grid of compact tiles or a horizontally scrollable row with partial next-card visibility. Add a short explanatory line so “Acne Prone”, “Oil Control”, and “Sensitivity” read as filters, not diagnoses.
-- **Trust banner — medium impact.** “Product Intel”, “Smart Filtering”, and “Custom Routines” describe features already shown above and the numerical claim may age. Replace with one crisp closing action or a small proof point that is maintained from real data. The saturated blue gradient can act as a footer transition, but a second promotional band after four home sections feels repetitive.
-- **Motion.** `ScrollReveal` moves each home section upward over 0.8s and has no reduced-motion branch. Let content appear immediately when reduced motion is requested; on standard motion, use a shorter, subtler reveal. The match carousel's instant content replacement with a `transition-all` wrapper does not create a continuous slide, so the arrow implies motion the content does not provide.
+- **Find your match — later review.** The phone and tablet rail scrolls horizontally with snap points, labeled arrow controls, and a visible next card. The cards remain tall and text-only; assess their density and whether “Acne Prone”, “Oil Control”, and “Sensitivity” clearly read as catalog filters before adding imagery.
+- **Trust banner — removed.** Its feature claims repeated earlier content, and the product count needed maintenance. Check the transition from Matches to the footer without it.
+- **Motion — deferred.** `ScrollReveal` still moves each home section upward over 0.8s and has no reduced-motion branch. Review this separately; Matches now uses native horizontal scrolling instead of instant card replacement.
 
 **Layout sketch**
 
@@ -77,13 +62,13 @@ Drawer:   Explore / Products / Routines / Builder / Account
 Desktop:  [headline + value + CTA] [illustration]
           [3 concise steps with actual UI previews]
           [featured routine cards with product lineups]
-          [compact skin-type discovery] [closing CTA]
+          [skin-type discovery]
 
-Phone:    [headline + value + CTA]
-          [illustration]
+Phone:    [headline over illustration]
+          [primary and secondary actions]
           [steps, left aligned]
           [featured cards, next card peeking]
-          [2-column skin-type tiles]
+          [scrollable skin-type cards, next card peeking]
 ```
 
 ## 3. Product catalog and category search
