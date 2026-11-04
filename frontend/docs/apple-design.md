@@ -73,15 +73,17 @@ Phone:    [headline over illustration]
 
 ## 3. Product catalog and category search
 
+**Current iteration:** Search and filters now lead the catalog. Phone users open a bottom filter sheet with draft changes and a “Show results” action; tablet widths use the same controls in a centered dialog. On wide desktop, the title, search, and result count span the page above a 260px filter panel and the results table. Active filters appear as removable chips, and clearing filters leaves the search query intact. Product rows and cards remain unchanged for a later pass.
+
 **Evidence:** `src/components/products/ProductListClient.tsx`, `ProductListFiltersSidebar.tsx`, `src/constants/filters.tsx`, `src/components/filters/PriceRangeFilter.tsx`.
 
 ### Search, filters, and results order
 
-- **Phone — critical.** The filter `<aside>` appears before the results, and skin type, brand, price, and category-specific filter sections default open. A long brand list can push the search field and first result many screens below the title. Lead with the page title, search, result count, and a compact “Filters” button. Open filters in a sheet with selected count and a persistent “Show results” action. Keep active filters visible as removable chips above results.
-- **Desktop — high impact.** The sidebar gets two of twelve grid columns, while the results get ten. Brand names, checkbox labels, and paired price inputs are cramped. Give the filter rail a deliberate width around 240–280px, or use a top filter row if the catalog table needs the width. Open only the most useful groups by default. Show selection counts in collapsed group headings.
-- **Search — high impact.** Search applies only when Enter is pressed, but no submit button or “Press Enter” cue appears. The field looks like live search. Make it a real search form with a visible submit action, or debounce after typing with explicit loading feedback. Keep the query, filters, and result count grouped together.
-- **Filter behavior — medium impact.** Checkboxes apply immediately, while price requires an “Apply” button. Choose one model per filter surface. A sheet can allow drafting everything and commit with “Show N products”; desktop can apply immediately with a brief updating state. “Clear all filters” should remain visible when active, with one-click recovery from zero results.
-- **Page heading — medium impact.** The `h1` lives inside the filter aside. On phone, collapsing the filters would also hide the page title unless the heading is moved into the main page header. Category pages should also say which category is active and provide a route back to all products.
+- **Phone — addressed.** The title, search form, and result count appear before the list. Filters open in a bottom sheet with a selected-filter count, draft changes, and a persistent “Show results” action. Active selections can be removed above results. The sheet keeps long brand and category lists out of the page flow.
+- **Desktop — addressed at wide sizes.** The 260px bordered panel appears at 1280px and above, aligned with the results table below the full-width page header. At narrower widths, the results use the full row and filters open in a centered dialog so the existing table does not get squeezed. Filter groups start collapsed except Skin type; selected groups show counts, and the expanded brand list has a bounded scroll area.
+- **Search — addressed.** Search is a form with a visible submit button. On wide desktop, the page title, search, and result count sit together above the filter panel and results.
+- **Filter behavior — partial.** The phone sheet stages selections until “Show results”; desktop checkboxes apply immediately. Desktop price changes still use “Apply price,” so decide later whether to unify this interaction. Clearing filters preserves the query, and filtered empty states offer recovery actions.
+- **Page heading — addressed.** The `h1` is outside the filter rail and shows the catalog or category name. Category pages still need a clear route back to all products.
 
 ### Product rows and cards
 
@@ -94,11 +96,11 @@ Phone:    [headline over illustration]
 
 ```text
 Desktop:  Products / Cleansers            [Search products] [result count]
-          [240px filter rail]              [dense but readable result rows]
+          [260px filter rail]              [dense but readable result rows]
 
 Phone:    Products
           [Search products             Search]
-          [Filters (3)] [Sort]  124 results
+          [Filters (3)]          124 results
           [active chips]
           [image  name + two facts      price / Add]
 ```

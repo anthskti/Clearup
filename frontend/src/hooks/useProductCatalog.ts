@@ -179,13 +179,11 @@ export function useProductCatalog({
     [filters, syncUrl],
   );
 
-  const clearAll = useCallback(() => {
+  const clearFilters = useCallback(() => {
     setFilters(EMPTY_PRODUCT_LIST_FILTERS);
     setDraftPriceRange([0, PRODUCT_PRICE_SLIDER_MAX]);
-    setSearchQuery("");
-    setInputValue("");
-    syncUrl(EMPTY_PRODUCT_LIST_FILTERS, "");
-  }, [syncUrl]);
+    syncUrl(EMPTY_PRODUCT_LIST_FILTERS, searchQuery);
+  }, [searchQuery, syncUrl]);
 
   const isFiltered =
     hasActiveProductListFilters(filters, searchQuery) ||
@@ -207,7 +205,7 @@ export function useProductCatalog({
     inputValue,
     setInputValue,
     commitSearch,
-    clearAll,
+    clearFilters,
     isLoading,
     hasMore,
     loadMore,

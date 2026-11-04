@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import ProductImage from "@/components/ui/ProductImage";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import ProductRating from "@/components/product/ProductRating";
 import { useInView } from "react-intersection-observer";
 import { CountryMapping } from "../../constants/CountryMapping";
@@ -18,6 +18,7 @@ import type { Product, ProductListFilters } from "@/types/product";
 import AddToRoutineButton from "@/components/routine/AddToRoutineButton";
 import { SkinTypeTags } from "./SkinTypeTags";
 import ProductListFiltersSidebar from "./ProductListFiltersSidebar";
+import ProductFiltersSheet from "./ProductFiltersSheet";
 import {
   getMerchantOffersByProductIds,
   pickLowestPriceOffer,
@@ -26,6 +27,16 @@ import {
   type CatalogScope,
   useProductCatalog,
 } from "@/hooks/useProductCatalog";
+import { PRODUCT_PRICE_SLIDER_MAX } from "@/constants/productFilters";
+import { formatPriceRangeLabel } from "@/lib/priceRange";
+import {
+  EMPTY_PRODUCT_LIST_FILTERS,
+  setProductPriceRange,
+  skinTypeLabel,
+  toggleAttributeFilter,
+  toggleBrandFilter,
+  toggleSkinTypeFilter,
+} from "@/lib/productListFilters";
 
 interface ProductListClientProps {
   scope: CatalogScope;
@@ -40,6 +51,23 @@ function getProductThumbUrl(product: Product): string | null {
   const url = product.imageUrls?.[0]?.trim();
   return url ? url : null;
 }
+
+function getActiveFilterCount(filters: ProductListFilters): number {
+  return (
+    filters.skinTypes.length +
+    filters.brands.length +
+    Object.values(filters.attributes).reduce(
+      (count, values) => count + values.length,
+      0,
+    ) +
+    Number(
+      filters.minPrice > 0 || filters.maxPrice < PRODUCT_PRICE_SLIDER_MAX,
+    )
+  );
+}
+
+const activeFilterTagClassName =
+  "inline-flex min-h-9 items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-700 hover:border-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4a84] xl:min-h-8 xl:gap-1 xl:border-transparent xl:bg-zinc-100 xl:px-2.5 xl:text-xs xl:hover:bg-zinc-200";
 
 export default function ProductListClient({
   scope,
@@ -62,8 +90,9 @@ export default function ProductListClient({
     hasPriceDraftChanges,
     inputValue,
     setInputValue,
+    searchQuery,
     commitSearch,
-    clearAll,
+    clearFilters,
     isLoading,
     hasMore,
     loadMore,
@@ -76,6 +105,12 @@ export default function ProductListClient({
     initialFilters,
     initialSearch,
   });
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [mobileFilters, setMobileFilters] = useState(filters);
+  const [mobilePriceRange, setMobilePriceRange] = useState<[number, number]>([
+    filters.minPrice,
+    filters.maxPrice,
+  ]);
 
   const { ref, inView } = useInView({
     threshold: 0,
@@ -117,14 +152,32 @@ export default function ProductListClient({
       ? ALL_PRODUCTS_CONFIG
       : CATEGORY_CONFIG[scope.slug as CategoryKey] || CATEGORY_CONFIG.default;
 
+  const activeFilterCount = getActiveFilterCount(filters);
+  const mobileFilterCount = getActiveFilterCount(mobileFilters);
+
+  const applyFilters = (next: ProductListFilters) => {
+    updateFilters(next);
+    setDraftPriceRange([next.minPrice, next.maxPrice]);
+  };
+
+  const openFilterSheet = () => {
+    setMobileFilters(filters);
+    setMobilePriceRange([filters.minPrice, filters.maxPrice]);
+    setIsFilterSheetOpen(true);
+  };
+
+  const clearMobileFilters = () => {
+    setMobileFilters(EMPTY_PRODUCT_LIST_FILTERS);
+    setMobilePriceRange([0, PRODUCT_PRICE_SLIDER_MAX]);
+  };
+
+  const applyMobileFilters = () => {
+    applyFilters(mobileFilters);
+    setIsFilterSheetOpen(false);
+  };
+
   const resolveRoutineCategory = (product: Product) =>
     scope.type === "all" ? product.category : scope.slug;
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      commitSearch(inputValue);
-    }
-  };
 
   type CellVariant = "desktop" | "mobile";
 
@@ -310,6 +363,24 @@ export default function ProductListClient({
           ? "Try adjusting your filters or search."
           : "No products here yet."}
       </p>
+      {activeFilterCount > 0 && (
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="mt-4 font-semibold text-[#0e4a84] underline-offset-4 hover:underline"
+        >
+          Clear filters
+        </button>
+      )}
+      {searchQuery && (
+        <button
+          type="button"
+          onClick={() => commitSearch("")}
+          className="mt-4 ml-4 font-semibold text-[#0e4a84] underline-offset-4 hover:underline"
+        >
+          Clear search
+        </button>
+      )}
     </div>
   );
 
@@ -324,41 +395,180 @@ export default function ProductListClient({
         gradientTo="#f0f8fc" 
         flip={true} 
       />
-      <div className="relative z-1 mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 sm:px-6 lg:grid-cols-12 lg:gap-10">
-        {/* --- LEFT SIDEBAR (FILTERS) --- */}
-        <ProductListFiltersSidebar
-          scope={scope}
-          filters={filters}
-          onFiltersChange={updateFilters}
-          draftPriceRange={draftPriceRange}
-          onDraftPriceChange={setDraftPriceRange}
-          onApplyPrice={applyPriceFilter}
-          hasPriceDraftChanges={hasPriceDraftChanges}
-          availableBrands={availableBrands}
-          isFiltered={isFiltered}
-          onClearAll={clearAll}
-        />
-
-        {/* --- RIGHT CONTENT (LIST) --- */}
-        <main className="lg:col-span-10">
-          {/* List Header */}
-          <div className="mb-6 flex items-center justify-end">
-            <p className="text-sm font-medium text-zinc-500">
+      <div className="relative z-1 mx-auto max-w-7xl px-4 sm:px-6 xl:grid xl:grid-cols-[260px_minmax(0,1fr)] xl:items-start xl:gap-x-8">
+        <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between xl:col-span-2 xl:mb-7">
+          <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">
+            {config.category}
+          </h1>
+          <div className="w-full sm:max-w-md">
+            <form
+              role="search"
+              onSubmit={(event) => {
+                event.preventDefault();
+                commitSearch(inputValue);
+              }}
+              className="flex w-full gap-2"
+            >
+              <label htmlFor="product-search" className="sr-only">
+                Search products
+              </label>
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  aria-hidden="true"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
+                  size={16}
+                />
+                <input
+                  id="product-search"
+                  type="search"
+                  placeholder="Search products"
+                  value={inputValue}
+                  onChange={(event) => setInputValue(event.target.value)}
+                  className="h-11 w-full rounded-md border border-zinc-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none focus:border-[#0e4a84] focus:ring-2 focus:ring-[#0e4a84]/15"
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md bg-[#0e4a84] px-4 text-sm font-semibold text-white hover:bg-[#0a345c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4a84]"
+              >
+                Search
+              </button>
+            </form>
+            <p className="mt-3 hidden text-right text-sm font-medium text-zinc-500 xl:block">
               Showing {products.length} of {totalCount} results
             </p>
           </div>
-          {/* Search Bar */}
-          <div className="relative mb-8 w-full lg:ml-auto lg:w-[40%]">
-            <Search className="absolute left-3 top-3 text-zinc-400" size={16} />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-md text-sm outline-none focus:border-[#0e4a84]"
-            />
+        </header>
+
+        <div className="mb-4 flex items-center justify-between gap-3 xl:hidden">
+          <button
+            type="button"
+            onClick={openFilterSheet}
+            aria-haspopup="dialog"
+            aria-expanded={isFilterSheetOpen}
+            className="inline-flex h-11 items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4a84] xl:hidden"
+          >
+            <SlidersHorizontal size={17} aria-hidden="true" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-[#0e4a84] px-2 py-0.5 text-xs text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <p className="ml-auto text-sm font-medium text-zinc-500">
+            Showing {products.length} of {totalCount} results
+          </p>
+        </div>
+
+        {activeFilterCount > 0 && (
+          <div className="mb-5 flex flex-wrap gap-2 xl:col-span-2 xl:mb-3 xl:gap-1.5" aria-label="Active filters">
+            {filters.skinTypes.map((skinType) => (
+              <button
+                key={`skin-${skinType}`}
+                type="button"
+                onClick={() => applyFilters(toggleSkinTypeFilter(filters, skinType))}
+                aria-label={`Remove skin type filter: ${skinTypeLabel(skinType)}`}
+                className={activeFilterTagClassName}
+              >
+                Skin type: {skinTypeLabel(skinType)} <X size={14} className="xl:size-3" aria-hidden="true" />
+              </button>
+            ))}
+            {filters.brands.map((brand) => (
+              <button
+                key={`brand-${brand}`}
+                type="button"
+                onClick={() => applyFilters(toggleBrandFilter(filters, brand))}
+                aria-label={`Remove brand filter: ${brand}`}
+                className={activeFilterTagClassName}
+              >
+                Brand: {brand} <X size={14} className="xl:size-3" aria-hidden="true" />
+              </button>
+            ))}
+            {Object.entries(filters.attributes).flatMap(([id, values]) => {
+              const label = config.specificFilters.find((filter) => filter.id === id)?.labels ?? id;
+              return values.map((value) => (
+                <button
+                  key={`${id}-${value}`}
+                  type="button"
+                  onClick={() => applyFilters(toggleAttributeFilter(filters, id, value))}
+                  aria-label={`Remove ${label} filter: ${value}`}
+                  className={activeFilterTagClassName}
+                >
+                  {label}: {value} <X size={14} className="xl:size-3" aria-hidden="true" />
+                </button>
+              ));
+            })}
+            {(filters.minPrice > 0 || filters.maxPrice < PRODUCT_PRICE_SLIDER_MAX) && (
+              <button
+                type="button"
+                onClick={() => applyFilters(setProductPriceRange(filters, [0, PRODUCT_PRICE_SLIDER_MAX]))}
+                aria-label="Remove price filter"
+                className={activeFilterTagClassName}
+              >
+                Price: {formatPriceRangeLabel([filters.minPrice, filters.maxPrice], PRODUCT_PRICE_SLIDER_MAX)}
+                <X size={14} className="xl:size-3" aria-hidden="true" />
+              </button>
+            )}
           </div>
+        )}
+
+        <aside aria-label="Product filters" className="hidden xl:block">
+          <div className="rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+              <h2 className="text-base font-semibold text-zinc-900">Filters</h2>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-sm font-medium text-[#0e4a84] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4a84]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="px-5 pb-2">
+              <ProductListFiltersSidebar
+                instanceId="desktop"
+                appearance="rail"
+                scope={scope}
+                filters={filters}
+                onFiltersChange={applyFilters}
+                draftPriceRange={draftPriceRange}
+                onDraftPriceChange={setDraftPriceRange}
+                onApplyPrice={applyPriceFilter}
+                hasPriceDraftChanges={hasPriceDraftChanges}
+                availableBrands={availableBrands}
+              />
+            </div>
+          </div>
+        </aside>
+
+        <main className="min-w-0">
+          <ProductFiltersSheet
+            open={isFilterSheetOpen}
+            onOpenChange={setIsFilterSheetOpen}
+            activeFilterCount={mobileFilterCount}
+            onClear={clearMobileFilters}
+            onApply={applyMobileFilters}
+          >
+            <ProductListFiltersSidebar
+              instanceId="mobile"
+              scope={scope}
+              filters={mobileFilters}
+              onFiltersChange={setMobileFilters}
+              draftPriceRange={mobilePriceRange}
+              onDraftPriceChange={(range) => {
+                setMobilePriceRange(range);
+                setMobileFilters((current) => setProductPriceRange(current, range));
+              }}
+              onApplyPrice={() => {}}
+              hasPriceDraftChanges={false}
+              availableBrands={availableBrands}
+              appearance="sheet"
+              showPriceApply={false}
+            />
+          </ProductFiltersSheet>
 
           {/* Mobile: card list */}
           <div className="mb-10 space-y-3 lg:hidden">

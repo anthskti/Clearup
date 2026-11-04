@@ -35,9 +35,9 @@ Kept the hero artwork and slogan. Removed the trust banner. On phone, the hero b
 **Review section:** [Product catalog and category search](./apple-design.md#3-product-catalog-and-category-search).  
 **Likely files:** `src/components/products/*`, `src/components/filters/PriceRangeFilter.tsx`, and catalog page components under `src/app/(main)/products/`.
 
-**Work:** Put search and results before full filters on phone. Use a filter sheet with active-filter summary and clear recovery from zero results. Give the desktop filter rail enough width. Choose one understandable apply model for search, checkboxes, and price. Reduce phone card metadata to the facts needed for selection; preserve full detail on the product page.
+**Implemented — search and filters:** The page heading, submitted search, and result count span the full width above the desktop filter rail and results. Phone and tablet users open a bottom sheet (centered dialog at tablet widths) with draft filters and a “Show results” action. Applied filters appear as removable chips, and clearing filters preserves the search. Wide desktop uses a 260px bordered filter panel with selection counts and a bounded brand list; narrower screens keep the results table full width and use the sheet.
 
-**Approval point:** Confirm which filters are primary and whether the phone surface applies changes immediately or on “Show results”.
+**Still to review:** Desktop checkboxes apply immediately while the price range has its own Apply action. Review whether to unify that behavior. Product rows and phone cards remain for the next pass: reduce card metadata, improve the image stage, and make desktop columns easier to scan. Category pages still need a clear route back to all products.
 
 ## Batch 4 — product detail and merchant comparison
 
