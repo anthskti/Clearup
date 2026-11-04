@@ -152,7 +152,7 @@ export function ImportsAdminClient() {
           className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-4 font-mono text-xs text-zinc-900 shadow-sm outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400"
           placeholder={
             tab === "products"
-              ? "Product catalog: name, brand, category, labels, skinType, country, capacity, price, instructions, ingredients, imageUrls, averageRating, url, merchant, status. A URL and positive price create the initial merchant offer; reimports preserve its refreshed price."
+              ? "Product catalog: include name, brand, category, labels, skinType, skinTypeSource (inferred or manual), country, capacity, price, instructions, ingredients, imageUrls, averageRating, url, merchant, status. Successful rows replace catalog fields; blank values clear optional fields. Merchant offer prices remain managed by offer and price imports."
               : tab === "offers"
                 ? "Reviewed merchant master: productId, brand, name, merchant, website, price, status. Only matched rows import; -1 means price unavailable."
                 : "Price refresh: brand, name, price, merchant, stock. Updates existing offers only; -1 means price unavailable."
