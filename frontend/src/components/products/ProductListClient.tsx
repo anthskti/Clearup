@@ -213,7 +213,7 @@ export default function ProductListClient({
       case "name": {
         const thumb = getProductThumbUrl(product);
         return (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
             {thumb ? (
               <ProductImage
                 src={thumb}
@@ -228,14 +228,19 @@ export default function ProductListClient({
                 aria-hidden
               />
             )}
-            <div>
-              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">
-                {product.brand}
-              </div>
-              <div className="font-bold text-zinc-900 text-sm">
-                <Link href={`/product/id/${product.id}`}>{product.name}</Link>
-              </div>
-            </div>
+            <Link
+              href={`/product/id/${product.id}`}
+              title={`${product.brand} ${product.name}`}
+              className="line-clamp-2 min-w-0 text-sm leading-5"
+            >
+              <span className="font-medium text-zinc-600">{product.brand}</span>
+              <span aria-hidden="true" className="px-1 text-zinc-400">
+                ·
+              </span>
+              <span className="font-semibold text-zinc-900">
+                {product.name}
+              </span>
+            </Link>
           </div>
         );
       }
@@ -308,13 +313,12 @@ export default function ProductListClient({
       default:
         const val = product[col.id as keyof Product];
 
-        // Render skin types with tooltip tags only for the skinType column.
         if (Array.isArray(val)) {
           if (val.length === 0)
             return <span className="text-[12px] text-zinc-400">—</span>;
 
           if (col.id === "skinType") {
-            return <SkinTypeTags skinTypes={val.map(String)} />;
+            return <SkinTypeTags skinTypes={val.map(String)} variant={variant} />;
           }
 
           const firstItem = val[0];
@@ -395,7 +399,7 @@ export default function ProductListClient({
         gradientTo="#f0f8fc" 
         flip={true} 
       />
-      <div className="relative z-1 mx-auto max-w-7xl px-4 sm:px-6 xl:grid xl:grid-cols-[260px_minmax(0,1fr)] xl:items-start xl:gap-x-8">
+      <div className="relative z-1 mx-auto max-w-7xl px-4 sm:px-6 xl:grid xl:grid-cols-[240px_minmax(0,1fr)] xl:items-start xl:gap-x-6">
         <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between xl:col-span-2 xl:mb-7">
           <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">
             {config.category}
@@ -514,9 +518,9 @@ export default function ProductListClient({
         )}
 
         <aside aria-label="Product filters" className="hidden xl:block">
-          <div className="rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-              <h2 className="text-base font-semibold text-zinc-900">Filters</h2>
+          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <div className="flex h-11 items-center justify-between border-b border-zinc-200 bg-zinc-50 px-4">
+              <h2 className="text-xs font-medium text-zinc-500">Filters</h2>
               {activeFilterCount > 0 && (
                 <button
                   type="button"
@@ -527,7 +531,7 @@ export default function ProductListClient({
                 </button>
               )}
             </div>
-            <div className="px-5 pb-2">
+            <div className="px-4 pb-1">
               <ProductListFiltersSidebar
                 instanceId="desktop"
                 appearance="rail"
@@ -580,9 +584,9 @@ export default function ProductListClient({
               products.map((product) => (
                 <article
                   key={product.id}
-                  className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"
+                  className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2.5">
                     <div className="min-w-0 flex-1">
                       {nameColumn &&
                         renderCellContent(nameColumn, product, "mobile")}
@@ -592,13 +596,13 @@ export default function ProductListClient({
                         renderCellContent(addColumn, product, "mobile")}
                     </div>
                   </div>
-                  <dl className="mt-4 grid grid-cols-3 gap-x-3 gap-y-4 border-t border-zinc-100 pt-4">
+                  <dl className="mt-3 grid grid-cols-3 gap-x-2.5 gap-y-3 border-t border-zinc-100 pt-3">
                     {mobileAttrColumns.map((col) => (
                       <div
                         key={`${product.id}-mobile-${col.id}`}
-                        className="min-w-0"
+                        className={col.id === "skinType" ? "col-span-3 min-w-0" : "min-w-0"}
                       >
-                        <dt className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">
+                        <dt className="text-[11px] font-medium leading-4 text-zinc-500">
                           {col.labels || col.id}
                         </dt>
                         <dd className="mt-0.5 text-left [&>*]:justify-start">
@@ -608,7 +612,7 @@ export default function ProductListClient({
                     ))}
                   </dl>
                   {priceColumn && (
-                    <div className="mt-4 border-t border-zinc-100 pt-3">
+                    <div className="mt-3 border-t border-zinc-100 pt-2.5">
                       {renderCellContent(priceColumn, product, "mobile")}
                     </div>
                   )}
@@ -618,8 +622,8 @@ export default function ProductListClient({
           </div>
 
           {/* Desktop: table */}
-          <div className="mb-10 hidden overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm lg:block">
-            <div className="grid grid-cols-12 border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-xs font-bold uppercase text-zinc-500">
+          <div className="mb-10 hidden overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm lg:block">
+            <div className="grid h-11 grid-cols-12 items-center border-b border-zinc-200 bg-zinc-50 px-4 text-xs font-medium text-zinc-500">
               {config.tableColumns.map((col) => (
                 <div key={col.id} className={`${col.width} px-1`}>
                   {col.labels}
@@ -633,7 +637,7 @@ export default function ProductListClient({
                 : products.map((product) => (
                     <div
                       key={product.id}
-                      className="group grid grid-cols-12 items-center p-5 transition-colors hover:bg-blue-50/30"
+                      className="group grid grid-cols-12 items-center px-4 py-3 transition-colors hover:bg-blue-50/30"
                     >
                       {config.tableColumns.map((col) => (
                         <div

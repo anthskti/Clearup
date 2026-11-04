@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Minus, Plus } from "lucide-react";
 import {
   CATEGORY_CONFIG,
   ALL_PRODUCTS_CONFIG,
@@ -21,102 +20,40 @@ import type { ProductListFilters } from "@/types/product";
 import PriceRangeFilter from "@/components/filters/PriceRangeFilter";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-
-interface FilterSectionProps {
-  id: string;
-  instanceId: string;
-  appearance: "rail" | "sheet";
-  title: string;
-  selectedCount: number;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}
-
-function FilterSection({
-  id,
-  instanceId,
-  appearance,
-  title,
-  selectedCount,
-  isOpen,
-  onToggle,
-  children,
-}: FilterSectionProps) {
-  return (
-    <div
-      className={
-        appearance === "rail"
-          ? "border-b border-zinc-100 py-2 last:border-0"
-          : "border-b border-zinc-200 pb-4"
-      }
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        aria-controls={`${instanceId}-${id}-content`}
-        className="group flex min-h-11 w-full items-center justify-between text-left"
-      >
-        <span className="text-sm font-semibold text-zinc-700 transition-colors group-hover:text-zinc-900">
-          {title}
-        </span>
-        <span className="flex items-center gap-2">
-          {appearance === "rail" && selectedCount > 0 && (
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-[#0e4a84]">
-              {selectedCount}
-            </span>
-          )}
-          {appearance === "rail" ? (
-            <ChevronDown
-              size={16}
-              className={`text-zinc-400 transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`}
-              aria-hidden="true"
-            />
-          ) : isOpen ? (
-            <Minus size={16} className="text-zinc-400" aria-hidden="true" />
-          ) : (
-            <Plus size={16} className="text-zinc-400" aria-hidden="true" />
-          )}
-        </span>
-      </button>
-      {isOpen && (
-        <div
-          id={`${instanceId}-${id}-content`}
-          className={appearance === "rail" ? "mt-1 space-y-0.5" : "mt-2 space-y-1"}
-        >
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
+import FilterSection, {
+  type FilterSectionAppearance,
+} from "@/components/products/FilterSection";
 
 interface CheckboxOptionProps {
-  appearance: "rail" | "sheet";
+  appearance: FilterSectionAppearance;
   label: string;
   checked: boolean;
   onChange: () => void;
 }
 
-function CheckboxOption({ appearance, label, checked, onChange }: CheckboxOptionProps) {
+function CheckboxOption({
+  appearance,
+  label,
+  checked,
+  onChange,
+}: CheckboxOptionProps) {
   return (
     <label
       className={
         appearance === "rail"
-          ? "-mx-2 flex min-h-9 cursor-pointer items-center gap-3 rounded-md px-2 text-sm text-zinc-700 hover:bg-blue-50/60"
+          ? "-mx-2 flex min-h-8 cursor-pointer items-center gap-2.5 rounded-md px-2 text-[13px] text-zinc-600 hover:bg-blue-50/60"
           : "flex min-h-11 cursor-pointer items-center gap-3 text-sm text-zinc-700 hover:text-[#0e4a84]"
       }
     >
       <Checkbox checked={checked} onChange={onChange} />
-      <span className="capitalize">{label}</span>
+      <span>{label}</span>
     </label>
   );
 }
 
 interface ProductListFiltersSidebarProps {
   instanceId: string;
-  appearance: "rail" | "sheet";
+  appearance: FilterSectionAppearance;
   scope: CatalogScope;
   filters: ProductListFilters;
   onFiltersChange: (filters: ProductListFilters) => void;
@@ -191,7 +128,7 @@ export default function ProductListFiltersSidebar({
         id="skinType"
         instanceId={instanceId}
         appearance={appearance}
-        title="Skin type"
+        title="Skin Type"
         selectedCount={filters.skinTypes.length}
         isOpen={openSections.skinType ?? true}
         onToggle={() => toggleSection("skinType")}
@@ -219,7 +156,9 @@ export default function ProductListFiltersSidebar({
           isOpen={openSections.brand ?? false}
           onToggle={() => toggleSection("brand")}
         >
-          <div className={appearance === "rail" ? "max-h-56 overflow-y-auto" : ""}>
+          <div
+            className={appearance === "rail" ? "max-h-56 overflow-y-auto" : ""}
+          >
             {availableBrands.map((brand) => (
               <CheckboxOption
                 key={brand}

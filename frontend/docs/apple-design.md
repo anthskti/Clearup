@@ -73,33 +73,36 @@ Phone:    [headline over illustration]
 
 ## 3. Product catalog and category search
 
-**Current iteration:** Search and filters now lead the catalog. Phone users open a bottom filter sheet with draft changes and a “Show results” action; tablet widths use the same controls in a centered dialog. On wide desktop, the title, search, and result count span the page above a 260px filter panel and the results table. Active filters appear as removable chips, and clearing filters leaves the search query intact. Product rows and cards remain unchanged for a later pass.
+**Current iteration — complete for now:** Search and filters lead the catalog. Phone users open a bottom filter sheet with draft changes and a “Show results” action; tablet widths use the same controls in a centered dialog. On wide desktop, the title, search, and result count span the page above a compact 240px filter panel and the results table. Active filters appear as removable chips, and clearing filters leaves the search query intact. Phone cards use tighter spacing, mostly sentence-case labels (with “Skin Type” in title case), a two-line brand/product link, and wrapping tags for every skin type. Desktop rows keep the compact `+N` skin-type tooltip, styled in ClearUp deep blue; the filter panel and table also share a compact header treatment and reduced row padding.
+
+Page-based pagination is tracked in the v2 plans because it requires a backend API change. Desktop column density, separate card and row renderers, unified filter application, and a clearer route from category pages back to the catalog are deferred to later iterations.
 
 **Evidence:** `src/components/products/ProductListClient.tsx`, `ProductListFiltersSidebar.tsx`, `src/constants/filters.tsx`, `src/components/filters/PriceRangeFilter.tsx`.
 
 ### Search, filters, and results order
 
 - **Phone — addressed.** The title, search form, and result count appear before the list. Filters open in a bottom sheet with a selected-filter count, draft changes, and a persistent “Show results” action. Active selections can be removed above results. The sheet keeps long brand and category lists out of the page flow.
-- **Desktop — addressed at wide sizes.** The 260px bordered panel appears at 1280px and above, aligned with the results table below the full-width page header. At narrower widths, the results use the full row and filters open in a centered dialog so the existing table does not get squeezed. Filter groups start collapsed except Skin type; selected groups show counts, and the expanded brand list has a bounded scroll area.
+- **Desktop — addressed at wide sizes.** The compact 240px bordered panel appears at 1280px and above, aligned with the results table below the full-width page header. At narrower widths, results use the full row and filters open in a centered dialog. Filter groups start collapsed except Skin type; selected groups show counts, and the expanded brand list has a bounded scroll area.
 - **Search — addressed.** Search is a form with a visible submit button. On wide desktop, the page title, search, and result count sit together above the filter panel and results.
-- **Filter behavior — partial.** The phone sheet stages selections until “Show results”; desktop checkboxes apply immediately. Desktop price changes still use “Apply price,” so decide later whether to unify this interaction. Clearing filters preserves the query, and filtered empty states offer recovery actions.
-- **Page heading — addressed.** The `h1` is outside the filter rail and shows the catalog or category name. Category pages still need a clear route back to all products.
+- **Filter behavior — complete for this iteration.** The phone sheet stages selections until “Show results”; desktop checkboxes apply immediately and desktop price changes use “Apply price.” Unifying desktop filter application is deferred. Clearing filters preserves the query, and filtered empty states offer recovery actions.
+- **Page heading — addressed.** The `h1` is outside the filter rail and shows the catalog or category name. A clearer route from category pages back to all products is deferred.
 
 ### Product rows and cards
 
-- **Phone — high impact.** Each result card renders nearly every table column in a three-column definition list, including small 10px uppercase labels, then separates price at the bottom. For quick browsing, show image, brand/name, one or two decision attributes, price, and “Add”. Put the rest on the detail page. This can cut card height substantially while making scanning easier.
-- **Desktop — medium impact.** The table is dense and treats attributes, flag, rating, price, and Add as similar-weight columns. Pin a strong first column for product identity; right-align prices; reduce secondary attribute columns or place them in a compact “details” summary. Country should be text with a flag as an optional cue, since a flag alone is hard to scan and can be ambiguous.
+- **Phone — addressed for this iteration.** Cards retain all configured fields with tighter spacing and sentence-case labels, keeping “Skin Type” in title case. Brand and product name share a compact link that wraps to two lines; every skin type appears in wrapping tags across the card.
+- **Desktop — refined; further density work deferred.** The table keeps its data-first row layout with tighter padding and a compact header. Skin type shows the first tag and a `+N` tooltip. Further column prioritization can be revisited later. Phone country values remain readable text, while desktop keeps the flag image.
 - **Image layout.** The catalog uses 44px square thumbnails. Use a consistent neutral image stage and `object-contain` for product packaging where possible. Packaging shapes should remain recognizable, and missing images need a branded placeholder rather than a plain gray square.
-- **Results feedback.** “Showing X of Y” appears before the search field, while infinite loading happens at the bottom. Group count with search and filters, and make the existing loading and end-of-shelf messages more visible within the result flow. The empty state should offer “Clear filters” when filters caused it.
+- **Results feedback — addressed for this iteration.** The result count is grouped with the page heading and search. Existing incremental loading remains; page-based pagination is deferred to v2 because it requires a backend API change. Filtered empty states offer recovery actions.
 
 **Layout sketch**
 
 ```text
 Desktop:  Products / Cleansers            [Search products] [result count]
-          [260px filter rail]              [dense but readable result rows]
+          [240px filter rail]              [data-first product rows]
 
 Phone:    Products
           [Search products             Search]
+          [product card with all fields and wrapping skin-type tags]
           [Filters (3)]          124 results
           [active chips]
           [image  name + two facts      price / Add]

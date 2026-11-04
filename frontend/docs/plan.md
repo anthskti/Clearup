@@ -35,9 +35,13 @@ Kept the hero artwork and slogan. Removed the trust banner. On phone, the hero b
 **Review section:** [Product catalog and category search](./apple-design.md#3-product-catalog-and-category-search).  
 **Likely files:** `src/components/products/*`, `src/components/filters/PriceRangeFilter.tsx`, and catalog page components under `src/app/(main)/products/`.
 
-**Implemented — search and filters:** The page heading, submitted search, and result count span the full width above the desktop filter rail and results. Phone and tablet users open a bottom sheet (centered dialog at tablet widths) with draft filters and a “Show results” action. Applied filters appear as removable chips, and clearing filters preserves the search. Wide desktop uses a 260px bordered filter panel with selection counts and a bounded brand list; narrower screens keep the results table full width and use the sheet.
+**Status: complete for this iteration.** The current catalog layout and interaction pass is implemented; follow-up ideas below are deferred and do not block this batch.
 
-**Still to review:** Desktop checkboxes apply immediately while the price range has its own Apply action. Review whether to unify that behavior. Product rows and phone cards remain for the next pass: reduce card metadata, improve the image stage, and make desktop columns easier to scan. Category pages still need a clear route back to all products.
+**Search and filters:** The page heading, submitted search, and result count span the full width above the desktop filter rail and results. Phone and tablet users open a bottom sheet (centered dialog at tablet widths) with draft filters and a “Show results” action. Applied filters appear as removable chips, and clearing filters preserves the search. Wide desktop uses a compact 240px bordered filter panel with selection counts and a bounded brand list; narrower screens keep the results full width and use the sheet.
+
+**Rows and cards:** Phone cards retain all configured fields with tighter spacing and sentence-case labels, keeping “Skin Type” in title case. Brand and product name share a compact link that can wrap to two lines. Every skin type appears in wrapping tags across the card; desktop rows keep the compact `+N` tooltip, styled in ClearUp deep blue. The filter panel and table share a compact header treatment, and desktop row padding is reduced to give products more room. Country display and image cropping remain as before.
+
+**Deferred to a later iteration:** Page-based pagination requires a backend API change and is tracked in the v2 plans. The catalog keeps its existing incremental loading and result feedback for now. Desktop column density, separating card and row renderers (and the similar routine/builder layouts), unifying checkbox and price filter application, and adding a clear route from category pages back to all products can be revisited separately.
 
 ## Batch 4 — product detail and merchant comparison
 
