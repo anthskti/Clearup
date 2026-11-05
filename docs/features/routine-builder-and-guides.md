@@ -89,7 +89,7 @@ Admins curate featured guides at `/admin/content` (`ContentGuidesClient`), with 
 | `POST /api/routines/id/:id/products` | Yes | Add product to routine |
 | `PUT/DELETE /api/routines/products/:id` | Yes | Update/remove join row |
 
-Routine creation is rate-limited (10 per hour per IP) to reduce abuse.
+Routine creation is rate-limited (10 per hour per IP) to reduce abuse. Routine creation and merchant creation share this fixed-window budget. Routine updates and deletes allow 60 requests per IP per 15 minutes.
 
 ## Profile pages
 

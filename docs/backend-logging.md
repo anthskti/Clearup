@@ -54,16 +54,16 @@ Copy the response's `X-Request-ID` into a log search to find that request's comp
 | `startup.database.connect`, `.connected`, `.sync`, `.migrations`, `.migrations_complete`, `startup.server.listening` | info | Startup stages; listening follows successful DB setup and migrations. |
 | `database.config`, `database.associations.defined`, `database.migrations.none`, `database.migrations.applied` | info | Database mode, model setup, and migration result. Umzug can also emit `migrating` / `migrated` lifecycle records while migrations run. |
 | `auth.bootstrap` | info | Auth configuration summary at module initialization. |
-| `security.audit` with `securityEvent: "auth.route"` | info | Completed sign-in/login/reset/verification/sign-out/revoke route requests, including failed HTTP responses. The status is data; failure does not change this audit record's level. |
+| `security.audit` with `securityEvent: "auth.route"` | info | Every `/api/auth` HTTP request on completion, including session reads, unknown paths, and failed or rate-limited responses. The status is data; failure does not change this audit record's level. |
 | `security.config` | warn | Production auth URL or wildcard trusted-origin configuration warning. |
-| `rate_limit.exceeded` (`limiter: "global"` or `"catalog"`) | warn | Request blocked by the global IP limiter or catalog token bucket. Catalog `reason` is `empty` or `storage_full`. Other route-specific limiters do not currently emit this event. |
+| `rate_limit.exceeded` | warn | Request blocked by an app limiter. `limiter`/`policy` identifies the policy (such as `global`, `catalog`, `sessionReads`, `login`, `recovery`, or `otherAuth`); token buckets may include `identity` and `reason`. |
 | `application.error` | error | A reported application failure. `scope` describes the reporting boundary, such as `express`, `health.database`, `startup`, `auth.reset_email`, `auth.verification_email`, `auth.admin_role_persist`, or `webhook.aws_ses`. |
 | `ses.email.skipped` | info | An email was skipped because the user's email status is not active. |
 | `webhook.sns.subscription.rejected`, `webhook.sns.subscription.confirmed`, `webhook.ses.bounce.processed`, `webhook.ses.complaint.processed` | warn / info | SNS subscription rejection is warn; confirmation and processed bounce/complaint notifications are info. |
 
 HTTP completion severity is independent of application event severity: successful requests are `info`, 4xx are `warn`, and 5xx or request errors are `error`. A handled internal error normally produces an `application.error` record plus the request completion record. A 4xx auth audit stays at `info` while its separate request completion is `warn`.
 
-Auth audit middleware runs after the auth route and brute-force limiters. A request rejected by those limiters may therefore have no `auth.route` audit record. Global and catalog limiters run before feature routes and emit a warning when they reject a request; stricter routine and merchant limiters currently produce only the request completion record when they reject a request.
+Auth audit middleware runs before the app auth policy guards, so every auth HTTP request—including rejected attempts—has a sanitized audit record. A rate-limited auth request also has the rate-limit warning and completion record. Global and classified app limiters emit a warning when they reject a request; fixed routine creation and mutation limiters currently produce only the request completion record when they reject a request.
 
 ## Expected record volume
 
@@ -78,7 +78,7 @@ Typical counts for one API request:
 | Failed `/health` (503) | 2: application error + completion |
 | Handled 500 | 2: application error + completion |
 | Audited auth path | 2: audit + completion |
-| Global or catalog rate-limit rejection (429) | 2: limiter warning + completion |
+| Global or classified app rate-limit rejection (429) | 2: limiter warning + completion; auth also includes audit |
 | Other route-specific limit rejection | 1 completion |
 
 For example, an uncached catalog page that makes one product-list request and two offer requests usually creates three completion records. An uncached brands request adds another. CORS preflight requests, auth checks, prefetches, and retries can add more API requests.

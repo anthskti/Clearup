@@ -23,12 +23,9 @@ The file defines a top-down request pipeline that applies protections before bus
 - CORS setup using `TRUSTED_ORIGINS`, with credentials enabled.
 - CORS response headers expose the request ID and rate-limit headers.
 - Proxy trust (`app.set("trust proxy", 1)`) for deployment environments behind reverse proxies.
-- SNS webhook text parsing, then JSON body parsing, the global limiter for non-catalog routes, and a separate catalog IP token bucket (default burst 20, refill 2/sec).
+- SNS webhook text parsing, then auth audit, centralized app policy limiter, global limiter, JSON parsing, and compression. Classified catalog/auth requests use one dedicated IP bucket rather than the global bucket; unknown auth actions use both the fallback bucket and global limiter, while remaining requests retain the global 300 / 15 min limit.
 - Compression middleware for response-size optimization.
-- Auth-specific security middleware stack on `/api/auth`:
-  - route limiter
-  - brute-force limiter
-  - audit logging
+- Auth audit logging runs before the app auth policy limiter so blocked requests can be audited with sanitized fields. Better Auth also applies its own production rate limits.
 
 ## Authentication Wiring
 

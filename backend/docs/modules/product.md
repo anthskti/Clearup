@@ -15,7 +15,7 @@ The **repository layer** handles database transactions directly, allowing sepera
 
 To support high volume production data, all large response queries implement **pagination**, ensuring when there is a query the database in small, efficient chunks rather than loading large datasets into memory.
 
-The controller validates catalog pagination through `lib/productPagination.ts` before calling services: default limit 25 and offset 0, maximum limit 100, and nonnegative safe-integer offsets. Invalid or repeated pagination parameters return 400. Public catalog GET/HEAD endpoints also share an IP token bucket (default burst 20, refill 2/sec), separate from auth and mutation budgets. See [rate limiting](../../../docs/backend-architecture.md#5-rate-limiting-summary) for configuration and deployment limits.
+The controller validates catalog pagination through `lib/productPagination.ts` before calling services: default limit 25 and offset 0, maximum limit 100, and nonnegative safe-integer offsets. Invalid or repeated pagination parameters return 400. Product and merchant directory GET/HEAD endpoints share the `catalog` IP token bucket (burst 20, refill 2/sec), separate from auth and mutation budgets. App policies live in `src/config/rateLimitPolicies.ts` and require redeployment to tune. See [rate limiting](../../../docs/backend-architecture.md#5-rate-limiting-summary) for deployment limits.
 
 - Product Repository (`ProductRepository.ts`): Executes CRUD operations for products. It also contains complex queries for category filtering and search functionality.
 - A Product's Merchant Repository (`ProductMerchantRepository.ts`): Handles database operations specific to merchant links, including updating prices and external vendor URLs for specific products.

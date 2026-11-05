@@ -11,16 +11,13 @@ import rateLimit from "express-rate-limit";
 
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./config/auth";
-import {
-  authAuditLogger,
-  authBruteForceLimiter,
-  authRouteLimiter,
-} from "./middleware/security";
+import { authAuditLogger } from "./middleware/security";
 import { requireAuth } from "./middleware/requireAuth";
 import { validateSecurityConfig } from "./lib/security";
 import { runMigrations } from "./migrations";
 import { requestLogger } from "./middleware/requestLogger";
-import { createCatalogLimiter, globalLimiter, RATE_LIMIT_EXPOSED_HEADERS } from "./middleware/rateLimits";
+import { requestPolicyLimiter, globalLimiter, RATE_LIMIT_EXPOSED_HEADERS } from "./middleware/rateLimits";
+import { RATE_LIMIT_POLICIES } from "./config/rateLimitPolicies";
 import { handleExpressError } from "./lib/httpError";
 import logger, { reportError } from "./lib/logger";
 
@@ -42,28 +39,29 @@ app.use(
 );
 app.set("trust proxy", 1);
 
-// SNS → SES bounce/complaint events are posted as text/plain JSON; keep outside global rate limit.
+// SNS → SES bounce/complaint events are posted as text/plain JSON; keep outside application limits.
 app.use(
   "/api/webhooks",
   express.text({ type: "*/*", limit: "512kb" }),
   webhookRoutes,
 );
 
-app.use(express.json());
+app.use("/api/auth", authAuditLogger);
+app.use(requestPolicyLimiter);
 app.use(globalLimiter);
-app.use(createCatalogLimiter());
+app.use(express.json());
 
 // Optimization (Compress before parsing saving overhead)
 
 const createStrictLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10,
+  windowMs: RATE_LIMIT_POLICIES.fixedWindows.routineCreate.windowMs,
+  max: RATE_LIMIT_POLICIES.fixedWindows.routineCreate.max,
   message: "You are creating too many routines. Please wait a while.",
 });
 
 const routineMutateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 60,
+  windowMs: RATE_LIMIT_POLICIES.fixedWindows.routineMutation.windowMs,
+  max: RATE_LIMIT_POLICIES.fixedWindows.routineMutation.max,
   standardHeaders: true,
   legacyHeaders: false,
   message: "Too many routine updates. Please try again later.",
@@ -79,9 +77,6 @@ app.use(
     },
   }),
 );
-// Audits all auth routes (sign-in, sign-up, sign-out, etc.)
-app.use("/api/auth", authRouteLimiter, authBruteForceLimiter, authAuditLogger);
-
 // Authorizes user and returns their effective role (user or admin)
 app.get("/api/auth/me", requireAuth, (req, res) => {
   if (!req.user) {

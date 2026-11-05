@@ -47,11 +47,7 @@ Central Better Auth setup:
 
 ### `middleware/security.ts` (auth route helpers)
 
-Used under `/api/auth` in `index.ts`:
-
-- `authRouteLimiter`: caps overall auth-route traffic per IP.
-- `authBruteForceLimiter`: stricter limits on sensitive paths (sign-in, reset, verification, etc.).
-- `authAuditLogger`: logs selected auth routes on response finish (method, path, status, duration, IP, optional user id). Request bodies are passed through `logSecurityEvent` so secrets can be redacted.
+Selected auth routes are recorded by `authAuditLogger` with sanitized path and request metadata before the app's rate policy guard. The app classifies email/password login, recovery flows, session reads, and other enabled auth actions into separate token buckets. Better Auth also applies its production rate limits. See [rate limiting](../../../docs/backend-architecture.md#5-rate-limiting-summary) for policies and limitations.
 
 ### `lib/security.ts`
 

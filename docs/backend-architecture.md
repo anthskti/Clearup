@@ -334,8 +334,9 @@ flowchart TD
 | **Middleware** | `src/middleware/requireAuth.ts` | `requireAuth` + `requireAdmin` — session validation, admin whitelist hydration |
 | **Middleware** | `src/middleware/requestLogger.ts` | Request ID and structured request completion logging; runs before CORS and route middleware |
 | **Lib** | `src/lib/logger.ts` | Pino configuration, redaction, safe error serialization, and application error reporting |
-| **Middleware** | `src/middleware/rateLimits.ts` | Separate catalog IP token bucket and global IP rate limit for other routes |
+| **Middleware** | `src/middleware/rateLimits.ts` | App IP token buckets and fixed-window limits, plus global IP rate limit |
 | **Lib** | `src/lib/tokenBucket.ts` | Bounded process-local token buckets with continuous refill and idle cleanup |
+| **Config / lib** | `src/config/rateLimitPolicies.ts`, `src/lib/requestRateLimitPolicy.ts` | Central policy values and method/path classification for app bucket dispatch |
 | **Middleware** | `src/middleware/security.ts` | Auth route rate limiting, brute-force limiter, audit logger |
 | **Middleware** | `src/middleware/parseCsvBody.ts` | Multipart CSV parser for admin product import |
 | **Middleware** | `src/middleware/requireMutationHeader.ts` | CSRF-style header check on mutation routes |
@@ -364,19 +365,26 @@ See [Backend logging](backend-logging.md) for log fields, event categories, rete
 
 ## 5. Rate Limiting Summary
 
-| Limiter | Scope | Window | Max |
-|---|---|---|---|
-| `globalLimiter` | App routes except public catalog GET/HEAD paths | 15 min | 300 req |
-| `createCatalogLimiter` | Public catalog GET/HEAD paths | Continuous refill | Burst 20, refill 2 tokens/sec per IP |
-| `authRouteLimiter` | `/api/auth/*` | 15 min | 120 req |
-| `authBruteForceLimiter` | Sign-in / reset / verify paths | 15 min | 15 req |
-| `createStrictLimiter` | `POST /api/routines` + `POST /api/merchant` | 1 hour | 10 req |
-| `routineMutateLimiter` | `PUT/PATCH/DELETE /api/routines` | 15 min | 60 req |
+The backend configures app policies centrally in `backend/src/config/rateLimitPolicies.ts`. All app policies currently key on IP: token buckets use Express `req.ip`, normalized with `ipKeyGenerator` (IPv4 address or IPv6 /56 subnet), and fixed-window limits use the limiter's IP key. User-ID keys are not implemented. Known classified routes use one app bucket instead of the shared global bucket.
 
-The AWS SES webhook route is mounted before the limiters and remains outside their budgets. Public catalog GET/HEAD requests share a separate token bucket per IP across listings, brands, product details, and offer lookups; they do not consume the global budget. Each request costs one token, including requests that later fail validation. Auth, unknown paths, administrative routes, and all mutations remain subject to the existing global and route-specific limits.
+| App policy | Scope | Capacity / refill |
+|---|---|---|
+| `catalog` | Catalog product GET/HEAD routes and merchant directory GET/HEAD | Burst 20; 2 tokens/sec |
+| `sessionReads` | Session reads, including `get-session`, `/me`, session and account lists | Burst 30; 1 token/sec |
+| `login` | Email/password login | Burst 5; 1 token/100 sec |
+| `recovery` | Registration, password reset, and verification flows (shared bucket) | Burst 5; 1 token/60 sec |
+| `otherAuth` | Google OAuth/callback, logout, profile/account changes, and remaining enabled auth actions | Burst 20; 1 token/sec |
 
-`CATALOG_BUCKET_CAPACITY` defaults to 20 (positive safe integer); `CATALOG_BUCKET_REFILL_PER_SECOND` defaults to 2 (finite positive number with a finite full-refill duration in milliseconds). Invalid configuration prevents startup. These are initial tuning values, not measured instance capacity. Update the environment and restart the backend to change them. Rejected requests return 429, `Cache-Control: no-store`, and `Retry-After` seconds rounded up to at least one. Fixed-window `RateLimit-*` headers are not emitted for catalog buckets.
+Unknown auth actions retain the global limiter and also use the `otherAuth` fallback. Other unmatched routes use the global IP limit (300 requests / 15 minutes). Fixed app limits remain: routine creation 10/hour and routine mutations 60/15 minutes. The existing shared 10/hour creation budget is retained. Routine and admin limits are still IP-based; user-keyed policies are not implemented.
 
-Catalog keys use Express's resolved `req.ip` and the installed limiter's IP normalization (IPv4 address or IPv6 /56 subnet). Next.js server requests share their egress IP's bucket. Confirm `trust proxy: 1` matches the deployment's proxy chain and ensure the origin cannot accept spoofed forwarding headers through an untrusted path. The application does not extract the leftmost forwarded address itself.
+Better Auth applies its own internal production rate limits as well. Its defaults are enabled in production and disabled in development, and can be stricter than the app bucket (for example, sign-in 3/10 seconds and email request 3/minute). Every inbound `/api/auth` HTTP request passes through the Express app policy guards before reaching Better Auth, where applicable. Direct in-process calls such as `auth.api.getSession` in `requireAuth` bypass those Express auth guards; they are still covered by the app policy for the outer API request, but do not consume an additional auth bucket. App `Retry-After` and Better Auth's exposed `X-Retry-After` may differ.
 
-Buckets live in memory per backend process, reset on restart, and impose no server-wide total ceiling. The store holds at most 10,000 IP/subnet keys. Traffic triggers cleanup at most once every 30 seconds, removing buckets idle for at least 60 seconds only when they could fully refill. At capacity, new keys receive 429 with a retry hint for the next cleanup; existing keys retain their balances. The hint does not guarantee storage will have become available. Shared multi-instance enforcement and visitor identity behind Next.js require deployment infrastructure; Redis and automatic policy adjustment are not included.
+To tune a policy, edit its values in `rateLimitPolicies.ts` and redeploy. For example, changing the login burst or refill rate looks like:
+
+```ts
+login: { capacity: 5, refillPerSecond: 1 / 100, maxBuckets: 2_000 },
+```
+
+App bucket responses use 429 and expose `Retry-After` and `X-Retry-After`; known classified requests do not also consume the global bucket. Unknown auth actions use the `otherAuth` bucket and remain subject to global limiting. The AWS SES webhook remains mounted before these limiters. Auth requests are audited before app guards, with rejected attempts sanitized; rate rejections emit `rate_limit.exceeded` with the policy identifier.
+
+The five token-bucket stores are process-local and cap at 2,000 keys each (10,000 combined); they reset on restart and do not provide shared enforcement across backend instances. Traffic triggers cleanup at most once every 30 seconds, removing buckets idle at least 60 seconds only when fully refilled. When a store is full, new keys receive 429 with a retry hint for the next cleanup; existing keys retain their balances. The key cap bounds bucket entries, not total process memory. Next.js server traffic shares its egress IP's budget. Confirm `trust proxy: 1` matches the deployment proxy chain and prevent direct untrusted access that could spoof forwarding headers. There is no Redis backing or automatic policy tuning.
