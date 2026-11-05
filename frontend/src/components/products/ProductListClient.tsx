@@ -389,7 +389,7 @@ export default function ProductListClient({
   );
 
   return (
-    <div className="relative min-h-screen bg-[#F8F8F8] pt-24">
+    <div className="relative mt-18 min-h-screen bg-[#F8F8F8] pt-8">
       <ProceduralWave 
         seed={6}
         height={190} 

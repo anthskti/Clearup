@@ -1,11 +1,12 @@
 # Clearup design cleanup plan
 
-This is the implementation companion to [apple-design.md](./apple-design.md). The review records the original findings; this page tracks agreed direction, completed work, and the next batches. Review each batch on desktop and phone before moving on.
+This is the implementation companion to [apple-design.md](./apple-design.md). The review records findings and subsequent design decisions; this page tracks agreed direction, completed work, and the next batches. Review each batch on desktop and phone before moving on.
 
 ## Agreed direction
 
 - Use Red Hat Display for interface text and the shared type scale.
 - Keep the hero's waves and gradients. Resolve their apparent offset during the home page batch.
+- On catalog and product-detail pages, start the procedural wave below the opaque 72px header and inset content 64px into the page so the wave remains visible.
 - Make design changes in small page or feature batches.
 
 ## Completed
@@ -46,11 +47,17 @@ Kept the hero artwork and slogan. Removed the trust banner. On phone, the hero b
 ## Batch 4 — product detail and merchant comparison
 
 **Review section:** [Product detail](./apple-design.md#4-product-detail).  
-**Likely files:** `src/components/product/ProductClient.tsx`, `src/components/ui/ProductGallery.tsx`, and shared product image presentation if needed.
+**Status: complete for this iteration.** Updated `src/components/product/ProductClient.tsx` and `src/components/ui/ProductGallery.tsx`.
 
-**Work:** Lead with product name, image, useful price/offer information, and Add to Routine. Move database status to quiet metadata or remove it from the shopper-facing decision area. Make gallery controls visible on touch. Replace the four-column phone merchant table with scannable offer rows; keep a comparison table on desktop. Make missing images and missing offers intentional states.
+**Work:**
 
-**Approval point:** Confirm the order of price, merchant, and Add to Routine, and whether swipe is worth adding to the gallery.
+1. In `ProductClient.tsx`, put brand and product name inline in one `h1`, matching the catalog's separator and natural wrapping. Keep the Database Status gimmick beside Add to Routine without implying it verifies current merchant availability.
+2. In `ProductGallery.tsx`, retain the original thumbnail grid and quiet arrows. A single-image product keeps its thumbnail with invisible, noninteractive arrows; multiple images show arrows on hover, focus, and touch. Keep the square phone stage and defer swipe.
+3. In `ProductClient.tsx`, use “Product details,” preserve every configured fact, and show “Not listed” for missing values. Give the four sections one consistent line-above-heading treatment, including the Full ingredients disclosure. Retain the merchant table and logos on phone with compact type and cell padding. Provide intentional states for missing images and offers. Start the page wrapper below the opaque header and leave 64px before the product content so the procedural wave is visible.
+
+**Scope:** Frontend presentation only; no schema, API, or auth changes. Change the phone gallery proportions or merchant table structure only if narrow-screen checks show a concrete problem.
+
+**Verification:** Product 45 and the catalog were checked in Chrome DevTools at 320px. Both page wrappers and procedural waves begin below the 72px header; content starts at y=136px, 64px into the page. The product table fits the 288px content width and both merchant rows remain readable. Its one-image gallery has the original thumbnail and invisible arrows. Lint and build passed. Multi-image and missing-data states still need a live product example.
 
 ## Batch 5 — routine builder and save flow
 
