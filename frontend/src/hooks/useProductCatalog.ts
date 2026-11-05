@@ -3,13 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PRODUCT_PRICE_SLIDER_MAX } from "@/constants/productFilters";
+import { useCatalogUrlNavigation } from "@/hooks/useCatalogUrlNavigation";
+import {
+  catalogBasePath,
+  catalogIdentity,
+  normalizeQuery,
+  queryFor,
+  type CatalogScope,
+} from "@/lib/productCatalogUrl";
 import {
   EMPTY_PRODUCT_LIST_FILTERS,
   hasActiveProductListFilters,
-  parseGlobalProductListFiltersFromSearchParams,
-  parseProductListFiltersFromSearchParams,
-  parseCatalogPage,
-  productListFiltersToSearchParams,
   setProductPriceRange,
 } from "@/lib/productListFilters";
 import type {
@@ -18,43 +22,7 @@ import type {
   ProductListFilters,
 } from "@/types/product";
 
-export type CatalogScope =
-  | { type: "all" }
-  | { type: "category"; slug: string };
-
-function catalogBasePath(scope: CatalogScope): string {
-  return scope.type === "all"
-    ? "/products"
-    : `/products/category/${scope.slug}`;
-}
-
-function queryFor(
-  filters: ProductListFilters,
-  search: string,
-  page = 1,
-): string {
-  const query = productListFiltersToSearchParams(filters, search);
-  if (page > 1) query.set("page", String(page));
-  return query.toString();
-}
-
-function canonicalQuery(query: string): string {
-  const params = new URLSearchParams(query);
-  params.sort();
-  return params.toString();
-}
-
-function normalizeQuery(
-  params: URLSearchParams,
-  scopeType: CatalogScope["type"],
-  scopeSlug: string,
-): string {
-  const values = Object.fromEntries(params.entries());
-  const filters = scopeType === "all"
-    ? parseGlobalProductListFiltersFromSearchParams(values)
-    : parseProductListFiltersFromSearchParams(values, scopeSlug);
-  return queryFor(filters, values.search ?? "", parseCatalogPage(values.page));
-}
+export type { CatalogScope };
 
 interface UseProductCatalogOptions {
   scope: CatalogScope;
@@ -83,6 +51,7 @@ export function useProductCatalog({
   const scopeType = scope.type;
   const scopeSlug = scope.type === "category" ? scope.slug : "";
   const basePath = catalogBasePath(scope);
+
   const [filters, setFilters] = useState(initialFilters);
   const [draftPriceRange, setDraftPriceRange] = useState<[number, number]>([
     initialFilters.minPrice,
@@ -95,29 +64,54 @@ export function useProductCatalog({
   const [page, setPage] = useState(initialPage);
   const [error, setError] = useState<CatalogError | null>(catalogError);
   const [retryNow, setRetryNow] = useState(0);
-  const [isNavigating, setIsNavigating] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const queuedQuery = useRef<string | null>(null);
-  const hasPendingNavigation = useRef(false);
-  const navigationFromQuery = useRef("");
+
+  // Draft version guards: only overwrite search/price drafts from SSR when the
+  // user has not edited them since navigation started.
   const inputDraftVersion = useRef(0);
   const priceDraftVersion = useRef(0);
-  const navigationDraftVersions = useRef({ input: 0, price: 0 });
+  const versionsAtNavStart = useRef({ input: 0, price: 0 });
+
+  const snapshotDraftVersions = useCallback(() => {
+    versionsAtNavStart.current = {
+      input: inputDraftVersion.current,
+      price: priceDraftVersion.current,
+    };
+  }, []);
+
+  const bumpDraftVersionsForHistory = useCallback(() => {
+    inputDraftVersion.current += 1;
+    priceDraftVersion.current += 1;
+    snapshotDraftVersions();
+  }, [snapshotDraftVersions]);
+
   const committedQuery = normalizeQuery(
     new URLSearchParams(searchParams.toString()),
     scopeType,
     scopeSlug,
   );
-  const committedIdentity = `${pathname}?${canonicalQuery(committedQuery)}`;
-  const resultIdentity = `${basePath}?${canonicalQuery(resultQuery)}`;
+  const committedIdentity = catalogIdentity(pathname, committedQuery);
+  const resultIdentity = catalogIdentity(basePath, resultQuery);
+
+  const {
+    isNavigating,
+    navigateNow,
+    scheduleReplace,
+    cancelScheduled,
+    shouldAcceptServerResult,
+    markSettled,
+  } = useCatalogUrlNavigation({
+    basePath,
+    pathname,
+    committedQuery,
+    scopeType,
+    scopeSlug,
+    onBeginNavigation: snapshotDraftVersions,
+    onBrowserHistoryChange: bumpDraftVersionsForHistory,
+  });
 
   useEffect(() => {
-    if (
-      resultIdentity !== committedIdentity ||
-      queuedQuery.current !== null ||
-      (hasPendingNavigation.current && committedIdentity === navigationFromQuery.current)
-    ) {
+    if (!shouldAcceptServerResult(resultIdentity, committedIdentity)) {
       return;
     }
 
@@ -131,14 +125,13 @@ export function useProductCatalog({
     }
     setError(catalogError);
     setIsRetrying(false);
-    hasPendingNavigation.current = false;
-    setIsNavigating(false);
+    markSettled();
     setFilters(initialFilters);
-    if (priceDraftVersion.current === navigationDraftVersions.current.price) {
+    if (priceDraftVersion.current === versionsAtNavStart.current.price) {
       setDraftPriceRange([initialFilters.minPrice, initialFilters.maxPrice]);
     }
     setSearchQuery(initialSearch);
-    if (inputDraftVersion.current === navigationDraftVersions.current.input) {
+    if (inputDraftVersion.current === versionsAtNavStart.current.input) {
       setInputValue(initialSearch);
     }
   }, [
@@ -151,32 +144,9 @@ export function useProductCatalog({
     catalogError,
     initialFilters,
     initialSearch,
+    shouldAcceptServerResult,
+    markSettled,
   ]);
-
-  useEffect(() => {
-    const onPopState = () => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = null;
-      queuedQuery.current = null;
-      inputDraftVersion.current += 1;
-      priceDraftVersion.current += 1;
-      navigationDraftVersions.current = {
-        input: inputDraftVersion.current,
-        price: priceDraftVersion.current,
-      };
-      const nextQuery = normalizeQuery(
-        new URLSearchParams(window.location.search),
-        scopeType,
-        scopeSlug,
-      );
-      const nextIdentity = `${window.location.pathname}?${canonicalQuery(nextQuery)}`;
-      navigationFromQuery.current = committedIdentity;
-      hasPendingNavigation.current = nextIdentity !== committedIdentity;
-      setIsNavigating(nextIdentity !== committedIdentity);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [committedIdentity, scopeType, scopeSlug]);
 
   useEffect(() => {
     if (!error?.retryAt) return;
@@ -185,13 +155,6 @@ export function useProductCatalog({
     return () => clearTimeout(timeout);
   }, [error]);
 
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
-
   const navigate = useCallback(
     (
       nextFilters: ProductListFilters,
@@ -199,90 +162,52 @@ export function useProductCatalog({
       nextPage = 1,
       replace = false,
     ) => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = null;
-      queuedQuery.current = null;
-      const query = queryFor(nextFilters, search, nextPage);
-      navigationFromQuery.current = `${pathname}?${canonicalQuery(committedQuery)}`;
-      navigationDraftVersions.current = {
-        input: inputDraftVersion.current,
-        price: priceDraftVersion.current,
-      };
-      const sameQuery = canonicalQuery(query) === canonicalQuery(committedQuery);
-      setIsNavigating(!sameQuery);
-      hasPendingNavigation.current = !sameQuery;
-      if (sameQuery) return;
-      const url = `${basePath}${query ? `?${query}` : ""}`;
-      if (replace) router.replace(url, { scroll: false });
-      else router.push(url, { scroll: false });
+      navigateNow(queryFor(nextFilters, search, nextPage), replace);
     },
-    [basePath, committedQuery, pathname, router],
-  );
-
-  const scheduleFilterNavigation = useCallback(
-    (nextFilters: ProductListFilters, search: string) => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = null;
-      const query = queryFor(nextFilters, search);
-      queuedQuery.current = query;
-      navigationFromQuery.current = `${pathname}?${canonicalQuery(committedQuery)}`;
-      navigationDraftVersions.current = {
-        input: inputDraftVersion.current,
-        price: priceDraftVersion.current,
-      };
-      const sameQuery = canonicalQuery(query) === canonicalQuery(committedQuery);
-      setIsNavigating(!sameQuery);
-      hasPendingNavigation.current = !sameQuery;
-      if (sameQuery) {
-        queuedQuery.current = null;
-        return;
-      }
-      timer.current = setTimeout(() => {
-        timer.current = null;
-        queuedQuery.current = null;
-        hasPendingNavigation.current = true;
-        const url = `${basePath}${query ? `?${query}` : ""}`;
-        router.replace(url, { scroll: false });
-      }, 250);
-    },
-    [basePath, committedQuery, pathname, router],
+    [navigateNow],
   );
 
   const updateFilters = useCallback(
     (next: ProductListFilters) => {
       setFilters(next);
-      scheduleFilterNavigation(next, searchQuery);
+      scheduleReplace(queryFor(next, searchQuery));
     },
-    [scheduleFilterNavigation, searchQuery],
+    [scheduleReplace, searchQuery, setFilters],
   );
 
   const applyPriceFilter = useCallback(() => {
     const next = setProductPriceRange(filters, draftPriceRange);
     setFilters(next);
     navigate(next, searchQuery);
-  }, [draftPriceRange, filters, navigate, searchQuery]);
+  }, [draftPriceRange, filters, navigate, searchQuery, setFilters]);
 
-  const updateDraftPriceRange = useCallback((range: [number, number]) => {
-    priceDraftVersion.current += 1;
-    setDraftPriceRange(range);
-  }, []);
+  const updateDraftPriceRange = useCallback(
+    (range: [number, number]) => {
+      priceDraftVersion.current += 1;
+      setDraftPriceRange(range);
+    },
+    [setDraftPriceRange],
+  );
 
   const commitSearch = useCallback(
     (query: string) => {
-      if (timer.current) clearTimeout(timer.current);
+      cancelScheduled();
       const trimmed = query.trim();
       inputDraftVersion.current += 1;
       setInputValue(trimmed);
       setSearchQuery(trimmed);
       navigate(filters, trimmed);
     },
-    [filters, navigate],
+    [cancelScheduled, filters, navigate, setInputValue, setSearchQuery],
   );
 
-  const onInputChange = useCallback((value: string) => {
-    inputDraftVersion.current += 1;
-    setInputValue(value);
-  }, []);
+  const onInputChange = useCallback(
+    (value: string) => {
+      inputDraftVersion.current += 1;
+      setInputValue(value);
+    },
+    [setInputValue],
+  );
 
   const clearAll = useCallback(() => {
     setFilters(EMPTY_PRODUCT_LIST_FILTERS);
@@ -290,13 +215,13 @@ export function useProductCatalog({
     setSearchQuery("");
     setInputValue("");
     navigate(EMPTY_PRODUCT_LIST_FILTERS, "");
-  }, [navigate]);
+  }, [navigate, setDraftPriceRange, setFilters, setInputValue, setSearchQuery]);
 
   const retry = useCallback(() => {
     if (isRetrying || (error?.retryAt && retryNow < error.retryAt)) return;
     setIsRetrying(true);
     router.refresh();
-  }, [error, isRetrying, retryNow, router]);
+  }, [error, isRetrying, retryNow, router, setIsRetrying]);
 
   const goToPage = useCallback(
     (nextPage: number) =>
@@ -328,7 +253,8 @@ export function useProductCatalog({
     goToPage,
     error,
     retry,
-    retryDisabled: isRetrying || Boolean(error?.retryAt && retryNow < error.retryAt),
+    retryDisabled:
+      isRetrying || Boolean(error?.retryAt && retryNow < error.retryAt),
     isRetrying,
   };
 }

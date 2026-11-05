@@ -31,7 +31,7 @@ The threshold filters records below the chosen level. It is not a volume cap. Ra
 Pino adds `time` (Unix epoch milliseconds), `level`, `service` (`clearup-api`), and `environment` to records. Request completion records also have:
 
 - `requestId`: generated for every request and returned in the `X-Request-ID` response header.
-- `req`: method, request ID, and path with the query string removed.
+- `req`: method, request ID, and path with the query string removed and password-reset token segments redacted.
 - `res.statusCode` and `durationMs`.
 - `msg`: a short human-readable summary; use `event` and other fields for filtering.
 
@@ -89,6 +89,8 @@ During a temporary smoke run, 312 HTTP requests produced 312 completion records 
 
 ## Redaction and safe use
 
-The logger recursively redacts sensitive keys (case-insensitively), including passwords, tokens, authorization, cookies, secrets, email, body, headers, query, and URL. Request completion serializers omit query strings, and error reporting omits raw error messages and stacks. Even with these protections, do not put credentials, personal data, request payloads, or secrets into free-form log messages or new metadata fields. Prefer a stable event name and small non-sensitive fields.
+The logger recursively redacts sensitive keys (case-insensitively), including passwords, tokens, authorization, cookies, secrets, email, body, headers, query, and URL. Completion request fields, completion messages, and auth audit paths use the shared `sanitizeLogPath` helper: it removes query strings and replaces password-reset token segments with `[REDACTED]`. For example, `/api/auth/reset-password/secret-token?callbackURL=...` is logged as `/api/auth/reset-password/[REDACTED]`. Mounted auth audit paths receive the same protection for `/reset-password/:token`. This only changes log output; the request URL used by authentication stays intact.
+
+Error reporting omits raw error messages and stacks. Even with these protections, do not put credentials, personal data, request payloads, or secrets into free-form log messages or new metadata fields. Prefer a stable event name and small non-sensitive fields.
 
 Errors are reported through `reportError`, which is the safe boundary for application error records. It currently writes to Pino; Sentry forwarding can be added there later without changing each call site.

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import pinoHttp from "pino-http";
 import logger from "../lib/logger";
+import { sanitizeLogPath } from "../lib/logPath";
 
 export const requestLogger = pinoHttp({
   logger,
@@ -18,26 +19,20 @@ export const requestLogger = pinoHttp({
     req: (req) => ({
       id: req.id,
       method: req.method,
-      path: safePath(req.path ?? req.url),
+      path: sanitizeLogPath(req.path ?? req.url),
     }),
     res: (res) => ({ statusCode: res.statusCode }),
   },
   customLogLevel: (req, res, err) => {
-    if (safePath(req.url) === "/health" && res.statusCode < 400) return "silent";
+    if (sanitizeLogPath(req.url) === "/health" && res.statusCode < 400) return "silent";
     if (err || res.statusCode >= 500) return "error";
     return res.statusCode >= 400 ? "warn" : "info";
   },
-  customSuccessMessage: (req, res) => `${req.method} ${safePath(req.url)} ${res.statusCode}`,
-  customErrorMessage: (req, res) => `${req.method} ${safePath(req.url)} ${res.statusCode}`,
+  customSuccessMessage: (req, res) => `${req.method} ${sanitizeLogPath(req.url)} ${res.statusCode}`,
+  customErrorMessage: (req, res) => `${req.method} ${sanitizeLogPath(req.url)} ${res.statusCode}`,
   customErrorObject: (_req, _res, _error, value) => {
     const { err: _err, error: _errorValue, ...completion } = value;
     return completion;
   },
   quietReqLogger: true,
 });
-
-function safePath(url: string | undefined): string {
-  if (!url) return "/";
-  const query = url.indexOf("?");
-  return (query === -1 ? url : url.slice(0, query)).slice(0, 512) || "/";
-}

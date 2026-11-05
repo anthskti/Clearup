@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { getClientIp, logSecurityEvent } from "../lib/security";
+import { sanitizeLogPath } from "../lib/logPath";
 
 // Rate limit for auth routes
 export const authRouteLimiter = rateLimit({
@@ -38,7 +39,7 @@ export function authAuditLogger(req: Request, res: Response, next: NextFunction)
   res.on("finish", () => {
     logSecurityEvent("auth.route", {
       method: req.method,
-      path,
+      path: sanitizeLogPath(path),
       statusCode: res.statusCode,
       durationMs: Date.now() - startedAt,
       ip: getClientIp(req),

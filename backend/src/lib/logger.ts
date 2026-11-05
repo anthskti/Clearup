@@ -1,4 +1,5 @@
 import pino, { type Logger } from "pino";
+import { sanitizeLogPath } from "./logPath";
 
 const configuredLevel = process.env.LOG_LEVEL;
 const allowedLevels = ["fatal", "error", "warn", "info", "debug", "trace", "silent"];
@@ -50,16 +51,14 @@ function sanitize(
       const normalized = key.toLowerCase();
       if (sensitiveKeys.has(normalized)) return [key, "[REDACTED]"];
       if (normalized === "req" && nested && typeof nested === "object") {
-        const req = nested as { id?: unknown; method?: unknown; url?: unknown };
+        const req = nested as { id?: unknown; method?: unknown; url?: unknown; path?: unknown };
+        const path = typeof req.path === "string" ? req.path : req.url;
         return [
           key,
           {
             id: req.id,
             method: req.method,
-            path:
-              typeof req.url === "string"
-                ? req.url.split("?", 1)[0]
-                : undefined,
+            path: typeof path === "string" ? sanitizeLogPath(path) : undefined,
           },
         ];
       }
