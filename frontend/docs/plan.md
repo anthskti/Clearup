@@ -62,11 +62,23 @@ Kept the hero artwork and slogan. Removed the trust banner. On phone, the hero b
 ## Batch 5 — routine builder and save flow
 
 **Review section:** [Routine builder](./apple-design.md#5-routine-builder).  
-**Likely files:** `src/app/(main)/builder/page.tsx`, `src/components/routine/BuilderProductNotesSection.tsx`, `SaveRoutineModal.tsx`, and `AddToRoutineButton.tsx`.
+**Status: implemented, awaiting visual sign-off.** Updated the builder, notes and save components, shared add/share controls, and draft persistence hooks. The latest save-modal polish removes the duplicate visible “Saving your routine…” line; the button remains the visible progress indicator, while assistive technology still receives a status announcement.
 
-**Work:** Reduce empty-step weight, make selected products and the next action easy to scan, and give phone users a visible total/save action. Keep optional AM/PM notes secondary. Replace browser alerts with local error, progress, and success feedback. Make draft persistence understandable without promising it when storage fails.
+**Agreed layout:** Keep the category order, desktop columns, phone cards, dashed selection controls, visible Morning/Night notes, and total/save panel at the end. Keep “Build your routine” and return to Builder after adding a product. Category rails, selected-first layouts, collapsed notes, and sticky save bars are outside this iteration.
 
-**Approval point:** Confirm whether the phone total/save control should stay visible while scrolling and whether Add to Routine should continue to navigate immediately to Builder.
+**Implemented:** The wave begins below the opaque header. The title is 24px on phone and 36px on desktop, with a short explanation that categories can be skipped. Labels use sentence case and 14px text; the notes heading is 18px. Product names use the catalog's inline brand and CSS dot. Remove controls have product-specific names and 44px targets. “Adding…” and “Saving…” communicate progress, and errors/sign-in guidance appear beside the action. The save dialog has labeled fields, an optional description, a public-sharing notice, keyboard focus management, and “View routine” as its primary success action. Copying the share link confirms success or failure.
+
+**Drafts:** Products, Morning/Night notes, and skin-type tags persist on this device. The draft status reflects successful storage writes and warns when storage fails. Saving successfully clears all three draft parts.
+
+**Signed-out save panel:** Explain the account requirement before any click and show “Log in to save” as the primary action. Show “Save routine” for signed-in users and disable the action while the session is loading.
+
+**Notes panel follow-up — implemented:** Morning/Night groups use 16px headings and outlined, 44px “Add note” buttons in ClearUp blue. Empty and fully assigned states explain why an action is unavailable. The book icon and timeline rails are removed. Builder note entries keep step numbers, the catalog's CSS dot, a usage field, and an explicit “Remove note” action. The shared note header has a builder-only variant so routine viewing keeps its current presentation. The note picker now matches the save dialog, with native radio selection, a checkmark, labeled usage text, bounded scrolling, Escape, focus wrapping, and focus restoration.
+
+**Notes verification:** Chrome DevTools checks at 320px and 1440px covered empty groups, adding the last eligible Morning note, independent Night eligibility, editing/reloading, and removing a note while retaining its product. The picker fits the phone viewport, and Tab/Shift+Tab/Escape keep focus predictable. No backend or storage contract changes were needed for this follow-up.
+
+**Verification:** Frontend lint and build passed after the latest modal polish. Chrome DevTools checks covered empty and populated layouts at 320px and 1440px, product/note/tag restoration after reload, signed-out save guidance, and simulated storage failures for drafts and adding products. Authenticated save progress, failure, retry, success, Escape, and focus wrapping were checked with browser-only mocked responses in an isolated context; no routine was published during those checks. A real signed-in save remains to be checked.
+
+**Deferred:** Missing-price handling belongs to the backend follow-up; no price-exclusion notice was added.
 
 ## Batch 6 — routine browsing, detail, and personal library
 

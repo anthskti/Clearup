@@ -6,15 +6,16 @@ const SLOT_LABELS = [
   "Toner",
   "Essence",
   "Serum",
+  "Eye care",
   "Moisturizer",
   "Sunscreen",
 ];
 
 export default function BuilderSkeleton() {
   return (
-    <div className="relative min-h-screen w-full bg-[#F8F8F8]">
+    <div className="relative mt-18 min-h-screen w-full bg-[#F8F8F8]">
       <ProceduralWave seed={3} height={190} />
-      <div className="relative z-1 mx-auto max-w-6xl px-6 pt-20 pb-20">
+      <div className="relative z-1 mx-auto max-w-6xl px-4 sm:px-6 pt-16 pb-20">
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-11 w-full max-w-md rounded-md" />

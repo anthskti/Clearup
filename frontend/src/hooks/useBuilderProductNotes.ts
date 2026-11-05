@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -11,6 +10,7 @@ import type {
 } from "@/types/builder";
 import type { Product, ProductCategory } from "@/types/product";
 import type { TimeOfDay } from "@/types/routine";
+import { useBuilderDraftPersistence } from "@/hooks/useBuilderDraftPersistence";
 
 const STORAGE_KEY = "builder-product-notes";
 const emptySubscribe = () => () => {};
@@ -83,14 +83,12 @@ function toDisplayRow(
   };
 }
 
-function persistNotes(entries: BuilderProductNoteEntry[]) {
-  if (typeof window === "undefined") return;
+function serializeNotes(entries: BuilderProductNoteEntry[]) {
   const active = dropEmptyEntries(entries);
   if (active.length === 0) {
-    localStorage.removeItem(STORAGE_KEY);
-    return;
+    return null;
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(active));
+  return JSON.stringify(active);
 }
 
 function readStoredEntries(): BuilderProductNoteEntry[] {
@@ -115,11 +113,7 @@ export function useBuilderProductNotes() {
     setIsLoaded(true);
   }
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    const id = window.setTimeout(() => persistNotes(entries), 400);
-    return () => window.clearTimeout(id);
-  }, [entries, isLoaded]);
+  const persistence = useBuilderDraftPersistence(STORAGE_KEY, entries, isLoaded, serializeNotes);
 
   const addProductNote = useCallback(
     (
@@ -201,9 +195,6 @@ export function useBuilderProductNotes() {
 
   const clearProductNotes = useCallback(() => {
     setEntries([]);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY);
-    }
   }, []);
 
   const morningNotes = useMemo(
@@ -227,6 +218,7 @@ export function useBuilderProductNotes() {
   return {
     entries,
     isLoaded,
+    persistence,
     morningNotes,
     eveningNotes,
     addProductNote,

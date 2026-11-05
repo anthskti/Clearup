@@ -133,29 +133,29 @@ Phone:    Products
 
 ### Steps and selection
 
-- **Desktop — medium impact.** The table metaphor gives good order but eight category rows with large dashed empty controls can make the page feel unfinished. Group routine steps into a compact sequence. Show the current products first, with one consistent “Add product” affordance per category, and avoid repeated placeholder price dashes.
-- **Phone — high impact.** Each category becomes a separate white card. Empty cards are tall, and the builder then adds a large notes panel and a total/save panel. Prioritize selected steps and the next empty slot. Use clear step numbers or a compact category rail so the user can tell how far they have progressed. The remove `X` needs a visible label or accessible name and a target large enough to tap.
-- **Add flow — high impact.** Adding a product from the catalog stores it then navigates to Builder. The Add button immediately disables but still says “Add”. Use immediate acknowledgment such as “Adding…” and then show the new product in context; preserve the user's place if they return to the catalog. This is an interaction to verify on a device before deciding whether the route jump is the best behavior.
+- **Layout — agreed direction.** Keep the fixed category order, desktop columns, phone cards, and dashed selection controls. Their stable positions make the routine understandable. The earlier category-rail and selected-first proposals are deferred. Explain that categories can be skipped. Keep “Build your routine,” using 24px phone and 36px desktop type, and position the wave below the opaque header.
+- **Selected products — implemented.** Match the catalog's inline brand, CSS dot, and product name. Give each remove button a product-specific accessible name and a 44px target. Retain the existing merchant and price presentation.
+- **Add flow — implemented.** Keep the return to Builder. Show “Adding…” while adding and show a local message if storage prevents the add.
 
 ### Notes, totals, and saving
 
-- **Notes — medium impact.** The “User Routine notes” area is optional but visually large and present even for an empty routine. Make it a secondary “Add morning or evening notes” section, expandable when someone wants it. Morning amber and night violet are useful semantic accents; keep text contrast strong and do not rely on color alone.
-- **Total — medium impact.** The total panel has `bottom-0` and `lg:top-20` classes but no `fixed` or `sticky` positioning, so it reads as an ordinary block at the bottom of the page. Decide whether the total is a persistent action. On phone, a compact bottom bar with total + Save could shorten the path to completion, with safe-area padding and enough space left at the end of content. On desktop, a summary rail or final panel is enough.
-- **Saving — high impact.** Empty routine and unauthenticated save paths use browser `alert()`, then the save modal uses another `alert()` on failure. Replace these with inline messages adjacent to Save. The modal should show a clear name field label, optional description, an explicit public/share status, progress, and a success view whose primary next step is “View routine”. The current success view leads with “Close” and then a share link.
-- **Loss prevention.** The builder persists selections in local storage, which supports agency. Make that visible with a quiet “Draft saved on this device” status, especially before sign-in or navigation. Keep the message truthful if persistence fails.
+- **Notes — implemented.** Keep the visible Morning/Night panel and its amber/violet accents. “Routine notes” is 18px; time-period headings are 16px and outlined “Add note” buttons are 14px with 44px targets and ClearUp blue. Empty and fully assigned groups have explicit guidance. Step numbers and simple separators replace the timeline rails; note headers use the catalog's CSS dot. Usage fields are 16px on phone and 14px on desktop, with an explicit “Remove note” action. The note picker matches the save dialog and uses native radios, a selection checkmark, a persistent usage label, bounded scrolling, and keyboard focus management.
+- **Total — agreed direction.** Keep the final summary panel in normal page flow. Use “Skin types,” “Estimated total,” and “Save routine” consistently. Missing-price behavior is deferred to backend work.
+- **Saving — implemented.** The signed-out panel explains the account requirement before any click and offers “Log in to save.” Signed-in users see “Save routine.” Inline guidance replaces browser alerts. The native modal dialog has labeled fields, optional description, a public-sharing notice, inline errors, Escape handling, and focus wrapping/restoration. During a save, the button itself shows “Saving…”; a separate visible status line was removed to avoid a stray duplicate message, while a screen-reader-only status remains. “View routine” leads the success view; sharing remains available with copy feedback. This follows `feedback.md › Best practices` (integrate status near the action) and `modality.md › Best practices` (a short, focused modal task).
+- **Loss prevention — implemented.** Products, notes, and skin-type tags persist locally. “Draft saved on this device” is tied to successful writes; a storage failure produces a warning instead. A successful routine save clears those draft parts.
 
 **Layout sketch**
 
 ```text
 Desktop:  Build your routine              [Draft saved]
-          [ordered category list + products] [total / Save]
-          [optional AM / PM notes]
+          [category / product / seller / price rows]
+          [visible Morning / Night notes]
+          [skin types / estimated total / Save routine]
 
 Phone:    Build your routine
-          [selected steps]
-          [next step + Add product]
-          [optional notes]
-          [bottom: estimated total     Save]
+          [category cards in their existing order]
+          [visible Morning / Night notes]
+          [skin types / estimated total / Save routine]
 ```
 
 ## 6. Community routines, saved routine detail, and profile routines
