@@ -234,9 +234,10 @@ export default function ProductListClient({
               className="line-clamp-2 min-w-0 text-sm leading-5"
             >
               <span className="font-medium text-zinc-600">{product.brand}</span>
-              <span aria-hidden="true" className="px-1 text-zinc-400">
-                ·
-              </span>
+              <span
+                aria-hidden="true"
+                className="mx-1 mb-[0.12em] inline-block size-0.5 shrink-0 rounded-full bg-zinc-500 align-middle"
+              />
               <span className="font-semibold text-zinc-900">
                 {product.name}
               </span>

@@ -69,8 +69,11 @@ export default function ProductClient({
           {/* 1. Brand and Product Name */}
           <div className="mb-6">
             <h1 className="mb-1 max-w-2xl text-2xl font-bold leading-tight text-zinc-900 sm:text-3xl lg:text-4xl">
-              <span className="font-medium text-zinc-600">{product.brand}</span>
-              <span className="px-2 font-normal text-zinc-400">{" · "}</span>
+              <span className="font-semibold text-zinc-600">{product.brand}</span>
+              <span
+                aria-hidden="true"
+                className="mx-1.5 mb-[0.12em] inline-block size-1.5 shrink-0 rounded-full bg-zinc-500 align-middle"
+              />
               <span>{product.name}</span>
             </h1>
             <ProductRating
