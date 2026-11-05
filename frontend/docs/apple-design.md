@@ -32,7 +32,7 @@ The values above are design targets, not an implementation spec. Check contrast 
 
 ## 2. Home page
 
-**Current direction:** Keep the hero artwork and slogan. The trust banner has been removed. Matches uses a horizontal scroll rail with arrow controls on phone and tablet and keeps the desktop grid; imagery is optional for a later pass. The phone hero begins below the fixed header, and its base color matches the next section. Motion and wave changes are deferred.
+**Current direction:** Keep the hero artwork and slogan. Matches uses a horizontal scroll rail with arrow controls on phone and tablet and keeps the desktop grid; imagery is optional for a later pass. The phone hero begins below the fixed header, and its base color matches the next section. A text-free procedural wave and blue gradient sit between Matches and the global footer; the former trust claims and product count remain removed. Motion and other wave changes are deferred.
 
 **Evidence:** `src/components/home/HeroSection.tsx`, `HowItWorks.tsx`, `FeaturedRoutinesSection.tsx`, `Matches.tsx`, `src/components/animations/ScrollReveal.tsx`, and `public/assets/landingpagedesktop.png`, `culandingmobile.png`.
 
@@ -53,7 +53,7 @@ The values above are design targets, not an implementation spec. Check contrast 
 
 - **Featured routines — medium impact.** Cards are primarily text, 48px product thumbnails, skin type pills, a price badge, and a full-width “View Routine” button. Give the routine a stronger visual preview: a horizontal lineup of 3–4 product images on a neutral stage, with title and author below. Keep the price as secondary metadata. The card or title should be the primary navigation target so the full-width button does not consume a large share of every card.
 - **Find your match — later review.** The phone and tablet rail scrolls horizontally with snap points, labeled arrow controls, and a visible next card. The cards remain tall and text-only; assess their density and whether “Acne Prone”, “Oil Control”, and “Sensitivity” clearly read as catalog filters before adding imagery.
-- **Trust banner — removed.** Its feature claims repeated earlier content, and the product count needed maintenance. Check the transition from Matches to the footer without it.
+- **Footer transition — implemented.** Keep the former trust banner's procedural wave and gradient as a decorative bridge from Matches into the global footer. It has no trust claims, product count, or empty copy area; the section is hidden from assistive technology.
 - **Motion — deferred.** `ScrollReveal` still moves each home section upward over 0.8s and has no reduced-motion branch. Review this separately; Matches now uses native horizontal scrolling instead of instant card replacement.
 
 **Layout sketch**

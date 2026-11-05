@@ -27,9 +27,9 @@ Builder leads the navigation. Products links directly to the catalog and exposes
 
 **Review section:** [Home page](./apple-design.md#2-home-page).
 
-Kept the hero artwork and slogan. Removed the trust banner. On phone, the hero begins below the fixed header, its background meets the next section without a color seam, and the headline and actions sit over the illustration with more breathing room. Matches now uses a swipeable, snapping row with labeled previous/next buttons on phone and tablet; desktop keeps its six-card grid.
+Kept the hero artwork and slogan. Removed the trust-banner copy and claims; restored its procedural wave and gradient as a text-free transition into the global footer. On phone, the hero begins below the fixed header, its background meets the next section without a color seam, and the headline and actions sit over the illustration with more breathing room. Matches now uses a swipeable, snapping row with labeled previous/next buttons on phone and tablet; desktop keeps its six-card grid.
 
-**Carry forward:** The artwork's wordmark duplicates the header logo, some headline/art overlap remains on narrow phones, Matches cards are tall, and the transition to the footer is abrupt. Review these with the three-step copy and featured cards when revisiting the home page. Wave motion and reduced-motion work are deferred. No new image set is needed for Matches.
+**Carry forward:** The artwork's wordmark duplicates the header logo, some headline/art overlap remains on narrow phones, and Matches cards are tall. Review these with the three-step copy and featured cards when revisiting the home page. Wave motion and reduced-motion work are deferred. No new image set is needed for Matches.
 
 ## Batch 3 — product catalog and search
 
