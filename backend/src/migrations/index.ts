@@ -1,6 +1,6 @@
-import path from "path";
 import { Umzug, SequelizeStorage } from "umzug";
 import sequelize from "../db";
+import logger from "../lib/logger";
 
 export function createMigrator() {
   return new Umzug({
@@ -15,7 +15,7 @@ export function createMigrator() {
       sequelize,
       tableName: "sequelize_meta",
     }),
-    logger: console,
+    logger,
   });
 }
 
@@ -23,10 +23,8 @@ export async function runMigrations(): Promise<void> {
   const migrator = createMigrator();
   const executed = await migrator.up();
   if (executed.length > 0) {
-    console.log(
-      `Applied migrations: ${executed.map((m) => m.name).join(", ")}`,
-    );
+    logger.info({ event: "database.migrations.applied", migrationCount: executed.length, migrations: executed.map((m) => m.name) }, "Database migrations applied");
   } else {
-    console.log("No pending migrations.");
+    logger.info({ event: "database.migrations.none" }, "No pending migrations");
   }
 }

@@ -42,6 +42,7 @@ export function authAuditLogger(req: Request, res: Response, next: NextFunction)
       statusCode: res.statusCode,
       durationMs: Date.now() - startedAt,
       ip: getClientIp(req),
+      requestId: req.id,
       userId: req.user?.id ?? null,
       body: null, // req.body ?? null for dev environment only
     });

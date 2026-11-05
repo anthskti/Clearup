@@ -175,9 +175,9 @@ backend/src/
 
 ### Boot sequence
 
-1. CORS (`TRUSTED_ORIGINS`, `credentials: true`) + `trust proxy`
+1. Request logger (request ID + completion record), CORS (`TRUSTED_ORIGINS`, `credentials: true`) + `trust proxy`
 2. Webhook route (raw body) before JSON parser
-3. Global rate limit (300 / 15 min), compression
+3. JSON parser, global rate limit (300 / 15 min except public catalog reads), compression
 4. Auth stack on `/api/auth` (rate limits + audit logging)
 5. Feature routes: `/api/users`, `/api/products`, `/api/routines`, `/api/merchant`
 6. `GET /health` — DB connectivity probe
@@ -199,7 +199,7 @@ Schema evolves via **Umzug migrations** (stored in `sequelize_meta`); `sequelize
 - **`requireAuth`** resolves the session, hydrates the user from DB if needed, and promotes `ADMIN_EMAILS` whitelist entries to `role: "admin"`.
 - **`requireAdmin`** gates admin routes and CSV imports.
 - **`requireMutationHeader`** on routine POST/PUT/PATCH/DELETE, blocks cross-origin form CSRF.
-- **Rate limits:** global 300/15 min; routine POST 10/hr; routine mutations 60/15 min; merchant POST 10/hr; dedicated auth brute-force limiters.
+- **Rate limits:** global 300/15 min except public catalog reads; routine POST 10/hr; routine mutations 60/15 min; merchant POST 10/hr; dedicated auth brute-force limiters.
 - **Email:** SES for verification and password reset; `/api/webhooks/aws-ses` (SNS) updates `user.emailStatus` on bounces/complaints.
 
 **OAuth note:** redirect URIs must point at the **API host** (e.g. `http://localhost:5050/api/auth/callback/google`), not the Next.js port. When frontend and API are on different origins in production, set `BETTER_AUTH_CROSS_SITE_COOKIES=1`.
@@ -259,7 +259,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/api/webhooks/aws-ses` | SNS          | Bounce/complaint handling               |
 | `/health`               | Public       | DB connectivity probe                   |
 
-Rate limits: global (300 / 15 min), stricter caps on routine/merchant POST and auth brute-force paths.
+Rate limits: global (300 / 15 min) except public catalog reads, plus stricter caps on routine/merchant POST and auth brute-force paths.
 
 ## Frontend routes (high level)
 
@@ -282,6 +282,7 @@ Rate limits: global (300 / 15 min), stricter caps on routine/merchant POST and a
 | Command                               | Description                        |
 | ------------------------------------- | ---------------------------------- |
 | `bun dev`                             | Watch mode API                     |
+| `bun run dev:pretty`                  | Watch mode API with readable local logs |
 | `bun run build` / `bun run start`     | Production compile + run           |
 | `bun run migrate:up` / `migrate:down` | Umzug migrations                   |
 | `bun run seed:merchants`              | Seed merchant data from CSV        |
@@ -298,6 +299,8 @@ Rate limits: global (300 / 15 min), stricter caps on routine/merchant POST and a
 ## Feature documentation
 
 Backend module notes remain under `backend/docs/modules/` for controller/service/repository detail.
+
+For API log levels, event names, redaction, and expected record volume, see [Backend logging](docs/backend-logging.md).
 
 ## License
 

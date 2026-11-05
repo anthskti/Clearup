@@ -1,4 +1,4 @@
-import type { Product, ProductListFilters, ProductCatalogFetchOptions, ProductCatalogPage, CsvImportResponse } from "@/types/product";
+import type { Product, ProductListFilters, ProductCatalogFetchOptions, ProductCatalogPage, CsvImportResponse, CatalogError } from "@/types/product";
 import { ProductMerchantWithDetails } from "@/types/merchant";
 import { appendProductListFiltersToQuery, productListFiltersNeedDynamicFetch } from "@/lib/productListFilters";
 import { PRODUCT_PRICE_SLIDER_MAX } from "@/constants/productFilters";
@@ -7,20 +7,65 @@ import { mutationHeaders } from "@/lib/mutationHeaders";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
 
+export class ProductCatalogRequestError extends Error {
+  constructor(public readonly catalogError: CatalogError) {
+    super("Catalog request failed");
+  }
+}
+
 function parseProductCatalogResponse(data: unknown): ProductCatalogPage {
+  const malformedError = () =>
+    new ProductCatalogRequestError({
+      status: null,
+      requestId: null,
+      retryAt: null,
+    });
+  const productsAreValid = (products: unknown[]) =>
+    products.every(
+      (product) =>
+        product &&
+        typeof product === "object" &&
+        Number.isFinite((product as { id?: unknown }).id) &&
+        typeof (product as { name?: unknown }).name === "string",
+    );
+
   if (Array.isArray(data)) {
+    if (!productsAreValid(data)) throw malformedError();
     return { products: data, total: data.length };
   }
   if (data && typeof data === "object" && "products" in data) {
     const payload = data as { products?: unknown; total?: unknown };
-    const products = Array.isArray(payload.products) ? payload.products : [];
-    const total =
-      typeof payload.total === "number" && Number.isFinite(payload.total)
-        ? payload.total
-        : products.length;
+    if (!Array.isArray(payload.products)) throw malformedError();
+    const products = payload.products;
+    if (!productsAreValid(products)) throw malformedError();
+    if (
+      typeof payload.total !== "number" ||
+      !Number.isSafeInteger(payload.total) ||
+      payload.total < 0
+    ) {
+      throw malformedError();
+    }
+    const total = payload.total;
     return { products, total };
   }
-  return { products: [], total: 0 };
+  throw malformedError();
+}
+
+function catalogError(res: Response): CatalogError {
+  const retry = res.headers.get("retry-after");
+  let retryAt: number | null = null;
+  if (retry) {
+    const seconds = Number(retry);
+    const parsed = Number.isFinite(seconds)
+      ? Date.now() + Math.max(0, seconds) * 1000
+      : Date.parse(retry);
+    retryAt = Number.isFinite(parsed) ? parsed : null;
+  }
+  return {
+    status: res.status,
+    requestId: res.headers.get("x-request-id"),
+    retryAt,
+  };
 }
 
 // Category lists (server Data Cache). PDP product body uses no-store.
@@ -90,6 +135,63 @@ export async function getMerchantOffersByProductIds(
   return out;
 }
 
+/** Catalog offer fetch that lets the UI retain prior prices for failed batches. */
+export async function getCatalogMerchantOffersByProductIds(
+  productIds: number[],
+): Promise<{
+  offers: Record<number, ProductMerchantWithDetails[]>;
+  failedIds: number[];
+}> {
+  const ids = [
+    ...new Set(productIds.filter((id) => Number.isFinite(id) && id > 0)),
+  ];
+  const offers: Record<number, ProductMerchantWithDetails[]> = {};
+  const failedIds: number[] = [];
+  for (let start = 0; start < ids.length; start += 25) {
+    const batch = ids.slice(start, start + 25);
+    let res: Response;
+    try {
+      res = await fetch(
+        `${API_URL}/api/products/merchants/batch?ids=${encodeURIComponent(batch.join(","))}`,
+        { cache: "no-store" },
+      );
+    } catch {
+      failedIds.push(...batch);
+      continue;
+    }
+    if (!res.ok) {
+      const metadata = catalogError(res);
+      console.error("getCatalogMerchantOffersByProductIds failed", {
+        status: metadata.status,
+        requestId: metadata.requestId,
+        retryAt: metadata.retryAt,
+      });
+      failedIds.push(...batch);
+      continue;
+    }
+    let data: unknown;
+    try {
+      data = await res.json();
+    } catch {
+      failedIds.push(...batch);
+      continue;
+    }
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      failedIds.push(...batch);
+      continue;
+    }
+    const record = data as Record<string, unknown>;
+    for (const id of batch) {
+      if (Array.isArray(record[String(id)])) {
+        offers[id] = record[String(id)] as ProductMerchantWithDetails[];
+      } else {
+        failedIds.push(id);
+      }
+    }
+  }
+  return { offers, failedIds };
+}
+
 export const getAllProducts = async (
   limit: number = 25,
   offset: number = 0,
@@ -126,10 +228,9 @@ export async function fetchProducts(
   });
 
   if (!res.ok) {
-    console.error(
-      `fetchProducts failed: limit=${limit} offset=${offset}`,
-    );
-    return { products: [], total: 0 };
+    const metadata = catalogError(res);
+    console.error("fetchProducts failed", { status: metadata.status, requestId: metadata.requestId, retryAt: metadata.retryAt });
+    throw new ProductCatalogRequestError(metadata);
   }
   const data = await res.json();
   return parseProductCatalogResponse(data);
@@ -199,10 +300,9 @@ export async function fetchProductsByCategory(
   );
 
   if (!res.ok) {
-    console.error(
-      `fetchProductsByCategory failed: ${category} limit=${limit} offset=${offset}`,
-    );
-    return { products: [], total: 0 };
+    const metadata = catalogError(res);
+    console.error("fetchProductsByCategory failed", { status: metadata.status, requestId: metadata.requestId, retryAt: metadata.retryAt });
+    throw new ProductCatalogRequestError(metadata);
   }
   const data = await res.json();
   return parseProductCatalogResponse(data);

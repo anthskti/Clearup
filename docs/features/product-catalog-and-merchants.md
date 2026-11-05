@@ -54,6 +54,8 @@ Merchant CRUD: `/api/merchant` (admin for writes).
 | `/products/category/[slug]` | `ProductListClient` — grid, skin-type tooltips, add-to-builder |
 | `/product/id/[slug]` | `ProductClient` — gallery, ingredients, merchant table, add merchant (admin) |
 
+Catalog listings use server-rendered numbered pages of 40 products. The `page` query parameter is 1-based; page 1 is omitted from canonical URLs. Search and filters remain in the URL, filter changes reset to page 1, and browser history restores the selected page and controls. Catalog failures retain the last successful rows and show a retry notice; malformed catalog payloads are treated as failures.
+
 ### Caching strategy (`frontend/src/lib/products.ts`)
 
 Server fetches use Next.js `revalidate` tiers:

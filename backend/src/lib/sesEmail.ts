@@ -1,6 +1,7 @@
 // SES TEST Email
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import User from "../models/User";
+import logger from "./logger";
 
 export type SendEmailInput = {
   to: string;
@@ -45,9 +46,7 @@ export async function sendSesEmail({
     attributes: ["emailStatus"],
   });
   if (row && row.emailStatus !== "active") {
-    console.log(
-      `[ses] skip send to ${to} (emailStatus=${row.emailStatus})`,
-    );
+    logger.info({ event: "ses.email.skipped", emailStatus: row.emailStatus }, "Email delivery skipped");
     return;
   }
 

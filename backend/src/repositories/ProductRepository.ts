@@ -67,7 +67,7 @@ export class ProductRepository {
         where,
         limit,
         offset,
-        order: [["createdAt", "ASC"]],
+        order: [["createdAt", "ASC"], ["id", "ASC"]],
       }),
       ProductModel.count({ where }),
     ]);
@@ -198,7 +198,7 @@ export class ProductRepository {
       },
       limit: limit,
       offset: offset,
-      order: [["name", "ASC"]],
+      order: [["name", "ASC"], ["id", "ASC"]],
     });
 
     return products.map((product: any) => this.mapToProductType(product));
@@ -234,7 +234,7 @@ export class ProductRepository {
         where,
         limit,
         offset,
-        order: [["name", "ASC"]],
+        order: [["name", "ASC"], ["id", "ASC"]],
       }),
       ProductModel.count({ where }),
     ]);
@@ -297,7 +297,7 @@ export class ProductRepository {
         where,
         limit,
         offset,
-        order: [["name", "ASC"]],
+        order: [["name", "ASC"], ["id", "ASC"]],
       }),
       ProductModel.count({ where }),
     ]);

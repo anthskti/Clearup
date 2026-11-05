@@ -186,8 +186,9 @@ flowchart TD
     CLIENT(["🌐 Client\n(Next.js Frontend)"])
 
     subgraph INFRA ["Infrastructure / Edge"]
+        REQLOG["Request Logger\nrequest ID + structured completion log"]
         CORS["CORS Check\ntrustedOrigins whitelist"]
-        RATELIMIT["Global Rate Limiter\n300 req / 15 min · express-rate-limit"]
+        RATELIMIT["Global Rate Limiter\n300 req / 15 min · catalog GET/HEAD routes exempt"]
         COMPRESS["Gzip Compression\nlevel 6 · threshold 1 KB"]
     end
 
@@ -249,7 +250,8 @@ flowchart TD
     end
 
     %% Request entry
-    CLIENT -->|"HTTPS request"| CORS
+    CLIENT -->|"HTTPS request"| REQLOG
+    REQLOG --> CORS
     CORS   --> RATELIMIT
     RATELIMIT --> COMPRESS
 
@@ -330,6 +332,9 @@ flowchart TD
 | **Models** | `src/models/*.ts` | Sequelize model classes — schema source of truth |
 | **Associations** | `src/associations.ts` | FK constraints + Sequelize `hasMany` / `belongsToMany` wiring |
 | **Middleware** | `src/middleware/requireAuth.ts` | `requireAuth` + `requireAdmin` — session validation, admin whitelist hydration |
+| **Middleware** | `src/middleware/requestLogger.ts` | Request ID and structured request completion logging; runs before CORS and route middleware |
+| **Lib** | `src/lib/logger.ts` | Pino configuration, redaction, safe error serialization, and application error reporting |
+| **Middleware** | `src/middleware/rateLimits.ts` | Global IP rate limit with explicit public catalog read exceptions |
 | **Middleware** | `src/middleware/security.ts` | Auth route rate limiting, brute-force limiter, audit logger |
 | **Middleware** | `src/middleware/parseCsvBody.ts` | Multipart CSV parser for admin product import |
 | **Middleware** | `src/middleware/requireMutationHeader.ts` | CSRF-style header check on mutation routes |
@@ -340,6 +345,8 @@ flowchart TD
 | **Lib** | `src/lib/sesEmail.ts` | AWS SES v2 transactional email sender (respects `emailStatus`) |
 | **Lib** | `src/lib/dbConfig.ts` | DB URL + SSL resolution for local vs. cloud environments |
 | **Webhooks** | `src/routes/webhookRoutes.ts` | AWS SNS webhook — confirms subscription, handles bounce/complaint to update `emailStatus` |
+
+See [Backend logging](backend-logging.md) for log fields, event categories, retention expectations, and approximate volume.
 
 ---
 
@@ -358,8 +365,10 @@ flowchart TD
 
 | Limiter | Scope | Window | Max |
 |---|---|---|---|
-| `globalLimiter` | All routes | 15 min | 300 req |
+| `globalLimiter` | App routes except public catalog GET/HEAD paths | 15 min | 300 req |
 | `authRouteLimiter` | `/api/auth/*` | 15 min | 120 req |
 | `authBruteForceLimiter` | Sign-in / reset / verify paths | 15 min | 15 req |
 | `createStrictLimiter` | `POST /api/routines` + `POST /api/merchant` | 1 hour | 10 req |
 | `routineMutateLimiter` | `PUT/PATCH/DELETE /api/routines` | 15 min | 60 req |
+
+The AWS SES webhook route is mounted before the global limiter and remains outside its budget. Public catalog reads are also exempt from the per-IP global budget so shared Next.js server egress does not throttle unrelated visitors. Auth, unknown paths, administrative routes, and all mutations remain subject to the global limiter. This is not a replacement for capacity controls: deployments should verify that Caddy, Vercel, or Render forwards the real client IP correctly to Express before relying on per-IP limits. If trusted client IPs cannot be established, use an edge rate limit or a capacity-sized fallback policy; do not trust arbitrary forwarded headers. Limits for individual visitors sharing Next.js server egress remain a deployment follow-up for edge enforcement or another trusted client identity.

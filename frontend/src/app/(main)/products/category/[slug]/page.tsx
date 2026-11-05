@@ -1,10 +1,19 @@
-import { fetchCategoryBrands, fetchProductsByCategory } from "@/lib/products";
+import {
+  fetchCategoryBrands,
+  fetchProductsByCategory,
+  ProductCatalogRequestError,
+} from "@/lib/products";
 import ProductListClient from "@/components/products/ProductListClient";
 import { Metadata } from "next";
 import {
   flattenSearchParams,
   parseProductListFiltersFromSearchParams,
+  parseCatalogPage,
+  productListFiltersToSearchParams,
+  PRODUCT_CATALOG_PAGE_SIZE,
 } from "@/lib/productListFilters";
+import type { CatalogError, Product } from "@/types/product";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -29,20 +38,47 @@ export default async function ProductListPage({
     slug,
   );
   const initialSearch = flatParams.search ?? "";
+  const page = parseCatalogPage(flatParams.page);
+  const resultParams = productListFiltersToSearchParams(initialFilters, initialSearch);
+  if (page > 1) resultParams.set("page", String(page));
+  const resultQuery = resultParams.toString();
 
-  const [productsPage, availableBrands] = await Promise.all([
-    fetchProductsByCategory(slug, 20, 0, {
-      search: initialSearch || undefined,
-      filters: initialFilters,
-    }),
-    fetchCategoryBrands(slug),
-  ]);
+  let productsPage: { products: Product[]; total: number } = {
+    products: [],
+    total: 0,
+  };
+  let catalogError: CatalogError | null = null;
+  try {
+    productsPage = await fetchProductsByCategory(
+      slug,
+      PRODUCT_CATALOG_PAGE_SIZE,
+      (page - 1) * PRODUCT_CATALOG_PAGE_SIZE,
+      {
+        search: initialSearch || undefined,
+        filters: initialFilters,
+      },
+    );
+  } catch (error) {
+    catalogError =
+      error instanceof ProductCatalogRequestError
+        ? error.catalogError
+        : { status: null, requestId: null, retryAt: null };
+  }
+  let availableBrands: string[] = [];
+  try {
+    availableBrands = await fetchCategoryBrands(slug);
+  } catch {
+    // Product results remain useful if the optional facet request is unavailable.
+  }
 
-  const listKey = `${slug}?${new URLSearchParams(
-    Object.entries(flatParams).filter(
-      (entry): entry is [string, string] => entry[1] !== undefined,
-    ),
-  ).toString()}`;
+  const lastPage = Math.max(1, Math.ceil(productsPage.total / PRODUCT_CATALOG_PAGE_SIZE));
+  if (!catalogError && page > lastPage) {
+    if (lastPage > 1) resultParams.set("page", String(lastPage));
+    else resultParams.delete("page");
+    redirect(`/products/category/${slug}${resultParams.size ? `?${resultParams}` : ""}`);
+  }
+
+  const listKey = slug;
 
   return (
     <ProductListClient
@@ -50,6 +86,9 @@ export default async function ProductListPage({
       scope={{ type: "category", slug }}
       initialProducts={productsPage.products}
       initialTotal={productsPage.total}
+      initialPage={page}
+      catalogError={catalogError}
+      resultQuery={resultQuery}
       initialFilters={initialFilters}
       initialSearch={initialSearch}
       availableBrands={availableBrands}

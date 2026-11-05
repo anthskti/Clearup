@@ -58,7 +58,7 @@ Used under `/api/auth` in `index.ts`:
 Support utilities shared with the rest of the app:
 
 - `redactSensitiveFields`: strips/redacts known sensitive keys (passwords, tokens, cookies, etc.) before structured logs.
-- `logSecurityEvent`: structured **[security]** logging with redaction.
+- `logSecurityEvent`: structured `security.audit` records with redaction.
 - `validateSecurityConfig`: startup checks (e.g. warning if `TRUSTED_ORIGINS` is too permissive in production).
 
 ## HTTP Surface (see also `index.md`)
