@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ProductService } from "../services/ProductService";
-import PAGINATION from "../config/pagination";
+import { MAX_PRODUCT_PAGE_SIZE, parseProductPagination } from "../lib/productPagination";
 import { handleInternalError } from "../lib/httpError";
 import { csvFromRequestBody } from "../middleware/parseCsvBody";
 import {
@@ -29,8 +29,14 @@ export class ProductController {
   // GET /api/products OR /api/products?search=name&skinType=oily,dry&brands=Anua
   async getAllProducts(req: Request, res: Response): Promise<void> {
     try {
-      const limit = parseInt(req.query.limit as string) || PAGINATION.LIMIT;
-      const offset = parseInt(req.query.offset as string) || PAGINATION.OFFSET;
+      const pagination = parseProductPagination(req.query);
+      if (!pagination) {
+        res.status(400).json({
+          error: `limit must be an integer from 1 to ${MAX_PRODUCT_PAGE_SIZE}; offset must be a nonnegative safe integer`,
+        });
+        return;
+      }
+      const { limit, offset } = pagination;
       const searchQuery = req.query.search as string | undefined;
       const listFilters = parseProductListQuery(
         req.query as Record<string, unknown>,
@@ -60,8 +66,14 @@ export class ProductController {
   // ?search=...&skinType=oily&brands=Anua&texture=Gel,Foam&limit=20&offset=0
   async getProductsByCategory(req: Request, res: Response): Promise<void> {
     try {
-      const limit = parseInt(req.query.limit as string) || PAGINATION.LIMIT;
-      const offset = parseInt(req.query.offset as string) || PAGINATION.OFFSET;
+      const pagination = parseProductPagination(req.query);
+      if (!pagination) {
+        res.status(400).json({
+          error: `limit must be an integer from 1 to ${MAX_PRODUCT_PAGE_SIZE}; offset must be a nonnegative safe integer`,
+        });
+        return;
+      }
+      const { limit, offset } = pagination;
       const category = req.params.category as ProductCategory;
       const searchQuery = req.query.search as string | undefined;
 

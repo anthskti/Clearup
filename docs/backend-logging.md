@@ -56,14 +56,14 @@ Copy the response's `X-Request-ID` into a log search to find that request's comp
 | `auth.bootstrap` | info | Auth configuration summary at module initialization. |
 | `security.audit` with `securityEvent: "auth.route"` | info | Completed sign-in/login/reset/verification/sign-out/revoke route requests, including failed HTTP responses. The status is data; failure does not change this audit record's level. |
 | `security.config` | warn | Production auth URL or wildcard trusted-origin configuration warning. |
-| `rate_limit.exceeded` (`limiter: "global"`) | warn | Request blocked by the global IP limiter. Other route-specific limiters do not currently emit this event. |
+| `rate_limit.exceeded` (`limiter: "global"` or `"catalog"`) | warn | Request blocked by the global IP limiter or catalog token bucket. Catalog `reason` is `empty` or `storage_full`. Other route-specific limiters do not currently emit this event. |
 | `application.error` | error | A reported application failure. `scope` describes the reporting boundary, such as `express`, `health.database`, `startup`, `auth.reset_email`, `auth.verification_email`, `auth.admin_role_persist`, or `webhook.aws_ses`. |
 | `ses.email.skipped` | info | An email was skipped because the user's email status is not active. |
 | `webhook.sns.subscription.rejected`, `webhook.sns.subscription.confirmed`, `webhook.ses.bounce.processed`, `webhook.ses.complaint.processed` | warn / info | SNS subscription rejection is warn; confirmation and processed bounce/complaint notifications are info. |
 
 HTTP completion severity is independent of application event severity: successful requests are `info`, 4xx are `warn`, and 5xx or request errors are `error`. A handled internal error normally produces an `application.error` record plus the request completion record. A 4xx auth audit stays at `info` while its separate request completion is `warn`.
 
-Auth audit middleware runs after the auth route and brute-force limiters. A request rejected by those limiters may therefore have no `auth.route` audit record. The global limiter runs before feature routes and emits its own warning; stricter routine and merchant limiters currently produce only the request completion record when they reject a request.
+Auth audit middleware runs after the auth route and brute-force limiters. A request rejected by those limiters may therefore have no `auth.route` audit record. Global and catalog limiters run before feature routes and emit a warning when they reject a request; stricter routine and merchant limiters currently produce only the request completion record when they reject a request.
 
 ## Expected record volume
 
@@ -78,12 +78,12 @@ Typical counts for one API request:
 | Failed `/health` (503) | 2: application error + completion |
 | Handled 500 | 2: application error + completion |
 | Audited auth path | 2: audit + completion |
-| Global rate-limit rejection (429) | 2: limiter warning + completion |
+| Global or catalog rate-limit rejection (429) | 2: limiter warning + completion |
 | Other route-specific limit rejection | 1 completion |
 
 For example, an uncached catalog page that makes one product-list request and two offer requests usually creates three completion records. An uncached brands request adds another. CORS preflight requests, auth checks, prefetches, and retries can add more API requests.
 
-For a rough total, count request completions (excluding successful health checks), then add handled application errors, auth audits, global limit warnings, and any emitted business/startup events. A normal startup with no pending migrations is roughly ten application records; warnings and actual migration lifecycle records vary. This describes application stdout records, not any extra records created by the hosting platform.
+For a rough total, count request completions (excluding successful health checks), then add handled application errors, auth audits, global/catalog limit warnings, and any emitted business/startup events. A normal startup with no pending migrations is roughly ten application records; warnings and actual migration lifecycle records vary. This describes application stdout records, not any extra records created by the hosting platform.
 
 During a temporary smoke run, 312 HTTP requests produced 312 completion records plus four global rate-limit warnings, for 316 JSON records total. `SMOKE` lines in that temporary output were test harness output, not application logs. Replacing the old console logging paths with Pino preserves application reporting in structured records; the smoke-run counts are not a normal traffic forecast.
 

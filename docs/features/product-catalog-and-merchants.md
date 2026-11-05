@@ -30,6 +30,10 @@ Master list of storefronts (name, logo, base URL, etc.). Linked to products thro
 
 Base path: `/api/products`
 
+Public catalog GET/HEAD routes share an IP token bucket: a burst of 20 requests with 2 tokens replenished per second by default. `CATALOG_BUCKET_CAPACITY` and `CATALOG_BUCKET_REFILL_PER_SECOND` configure this policy; changes require a backend restart. Exhaustion returns 429 with `Retry-After`. Next.js server traffic shares its egress IP's budget. See [rate limiting](../backend-architecture.md#5-rate-limiting-summary) for deployment and in-memory storage limitations.
+
+Global and category listings default to `limit=25&offset=0`. Explicit limits must be integers from 1–100; offsets must be nonnegative safe integers. Malformed, repeated, or oversized pagination parameters return 400 before querying the service. Response shapes are unchanged. Merchant batches remain limited to 25 product IDs.
+
 | Method | Path | Access | Purpose |
 |--------|------|--------|---------|
 | GET | `/` | Public | Paginated all products |

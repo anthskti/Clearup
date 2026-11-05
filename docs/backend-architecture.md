@@ -188,7 +188,7 @@ flowchart TD
     subgraph INFRA ["Infrastructure / Edge"]
         REQLOG["Request Logger\nrequest ID + structured completion log"]
         CORS["CORS Check\ntrustedOrigins whitelist"]
-        RATELIMIT["Global Rate Limiter\n300 req / 15 min · catalog GET/HEAD routes exempt"]
+        RATELIMIT["Rate Limits\nCatalog: IP bucket, burst 20 + refill 2/sec\nOther routes: 300 req / 15 min"]
         COMPRESS["Gzip Compression\nlevel 6 · threshold 1 KB"]
     end
 
@@ -334,7 +334,8 @@ flowchart TD
 | **Middleware** | `src/middleware/requireAuth.ts` | `requireAuth` + `requireAdmin` — session validation, admin whitelist hydration |
 | **Middleware** | `src/middleware/requestLogger.ts` | Request ID and structured request completion logging; runs before CORS and route middleware |
 | **Lib** | `src/lib/logger.ts` | Pino configuration, redaction, safe error serialization, and application error reporting |
-| **Middleware** | `src/middleware/rateLimits.ts` | Global IP rate limit with explicit public catalog read exceptions |
+| **Middleware** | `src/middleware/rateLimits.ts` | Separate catalog IP token bucket and global IP rate limit for other routes |
+| **Lib** | `src/lib/tokenBucket.ts` | Bounded process-local token buckets with continuous refill and idle cleanup |
 | **Middleware** | `src/middleware/security.ts` | Auth route rate limiting, brute-force limiter, audit logger |
 | **Middleware** | `src/middleware/parseCsvBody.ts` | Multipart CSV parser for admin product import |
 | **Middleware** | `src/middleware/requireMutationHeader.ts` | CSRF-style header check on mutation routes |
@@ -366,9 +367,16 @@ See [Backend logging](backend-logging.md) for log fields, event categories, rete
 | Limiter | Scope | Window | Max |
 |---|---|---|---|
 | `globalLimiter` | App routes except public catalog GET/HEAD paths | 15 min | 300 req |
+| `createCatalogLimiter` | Public catalog GET/HEAD paths | Continuous refill | Burst 20, refill 2 tokens/sec per IP |
 | `authRouteLimiter` | `/api/auth/*` | 15 min | 120 req |
 | `authBruteForceLimiter` | Sign-in / reset / verify paths | 15 min | 15 req |
 | `createStrictLimiter` | `POST /api/routines` + `POST /api/merchant` | 1 hour | 10 req |
 | `routineMutateLimiter` | `PUT/PATCH/DELETE /api/routines` | 15 min | 60 req |
 
-The AWS SES webhook route is mounted before the global limiter and remains outside its budget. Public catalog reads are also exempt from the per-IP global budget so shared Next.js server egress does not throttle unrelated visitors. Auth, unknown paths, administrative routes, and all mutations remain subject to the global limiter. This is not a replacement for capacity controls: deployments should verify that Caddy, Vercel, or Render forwards the real client IP correctly to Express before relying on per-IP limits. If trusted client IPs cannot be established, use an edge rate limit or a capacity-sized fallback policy; do not trust arbitrary forwarded headers. Limits for individual visitors sharing Next.js server egress remain a deployment follow-up for edge enforcement or another trusted client identity.
+The AWS SES webhook route is mounted before the limiters and remains outside their budgets. Public catalog GET/HEAD requests share a separate token bucket per IP across listings, brands, product details, and offer lookups; they do not consume the global budget. Each request costs one token, including requests that later fail validation. Auth, unknown paths, administrative routes, and all mutations remain subject to the existing global and route-specific limits.
+
+`CATALOG_BUCKET_CAPACITY` defaults to 20 (positive safe integer); `CATALOG_BUCKET_REFILL_PER_SECOND` defaults to 2 (finite positive number with a finite full-refill duration in milliseconds). Invalid configuration prevents startup. These are initial tuning values, not measured instance capacity. Update the environment and restart the backend to change them. Rejected requests return 429, `Cache-Control: no-store`, and `Retry-After` seconds rounded up to at least one. Fixed-window `RateLimit-*` headers are not emitted for catalog buckets.
+
+Catalog keys use Express's resolved `req.ip` and the installed limiter's IP normalization (IPv4 address or IPv6 /56 subnet). Next.js server requests share their egress IP's bucket. Confirm `trust proxy: 1` matches the deployment's proxy chain and ensure the origin cannot accept spoofed forwarding headers through an untrusted path. The application does not extract the leftmost forwarded address itself.
+
+Buckets live in memory per backend process, reset on restart, and impose no server-wide total ceiling. The store holds at most 10,000 IP/subnet keys. Traffic triggers cleanup at most once every 30 seconds, removing buckets idle for at least 60 seconds only when they could fully refill. At capacity, new keys receive 429 with a retry hint for the next cleanup; existing keys retain their balances. The hint does not guarantee storage will have become available. Shared multi-instance enforcement and visitor identity behind Next.js require deployment infrastructure; Redis and automatic policy adjustment are not included.

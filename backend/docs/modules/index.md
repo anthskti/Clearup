@@ -23,7 +23,7 @@ The file defines a top-down request pipeline that applies protections before bus
 - CORS setup using `TRUSTED_ORIGINS`, with credentials enabled.
 - CORS response headers expose the request ID and rate-limit headers.
 - Proxy trust (`app.set("trust proxy", 1)`) for deployment environments behind reverse proxies.
-- SNS webhook text parsing, then JSON body parsing and the global rate limiter.
+- SNS webhook text parsing, then JSON body parsing, the global limiter for non-catalog routes, and a separate catalog IP token bucket (default burst 20, refill 2/sec).
 - Compression middleware for response-size optimization.
 - Auth-specific security middleware stack on `/api/auth`:
   - route limiter

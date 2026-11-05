@@ -20,7 +20,7 @@ import { requireAuth } from "./middleware/requireAuth";
 import { validateSecurityConfig } from "./lib/security";
 import { runMigrations } from "./migrations";
 import { requestLogger } from "./middleware/requestLogger";
-import { globalLimiter, RATE_LIMIT_EXPOSED_HEADERS } from "./middleware/rateLimits";
+import { createCatalogLimiter, globalLimiter, RATE_LIMIT_EXPOSED_HEADERS } from "./middleware/rateLimits";
 import { handleExpressError } from "./lib/httpError";
 import logger, { reportError } from "./lib/logger";
 
@@ -51,6 +51,7 @@ app.use(
 
 app.use(express.json());
 app.use(globalLimiter);
+app.use(createCatalogLimiter());
 
 // Optimization (Compress before parsing saving overhead)
 
