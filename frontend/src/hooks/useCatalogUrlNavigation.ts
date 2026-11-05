@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   catalogIdentity,
+  canonicalQuery,
   normalizeQuery,
   queriesEqual,
   type CatalogScope,
@@ -42,6 +43,10 @@ export function useCatalogUrlNavigation({
   const queuedQuery = useRef<string | null>(null);
   const hasPendingNavigation = useRef(false);
   const navigationFromQuery = useRef("");
+  /** Latest intended destination query (canonical). Null when settled. */
+  const pendingDestinationQuery = useRef<string | null>(null);
+  /** Last query actually issued to the router (or still queued for debounce). */
+  const issuedDestinationQuery = useRef<string | null>(null);
 
   const cancelScheduled = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -50,6 +55,8 @@ export function useCatalogUrlNavigation({
 
   const markSettled = useCallback(() => {
     hasPendingNavigation.current = false;
+    pendingDestinationQuery.current = null;
+    issuedDestinationQuery.current = null;
     setIsNavigating(false);
   }, []);
 
@@ -58,6 +65,12 @@ export function useCatalogUrlNavigation({
       if (resultIdentity !== committedIdentity) return false;
       if (queuedQuery.current !== null) return false;
       if (
+        pendingDestinationQuery.current !== null &&
+        !queriesEqual(committedQuery, pendingDestinationQuery.current)
+      ) {
+        return false;
+      }
+      if (
         hasPendingNavigation.current &&
         committedIdentity === navigationFromQuery.current
       ) {
@@ -65,7 +78,17 @@ export function useCatalogUrlNavigation({
       }
       return true;
     },
-    [],
+    [committedQuery],
+  );
+
+  const issueRoute = useCallback(
+    (query: string, replace: boolean) => {
+      const url = `${basePath}${query ? `?${query}` : ""}`;
+      issuedDestinationQuery.current = canonicalQuery(query);
+      if (replace) router.replace(url, { scroll: false });
+      else router.push(url, { scroll: false });
+    },
+    [basePath, router],
   );
 
   const beginRouteChange = useCallback(
@@ -75,7 +98,17 @@ export function useCatalogUrlNavigation({
     ) => {
       cancelScheduled();
 
-      if (options.debounceMs != null) {
+      const desired = canonicalQuery(query);
+      pendingDestinationQuery.current = desired;
+
+      const desiredEqualsCommitted = queriesEqual(desired, committedQuery);
+      const outstandingDifferentDestination =
+        (queuedQuery.current !== null &&
+          !queriesEqual(queuedQuery.current, desired)) ||
+        (issuedDestinationQuery.current !== null &&
+          !queriesEqual(issuedDestinationQuery.current, desired));
+
+      if (options.debounceMs != null && !desiredEqualsCommitted) {
         queuedQuery.current = query;
       } else {
         queuedQuery.current = null;
@@ -84,35 +117,43 @@ export function useCatalogUrlNavigation({
       navigationFromQuery.current = catalogIdentity(pathname, committedQuery);
       onBeginNavigation();
 
-      const sameQuery = queriesEqual(query, committedQuery);
-      setIsNavigating(!sameQuery);
-      hasPendingNavigation.current = !sameQuery;
-      if (sameQuery) {
-        queuedQuery.current = null;
+      // Already on the desired URL and nothing in flight to undo — done.
+      if (desiredEqualsCommitted && !outstandingDifferentDestination) {
+        pendingDestinationQuery.current = null;
+        hasPendingNavigation.current = false;
+        issuedDestinationQuery.current = null;
+        setIsNavigating(false);
         return;
       }
 
-      const url = `${basePath}${query ? `?${query}` : ""}`;
+      // Desired equals committed but a different destination was issued/queued:
+      // supersede immediately so the in-flight filter nav cannot win.
+      hasPendingNavigation.current = true;
+      setIsNavigating(true);
+
+      if (desiredEqualsCommitted && outstandingDifferentDestination) {
+        issueRoute(query, true);
+        return;
+      }
+
       if (options.debounceMs != null) {
         timer.current = setTimeout(() => {
           timer.current = null;
           queuedQuery.current = null;
           hasPendingNavigation.current = true;
-          router.replace(url, { scroll: false });
+          issueRoute(query, true);
         }, options.debounceMs);
         return;
       }
 
-      if (options.replace) router.replace(url, { scroll: false });
-      else router.push(url, { scroll: false });
+      issueRoute(query, options.replace);
     },
     [
-      basePath,
       cancelScheduled,
       committedQuery,
+      issueRoute,
       onBeginNavigation,
       pathname,
-      router,
     ],
   );
 
@@ -143,6 +184,8 @@ export function useCatalogUrlNavigation({
       const nextIdentity = catalogIdentity(window.location.pathname, nextQuery);
       const committedIdentity = catalogIdentity(pathname, committedQuery);
       navigationFromQuery.current = committedIdentity;
+      pendingDestinationQuery.current = canonicalQuery(nextQuery);
+      issuedDestinationQuery.current = canonicalQuery(nextQuery);
       hasPendingNavigation.current = nextIdentity !== committedIdentity;
       setIsNavigating(nextIdentity !== committedIdentity);
     };

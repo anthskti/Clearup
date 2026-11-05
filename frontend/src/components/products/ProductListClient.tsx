@@ -353,7 +353,9 @@ export default function ProductListClient({
             </p>
           </div>
           {error && <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Couldn’t load this page.{products.length > 0 ? " Showing your previous results." : ""}{error.status ? ` (HTTP ${error.status})` : ""}<button className="underline disabled:opacity-50" disabled={retryDisabled} onClick={retry}>{retryDisabled ? "Retry available shortly" : "Retry"}</button></div>}
-          {isNavigating && <p role="status" className="mb-4 text-sm text-zinc-500">Updating results…</p>}
+          {isNavigating && (
+            <p role="status" className="sr-only">Updating results…</p>
+          )}
           {/* Search Bar */}
           <div className="relative mb-8 w-full lg:ml-auto lg:w-[40%]">
             <Search className="absolute left-3 top-3 text-zinc-400" size={16} />
