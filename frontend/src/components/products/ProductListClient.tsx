@@ -390,7 +390,6 @@ export default function ProductListClient({
 
   return (
     <div className="relative min-h-screen bg-[#F8F8F8] pt-24">
-      {/* <ProceduralWave seed={6} offset={2} frequency={1.5} /> */}
       <ProceduralWave 
         seed={6}
         height={190} 
@@ -400,7 +399,7 @@ export default function ProductListClient({
         flip={true} 
       />
       <div className="relative z-1 mx-auto max-w-7xl px-4 sm:px-6 xl:grid xl:grid-cols-[240px_minmax(0,1fr)] xl:items-start xl:gap-x-6">
-        <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between xl:col-span-2 xl:mb-7">
+        <header className="mb-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between xl:col-span-2 xl:mb-3">
           <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">
             {config.category}
           </h1>
