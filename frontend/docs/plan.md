@@ -19,9 +19,9 @@ Red Hat Display is the shared interface font. The type scale, brand colors, canv
 
 **Current files:** `src/components/header/Header.tsx` coordinates scroll and menu state; `DesktopNav.tsx`, `MobileNavDrawer.tsx`, `ProfileMenu.tsx`, and `navConfig.ts` hold the related UI and links. The shared footer remains in `src/components/Footer.tsx`.
 
-Builder leads the navigation. Products links directly to the catalog and exposes an attached category shelf on desktop; the phone drawer offers the same destinations. The account control uses an avatar fallback and includes Saved Routines. The footer links to the full catalog and uses consistent alignment. The header is opaque from first paint, hides when scrolling down, and returns when scrolling toward the top; open menus and keyboard focus keep it visible.
+Builder leads the navigation. Products links directly to the catalog and exposes an attached category shelf on desktop; the phone drawer offers the same destinations. The account control uses an avatar fallback and includes Saved products. The footer links to the full catalog and uses consistent alignment. The header is opaque from first paint, hides when scrolling down, and returns when scrolling toward the top; open menus and keyboard focus keep it visible.
 
-**Carry forward:** Signed-in account behavior and touch feel on a real phone still need checking. The Saved Routines destination remains a placeholder for the routines/library batch.
+**Carry forward:** Signed-in account behavior and touch feel on a real phone still need checking. The Saved products destination now has a page shell; product saving remains deferred (Batch 6).
 
 ### Batch 2 — home page
 
@@ -72,7 +72,7 @@ Kept the hero artwork and slogan. Removed the trust-banner copy and claims; rest
 
 **Signed-out save panel:** Explain the account requirement before any click and show “Log in to save” as the primary action. Show “Save routine” for signed-in users and disable the action while the session is loading.
 
-**Notes panel follow-up — implemented:** Morning/Night groups use 16px headings and outlined, 44px “Add note” buttons in ClearUp blue. Empty and fully assigned states explain why an action is unavailable. The book icon and timeline rails are removed. Builder note entries keep step numbers, the catalog's CSS dot, a usage field, and an explicit “Remove note” action. The shared note header has a builder-only variant so routine viewing keeps its current presentation. The note picker now matches the save dialog, with native radio selection, a checkmark, labeled usage text, bounded scrolling, Escape, focus wrapping, and focus restoration.
+**Notes panel follow-up — implemented:** Morning/Night groups use 16px headings and outlined, 44px “Add note” buttons in ClearUp blue. Empty and fully assigned states explain why an action is unavailable. The book icon and timeline rails are removed. Builder note entries keep step numbers, the catalog's CSS dot, a usage field, and an explicit “Remove note” action. Routine viewing now uses the same numbered note-header presentation (Batch 6). The note picker matches the save dialog, with native radio selection, a checkmark, labeled usage text, bounded scrolling, Escape, focus wrapping, and focus restoration.
 
 **Notes verification:** Chrome DevTools checks at 320px and 1440px covered empty groups, adding the last eligible Morning note, independent Night eligibility, editing/reloading, and removing a note while retaining its product. The picker fits the phone viewport, and Tab/Shift+Tab/Escape keep focus predictable. No backend or storage contract changes were needed for this follow-up.
 
@@ -86,16 +86,27 @@ Kept the hero artwork and slogan. Removed the trust-banner copy and claims; rest
 
 **Deferred:** Routine description previews may be added to cards later. Revisit grid density if the collection grows.
 
-**Routine detail pass implemented:** The page leads with the author and description beside a wider, compact desktop summary; price, product count, skin types, and sharing are grouped together, and stack on phone. Products and readable Morning/Night usage follow. Sharing retains the attached URL field and copy icon, displays a short domain/path, and copies a complete URL with feedback. Public Morning/Night notes match the builder’s numbered entries, dividers, and amber/violet headings, without timeline rails or duplicate headings. Owners can edit the description or explicitly open notes editing; name, tags, and products are not editable here. The summary is labeled Total price. Product rows follow the builder’s inline brand/name and category layout, with a separate Buy column using compact catalog-blue buttons; phone cards use “via” followed by a linked merchant name and external-link icon. Description editing sits beside its label on desktop, with a quiet pencil/Edit action (Add when empty). Delete routine is in an owner-only actions menu aligned beside the share field in the total-price card’s footer, retaining confirmation. Notes edit/cancel buttons remain outlined; save actions use blue, with 44px targets.
+**Routine detail pass complete for this iteration:**
 
-**Deferred:** Before/after uploads can become a results section beneath the introduction when images exist; no empty photo area is shown. “Use in builder” duplication remains future work. Created and saved routines are next.
+- **Introduction and total:** Name, author, and description sit beside the Total price card on desktop; the card is 480px wide on large screens to balance shorter descriptions. On phone it follows the introduction. CAD price, product count, and skin types sit above sharing, with no reserved photo space.
+- **Sharing and actions:** Keep the attached URL field with external-link and copy icons. Display `clearup.skin/routine/{id}` and copy the full URL with success/failure feedback. The owner-only ⋯ menu sits beside the field inside the card footer; both controls are 44px high. Delete routine retains its confirmation dialog.
+- **Products:** Keep the builder’s category layout and inline brand · product names. Desktop has a separate column of compact blue Buy buttons; phone cards show CAD prices and “via” followed by the linked merchant name and external-link icon.
+- **Description and notes:** The quiet pencil/Edit action sits beside the Description label on desktop and right-aligned on phone; an empty description offers Add. Notes begin in reading mode and match the builder’s numbered Morning/Night entries, dividers, and amber/violet headings. Edit notes opens editing; save returns to reading. Editing is limited to description and notes. Notes edit/cancel buttons remain outlined; save actions use blue.
+
+**Verification recorded from implementation:** Frontend lint and build passed. Chrome DevTools checks covered signed-in desktop (1440px) and phone (390px), copy feedback, description-dialog opening/Escape, actions-menu opening/Escape, and matching 44px share/menu heights. No description was saved or routine deleted during these checks.
+
+**Deferred:** Before/after uploads can become a results section beneath the introduction when images exist; no empty photo area is shown. “Use in builder” duplication remains future work. The former saved-routines destination is now Saved products.
 
 **Review section:** [Community routines and profile routines](./apple-design.md#6-community-routines-saved-routine-detail-and-profile-routines).  
 **Likely files:** `src/app/(main)/routines/page.tsx`, `src/app/(main)/routine/[id]/page.tsx`, `src/app/(main)/profile/created-routines/page.tsx`, relevant `src/components/guides/*` and `src/components/routine/*`.
 
-**Remaining work:** Review created routines and resolve the Saved Routines placeholder already linked from the account menu.
+**Saved products shell — implemented:** The account menu now links to `/profile/saved-products`; `/profile/saved-routines` redirects there. The authenticated page uses the shared wave, Red Hat typography, a simple bookmark empty state, and a 44px Browse products link. Copy explicitly says saving is coming soon. No fake items, loading animation, or inactive filters are shown. Product saving, persistence, and populated layouts are deferred. Frontend lint/build passed; Chrome checks at 390px and 1440px confirmed the layout, no horizontal overflow, and the legacy redirect.
 
-**Approval point:** Decide whether Saved Routines will be built, replaced with a useful empty state, or removed from navigation for now.
+**Created routines — implemented:** The page uses the shared wave and guides’ two-column, equal-height cards (one column on phone). Desktop retains a List view with contained product previews, product count, skin types, an estimated CAD total, and one link per row. Grid/List controls have visible labels, pressed states, and 44px targets; below desktop the layout returns to cards. A blue New routine action, explicit loading status, builder-linked empty state, and retryable load error complete the page. Code is limited to the page and `CreatedRoutineRow.tsx`.
+
+**Created routines verification:** Frontend lint/build passed. Chrome checks used eight real routines at desktop, tablet, and 320–390px phone widths, including missing tags. Checked equal card heights, grid/list switching, the two-column fallback at 700px, and no horizontal overflow. Browser-only mocked empty/failure responses verified the builder link and retry recovery without changing saved data.
+
+**Remaining work:** Visual sign-off on created routines. Implement product saving separately when ready.
 
 ## Batch 7 — authentication and account preferences
 

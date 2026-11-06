@@ -26,9 +26,9 @@ The values above are design targets, not an implementation spec. Check contrast 
 
 **Current files:** `src/components/header/Header.tsx` coordinates menu and scroll state; `DesktopNav.tsx`, `MobileNavDrawer.tsx`, `ProfileMenu.tsx`, and `navConfig.ts` contain the related UI and links. `src/components/Footer.tsx` and `src/components/ClearupLogoLink.tsx` remain shared components.
 
-**Implemented:** Builder is first. Products is a direct catalog link with an attached desktop category shelf and an expandable category list in the phone drawer. The account control uses an avatar fallback and includes Saved Routines. The header has a solid background from first paint, hides on downward scroll, and returns when scrolling toward the top; open menus and visible keyboard focus keep it available. The footer now links to `/products` and aligns its content consistently across sizes.
+**Implemented:** Builder is first. Products is a direct catalog link with an attached desktop category shelf and an expandable category list in the phone drawer. The account control uses an avatar fallback and includes Saved products. The header has a solid background from first paint, hides on downward scroll, and returns when scrolling toward the top; open menus and visible keyboard focus keep it available. The footer now links to `/products` and aligns its content consistently across sizes.
 
-**Still to review:** The solid header partly covers lettering embedded in the phone hero art; address that in the home page batch. Signed-in account behavior and touch feel on a real phone have not been checked after the navigation work. The Saved Routines destination still needs useful page content.
+**Still to review:** The solid header partly covers lettering embedded in the phone hero art; address that in the home page batch. Signed-in account behavior and touch feel on a real phone have not been checked after the navigation work. Saved products now has an honest coming-soon page shell; saving functionality remains deferred.
 
 ## 2. Home page
 
@@ -160,7 +160,7 @@ Phone:    Build your routine
 
 ## 6. Community routines, saved routine detail, and profile routines
 
-**Evidence:** `src/app/(main)/routines/page.tsx`, `src/components/guides/GuidesFilters.tsx`, `RoutinePreviewCard.tsx`, `src/app/(main)/routine/[id]/page.tsx`, `src/app/(main)/profile/created-routines/page.tsx`, `saved-routines/page.tsx`, `src/components/routine/RoutineShareLink.tsx`.
+**Evidence:** `src/app/(main)/routines/page.tsx`, `src/components/guides/GuidesFilters.tsx`, `RoutinePreviewCard.tsx`, `src/app/(main)/routine/[id]/page.tsx`, `src/app/(main)/profile/created-routines/page.tsx`, `src/app/(main)/profile/saved-products/page.tsx`, `saved-routines/page.tsx` (redirect), `src/components/routine/RoutineShareLink.tsx`.
 
 ### Community browse and cards
 
@@ -171,17 +171,17 @@ Phone:    Build your routine
 
 ### Routine detail and sharing
 
-- **Guide introduction — implemented.** Routine name, author, and description lead the page. A wider desktop summary labeled Total price groups estimated CAD cost, product count, skin types, and the share field below them. It stacks on phone. Header spacing follows content, with no reserved photo area. Products and usage follow. The description has a comfortable reading width and preserves author line breaks.
+- **Guide introduction — accepted for this iteration.** Routine name, author, and description lead the page. A summary labeled Total price uses 320px at medium desktop widths and 480px on large screens, balancing shorter descriptions. It groups CAD cost, product count, and skin types above sharing, and follows the introduction on phone. Header spacing follows content, with no reserved photo area. Products and usage follow. The description has a comfortable reading width and preserves author line breaks.
 - **Products — implemented.** Rows follow the builder’s category framework and inline brand · product names, with a separate desktop Buy column. Compact blue Buy buttons match the catalog and appear only when a store URL exists; phone cards retain CAD prices and show “via” with a linked merchant name and external-link icon. Packaging uses contained images.
-- **Share — implemented.** The attached URL field and copy-icon layout displays `clearup.skin/routine/{id}` without a scheme or www. Copying confirms success or failure and copies a full HTTPS production URL; localhost retains a working local URL for development.
+- **Share and routine actions — implemented.** The attached URL field and copy-icon layout displays `clearup.skin/routine/{id}` without a scheme or www. Copying confirms success or failure and copies a full HTTPS production URL; localhost retains a working local URL for development. The owner-only ⋯ menu aligns beside the field inside the total-price card’s footer. Both controls have a 44px outer height and matching border, white background, and subtle shadow. Delete routine lives in this menu and retains its confirmation dialog; a future Copy to builder action can join it.
 - **Usage presentation — implemented.** Public notes follow the builder’s 16px Morning/Night headings, amber/violet accents, numbered brand · product headers, and simple dividers. The timeline rail, book icon, and duplicate notes heading are removed.
-- **Editing — implemented.** Owners edit description through a focused accessible dialog. Usage begins in reading mode, with explicit Edit notes and Cancel editing actions; saving returns to reading. Name, skin types, and products are outside this editing scope. Owners see a quiet pencil/Edit action beside the Description label on desktop (right-aligned on phone), or Add when empty; it opens the same focused dialog. Notes edit and cancel buttons use white outlined controls; save buttons use blue. All controls retain 44px targets. Delete routine is in the owner-only actions menu aligned beside the share field in the total-price card’s footer and retains its confirmation dialog.
+- **Editing — implemented.** Owners edit description through a focused accessible dialog. Usage begins in reading mode, with explicit Edit notes and Cancel editing actions; saving returns to reading. Name, skin types, and products are outside this editing scope. Owners see a quiet pencil/Edit action beside the Description label on desktop (right-aligned on phone), or Add when empty; it opens the same focused dialog. Notes edit and cancel buttons use white outlined controls; save buttons use blue. Editing controls retain 44px targets.
 - **Future story content.** Before/after photos can sit below the introduction when available, with dates and captions. No empty image placeholder is reserved. Duplicating into the builder is deferred.
 
-### Created and saved routines
+### Created routines and saved products
 
-- **Created — medium impact.** The page has a useful empty state and New Routine action. The grid/list toggle exists only on desktop and uses icons with `title` attributes. If both views are valuable, label the choices visibly and remember the preference; otherwise keep one strong layout. The same card issues from community browse apply here.
-- **Saved — high impact.** “Saved Routines” is exposed in the account menu, but its page is only “Implementation coming soon!”. Remove the destination from primary account navigation until it serves a user goal, or give the page a real empty state that explains saving and links to browse. As it stands, the feature breaks trust.
+- **Created — implemented.** The page matches the guides’ shared wave, typography, two-column cards, equal heights, and skin-type placeholders. Phone uses one card column. Desktop keeps an alternate list of compact rows: routine name, product count and skin types, contained square previews, estimated CAD total, and a quiet View routine arrow within one link. Grid/List buttons have visible labels, 44px targets, and pressed states; selection lasts for the current page visit, while smaller screens return to cards. New routine uses the shared blue action. Loading, empty, and failed-load states are distinct, with a builder link or working retry as appropriate.
+- **Saved products — shell implemented.** Replaces Saved routines in the account menu at `/profile/saved-products`; the old URL redirects. The authenticated page keeps the shared wave and typography, with a quiet bookmark icon, clear coming-soon copy, and a blue Browse products link with a 44px target. Desktop and phone use the same focused empty state. There are no simulated saved products or perpetual loading placeholders. Saving, persistence, and populated layouts remain future work.
 
 ## 7. Authentication and account preferences
 
@@ -226,6 +226,6 @@ These are patterns to address while improving the individual blocks, rather than
 
 ## Suggested design sequence for the later checklist
 
-Start with the changes that affect whether people can complete the main journeys: **phone catalog filters and search; phone merchant offers; routine builder save feedback; account/saved-routine wayfinding; admin phone shell if mobile admin is required.** Then establish the shared type, color, spacing, and control rules. Next refine home imagery, routine cards, and motion. Review each page at phone and desktop widths with real product data, long names, missing images, empty states, keyboard focus, reduced motion, and larger text before calling that page done.
+Start with the changes that affect whether people can complete the main journeys: **phone catalog filters and search; phone merchant offers; routine builder save feedback; account/saved-product wayfinding; admin phone shell if mobile admin is required.** Then establish the shared type, color, spacing, and control rules. Next refine home imagery, routine cards, and motion. Review each page at phone and desktop widths with real product data, long names, missing images, empty states, keyboard focus, reduced motion, and larger text before calling that page done.
 
 This document is the critique and design direction. The implementation checklist can be made after deciding which recommendations fit Clearup's product goals and which screens matter most to users.

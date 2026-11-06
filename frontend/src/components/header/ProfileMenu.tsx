@@ -139,12 +139,12 @@ export default function ProfileMenu({
               Created routines
             </Link>
             <Link
-              href="/profile/saved-routines"
+              href="/profile/saved-products"
               onClick={() => setIsProfileOpen(false)}
               className={accountLinkClass}
             >
               <Bookmark className="mr-2 size-4 text-zinc-500" />
-              Saved routines
+              Saved products
             </Link>
           </div>
           <div className="pt-1">

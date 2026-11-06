@@ -1,245 +1,171 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Plus,
-  ArrowRight,
-  Loader2,
-  Sparkles,
-  LayoutGrid,
-  List,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { skinTypeLabel } from "@/lib/routineSkinTypeTags";
-import { getMyRoutines } from "@/lib/routines";
-import { effectiveRoutineProductCategory } from "@/lib/routineProductCategory";
-import type {
-  RoutineProductWithDetails,
-  RoutineWithProducts,
-} from "@/types/routine";
+import { useRouter } from "next/navigation";
+import { LayoutGrid, List, Loader2, Plus, Sparkles } from "lucide-react";
 import RoutinePreviewCard, {
   estimatedPriceFromRoutineProducts,
   previewUrlsFromRoutineProducts,
 } from "@/components/guides/RoutinePreviewCard";
-import ProductImage from "@/components/ui/ProductImage";
+import CreatedRoutineRow from "@/components/routine/CreatedRoutineRow";
+import ProceduralWave from "@/components/themes/ProceduralWave";
+import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
+import { getMyRoutines } from "@/lib/routines";
+import type { RoutineWithProducts } from "@/types/routine";
 
 export default function CreatedRoutinesPage() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
+  const userId = session?.user?.id;
   const [routines, setRoutines] = useState<RoutineWithProducts[]>([]);
   const [isLoadingRoutines, setIsLoadingRoutines] = useState(true);
+  const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [isListView, setIsListView] = useState(false);
 
   useEffect(() => {
-    const fetchRoutines = async () => {
-      if (session?.user?.id) {
-        try {
-          const data = await getMyRoutines();
-          const reversedData = data ? [...data].reverse() : [];
-          setRoutines(reversedData);
-        } catch (error) {
-          console.error("Failed to fetch routines:", error);
-        } finally {
-          setIsLoadingRoutines(false);
-        }
-      }
-    };
+    if (isPending || !userId) return;
+    let active = true;
 
-    if (!isPending) {
-      fetchRoutines();
+    async function fetchRoutines() {
+      try {
+        const data = await getMyRoutines();
+        if (active) setRoutines([...(data ?? [])].reverse());
+      } catch {
+        if (active) setError("We couldn’t load your routines. Please try again.");
+      } finally {
+        if (active) setIsLoadingRoutines(false);
+      }
     }
-  }, [session, isPending]);
+
+    fetchRoutines();
+    return () => {
+      active = false;
+    };
+  }, [userId, isPending, retryCount]);
 
   useEffect(() => {
-    if (!isPending && !session) {
-      router.push("/login");
-    }
+    if (!isPending && !session) router.push("/login");
   }, [isPending, session, router]);
 
-  if (isPending) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
-      </div>
-    );
+  function retryLoading() {
+    setError("");
+    setIsLoadingRoutines(true);
+    setRetryCount((count) => count + 1);
   }
 
+  const isLoading = isPending || !userId || isLoadingRoutines;
+
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl pt-24 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-2">
-        <div>
-          <h1 className="text-2xl font-bold mb-1">Created Routines</h1>
-          <p className="text-zinc-500 text-sm">
-            View all your skincare routines you have built.
-          </p>
-        </div>
-        <Link href="/builder">
-          <Button className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            New Routine
-          </Button>
-        </Link>
-      </div>
-      <div className="flex items-center gap-3 py-3">
-        {/* List + Grid Layout method */}
-        <div className="hidden md:flex items-center bg-zinc-100 p-1 rounded-lg">
-          <button
-            onClick={() => setIsListView(false)}
-            className={`p-2 rounded-md transition-all ${!isListView ? "bg-white shadow-sm text-blue-600" : "text-zinc-500 hover:text-zinc-900"}`}
-            title="Grid View"
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setIsListView(true)}
-            className={`p-2 rounded-md transition-all ${isListView ? "bg-white shadow-sm text-blue-600" : "text-zinc-500 hover:text-zinc-900"}`}
-            title="List View"
-          >
-            <List className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Loading State for Data */}
-      {isLoadingRoutines ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
-        </div>
-      ) : routines.length === 0 ? (
-        // Empty State
-        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-zinc-50 rounded-2xl border border-zinc-100 border-dashed">
-          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-            <Sparkles className="w-8 h-8 text-zinc-300" />
+    <div className="relative min-h-screen bg-[#F8F8F8]">
+      <ProceduralWave
+        seed={7}
+        height={160}
+        gradientFrom="#e9f6ff"
+        gradientTo="#f0f8fc"
+        flip
+      />
+      <div className="relative z-1 mx-auto max-w-6xl px-4 pt-34 pb-20 sm:px-6">
+        <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+              Created routines
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+              Your skincare routines, ready to revisit and share.
+            </p>
           </div>
-          <h3 className="text-xl font-semibold mb-2">No routines yet</h3>
-          <p className="text-zinc-500 max-w-md mb-6">
-            You haven&apos;t created any skincare routines. Head over to the builder
-            to create your first personalized routine.
-          </p>
-          <Link href="/builder">
-            <Button>Go to Builder</Button>
-          </Link>
-        </div>
-      ) : (
-        // Routines Grid/List
-        <div
-          className={
-            isListView
-              ? "flex flex-col gap-4"
-              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          }
-        >
-          {routines.map((routine) =>
-            isListView ? (
-              // Routines Row List
-              <div
-                key={routine.id}
-                className="group bg-white rounded-xl border border-zinc-200 shadow-sm hover:shadow-md hover:border-zinc-300 transition-all duration-200 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
-              >
-                {/* Routine Info */}
-                <div className="flex-1 w-full">
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-lg font-bold group-hover:text-blue-600 transition-colors line-clamp-1">
-                      {routine.name}
-                    </h3>
-                    <span className="text-xs font-medium bg-zinc-100 text-zinc-600 px-2 py-1 rounded-full">
-                      {routine.products?.length || 0} items
-                    </span>
-                  </div>
+          <Button asChild variant="secondary" className="min-h-11">
+            <Link href="/builder">
+              <Plus className="size-4" aria-hidden="true" />
+              New routine
+            </Link>
+          </Button>
+        </header>
 
-                  <div>
-                    {routine.skinTypeTags.length > 0 ? (
-                      <div className="mb-3 flex flex-wrap gap-1.5">
-                        {routine.skinTypeTags.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-700"
-                          >
-                            {skinTypeLabel(t)}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div>
-                        <span className="px-2 py-0.5"></span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Product Image Thumbnails */}
-                  {routine.products && routine.products.length > 0 && (
-                    <div className="flex items-center">
-                      {routine.products
-                        .slice(0, 6)
-                        .map((rp: RoutineProductWithDetails, idx: number) => {
-                          const category = effectiveRoutineProductCategory(rp);
-                          return (
-                          <div
-                            key={idx}
-                            className="w-10 h-10 rounded-full border-2 border-white overflow-hidden bg-zinc-50 shrink-0 -ml-2 first:ml-0 shadow-sm relative group/tooltip"
-                            title={rp.product?.name || category}
-                          >
-                            {rp.product?.imageUrls?.[0] ? (
-                              <ProductImage
-                                src={rp.product.imageUrls[0]}
-                                alt={rp.product?.name || "product preview"}
-                                width={40}
-                                height={40}
-                                className="w-full h-full object-cover"
-                                sizes="40px"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-400 bg-zinc-100 uppercase">
-                                {category.substring(0, 2)}
-                              </div>
-                            )}
-                          </div>
-                          );
-                        })}
-
-                      {/* If there are more than 6 products, show a "+X" bubble */}
-                      {routine.products.length > 6 && (
-                        <div className="w-10 h-10 rounded-full border-2 border-white bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-600 shrink-0 -ml-2 shadow-sm z-10">
-                          +{routine.products.length - 6}
-                        </div>
-                      )}
+        {isLoading ? (
+          <div role="status" className="flex items-center justify-center gap-3 py-16 text-sm text-zinc-600">
+            <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            Loading your routines…
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-12 text-center">
+            <p role="alert" className="text-sm text-zinc-600">{error}</p>
+            <Button variant="secondary" className="mt-5 min-h-11" onClick={retryLoading}>
+              Try again
+            </Button>
+          </div>
+        ) : routines.length === 0 ? (
+          <section aria-labelledby="empty-routines-title" className="rounded-2xl border border-zinc-200 bg-white px-6 py-12 text-center sm:py-16">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+              <Sparkles className="size-6" strokeWidth={1.5} aria-hidden="true" />
+            </div>
+            <h2 id="empty-routines-title" className="mt-5 text-xl font-semibold tracking-tight text-zinc-900">
+              No routines yet
+            </h2>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-600">
+              Choose products and add your notes in the builder to create your first routine.
+            </p>
+            <Button asChild variant="secondary" className="mt-6 min-h-11">
+              <Link href="/builder">Build a routine</Link>
+            </Button>
+          </section>
+        ) : (
+          <>
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <p className="text-sm text-zinc-500">
+                {routines.length} {routines.length === 1 ? "routine" : "routines"}
+              </p>
+              <div role="group" aria-label="Routine layout" className="hidden rounded-lg border border-zinc-200 bg-zinc-100 p-1 md:flex">
+                <button
+                  type="button"
+                  aria-pressed={!isListView}
+                  onClick={() => setIsListView(false)}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none ${!isListView ? "bg-white text-brand shadow-sm" : "text-zinc-600 hover:bg-white/60"}`}
+                >
+                  <LayoutGrid className="size-4" aria-hidden="true" />
+                  Grid
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={isListView}
+                  onClick={() => setIsListView(true)}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none ${isListView ? "bg-white text-brand shadow-sm" : "text-zinc-600 hover:bg-white/60"}`}
+                >
+                  <List className="size-4" aria-hidden="true" />
+                  List
+                </button>
+              </div>
+            </div>
+            <div
+              className={isListView
+                ? "grid auto-rows-fr gap-4 sm:grid-cols-3 md:block md:space-y-3"
+                : "grid auto-rows-fr gap-4 sm:grid-cols-3"}
+            >
+              {routines.map((routine) => (
+                <div key={routine.id}>
+                  {isListView && (
+                    <div className="hidden md:block">
+                      <CreatedRoutineRow routine={routine} />
                     </div>
                   )}
+                  <RoutinePreviewCard
+                    routineId={routine.id}
+                    name={routine.name}
+                    authorLabel={routine.author?.name?.trim()}
+                    skinTypeTags={routine.skinTypeTags ?? []}
+                    previewImageUrls={previewUrlsFromRoutineProducts(routine)}
+                    estimatedTotalPrice={estimatedPriceFromRoutineProducts(routine)}
+                    className={isListView ? "md:hidden" : undefined}
+                  />
                 </div>
-
-                {/* View Routine Action */}
-                <div className="shrink-0 w-full md:w-auto mt-4 md:mt-0 border-t border-zinc-100 md:border-none pt-4 md:pt-0">
-                  <Link
-                    href={`/routine/${routine.id}`}
-                    className="w-full block"
-                  >
-                    <Button
-                      variant="outline"
-                      className="group/btn w-full transition-colors md:w-auto group-hover:bg-zinc-50"
-                    >
-                      View Routine
-                      <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <RoutinePreviewCard
-                key={routine.id}
-                routineId={routine.id}
-                name={routine.name}
-                authorLabel={routine.author?.name?.trim()}
-                skinTypeTags={routine.skinTypeTags ?? []}
-                previewImageUrls={previewUrlsFromRoutineProducts(routine)}
-                estimatedTotalPrice={estimatedPriceFromRoutineProducts(routine)}
-              />
-            ),
-          )}
-        </div>
-      )}
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
