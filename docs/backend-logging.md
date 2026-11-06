@@ -81,7 +81,7 @@ Typical counts for one API request:
 | Global or classified app rate-limit rejection (429) | 2: limiter warning + completion; auth also includes audit |
 | Other route-specific limit rejection | 1 completion |
 
-For example, an uncached catalog page that makes one product-list request and two offer requests usually creates three completion records. An uncached brands request adds another. CORS preflight requests, auth checks, prefetches, and retries can add more API requests.
+For example, an uncached 40-product catalog page that makes one product-list request and one offer batch usually creates two completion records. Reusing offers from the 60-second browser cache may avoid the offer request, including when adding to the builder. An uncached brands request adds another. CORS preflight requests, auth checks, prefetches, and retries can add more API requests.
 
 For a rough total, count request completions (excluding successful health checks), then add handled application errors, auth audits, global/catalog limit warnings, and any emitted business/startup events. A normal startup with no pending migrations is roughly ten application records; warnings and actual migration lifecycle records vary. This describes application stdout records, not any extra records created by the hosting platform.
 

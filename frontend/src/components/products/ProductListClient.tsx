@@ -13,16 +13,15 @@ import {
   type ColumnConfig,
 } from "@/constants/filters";
 import ProceduralWave from "@/components/themes/ProceduralWave";
-import type { Product, ProductListFilters } from "@/types/product";
+import type { CatalogError, Product, ProductListFilters } from "@/types/product";
 import AddToRoutineButton from "@/components/routine/AddToRoutineButton";
 import { SkinTypeTags } from "./SkinTypeTags";
 import ProductListFiltersSidebar from "./ProductListFiltersSidebar";
 import ProductCatalogPagination from "./ProductCatalogPagination";
+import MerchantOffersNotice from "./MerchantOffersNotice";
 import { PRODUCT_CATALOG_PAGE_SIZE } from "@/lib/productListFilters";
-import {
-  getCatalogMerchantOffersByProductIds,
-  pickLowestPriceOffer,
-} from "@/lib/products";
+import { pickLowestPriceOffer } from "@/lib/products";
+import { getCatalogMerchantOffersByProductIds } from "@/lib/catalogMerchantOffers";
 import {
   type CatalogScope,
   useProductCatalog,
@@ -59,6 +58,12 @@ export default function ProductListClient({
   const [offerPrices, setOfferPrices] = useState<Record<number, number | null>>(
     {},
   );
+  const [offerRetryVersion, setOfferRetryVersion] = useState(0);
+  const [offerFailure, setOfferFailure] = useState<{
+    productKey: string;
+    error: CatalogError;
+    isRetrying: boolean;
+  } | null>(null);
   const {
     products,
     filters,
@@ -91,30 +96,43 @@ export default function ProductListClient({
     resultQuery,
   });
 
+  const productKey = products.map((product) => product.id).join(",");
+  const currentOfferFailure = offerFailure?.productKey === productKey ? offerFailure : null;
+
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const productIds = products.map((product) => product.id);
     if (!productIds.length) return;
 
-    void getCatalogMerchantOffersByProductIds(productIds).then(({ offers, failedIds }) => {
-      if (cancelled) return;
-      const failed = new Set(failedIds);
+    void getCatalogMerchantOffersByProductIds(productIds, { signal: controller.signal }).then(({ offers, error: offerError }) => {
+      if (controller.signal.aborted) return;
       setOfferPrices((previous) => ({
         ...previous,
         ...Object.fromEntries(
-          productIds.filter((id) => !failed.has(id)).map((productId) => [
+          productIds.filter((id) => offers[id] !== undefined).map((productId) => [
             productId,
             pickLowestPriceOffer(offers[productId] ?? [])?.price ??
               null,
           ]),
         ),
       }));
+      setOfferFailure(offerError ? { productKey, error: offerError, isRetrying: false } : null);
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      console.error("Catalog merchant offers failed", error);
+      setOfferFailure({ productKey, error: { status: null, requestId: null, retryAt: null }, isRetrying: false });
     });
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [products]);
+  }, [products, productKey, offerRetryVersion]);
+
+  const retryOffers = () => {
+    if (currentOfferFailure?.isRetrying) return;
+    setOfferFailure((previous) => previous ? { ...previous, isRetrying: true } : null);
+    setOfferRetryVersion((previous) => previous + 1);
+  };
 
   const config =
     scope.type === "all"
@@ -353,6 +371,13 @@ export default function ProductListClient({
             </p>
           </div>
           {error && <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Couldn’t load this page.{products.length > 0 ? " Showing your previous results." : ""}{error.status ? ` (HTTP ${error.status})` : ""}<button className="underline disabled:opacity-50" disabled={retryDisabled} onClick={retry}>{retryDisabled ? "Retry available shortly" : "Retry"}</button></div>}
+          {currentOfferFailure && (
+            <MerchantOffersNotice
+              error={currentOfferFailure.error}
+              isRetrying={currentOfferFailure.isRetrying}
+              onRetry={retryOffers}
+            />
+          )}
           {isNavigating && (
             <p role="status" className="sr-only">Updating results…</p>
           )}

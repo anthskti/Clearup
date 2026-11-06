@@ -27,7 +27,7 @@ The builder is primarily **client-side** until the user saves:
 | Slot layout | Fixed categories: cleanser, toner, essence, serum, eyecare, moisturizer, sunscreen, other |
 | Persistence (draft) | `localStorage` key `builder-routine` via `useBuilderRoutine` |
 | Notes | `useBuilderNotes` — per-step notes, also local until save |
-| Merchant preview | When adding a product, fetches lowest `product_merchant` price |
+| Merchant preview | Reuses recent catalog offers; fetches missing/expired offers in batches, then selects the lowest `product_merchant` price |
 | Save | Requires login; opens `SaveRoutineModal`, then `POST /api/routines` + bulk product attach |
 
 Skin type tags on save use `RoutineSkinTypeTagPicker` and are stored on the routine record.
@@ -39,6 +39,8 @@ After save, users get a shareable URL: `/routine/[id]`.
 - `addProductToSlot(category, product)` — supports multiple products per slot (migrated from older single-product shape).
 - `removeProductFromSlot`, `clearRoutine`
 - Auto-save to `localStorage` after hydration
+
+The builder shares the catalog's browser offer cache (60 seconds, at most 200 products). Adding a recently priced catalog product normally needs no additional offer request. Existing draft prices, merchant details, and images survive failed lookups; 429 responses show a retry countdown and block new uncached offer requests during the shared cooldown. A successful empty offer result is distinct from a failure and clears an unavailable price. Restoring an existing local draft does not automatically refresh all its prices. Images are carried with the product separately from merchant lookups.
 
 ## Viewing a routine
 

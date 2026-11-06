@@ -18,6 +18,7 @@ import {
 import type { SkinType } from "@/types/product";
 import RoutineSkinTypeTagPicker from "@/components/routine/RoutineSkinTypeTagPicker";
 import BuilderSkeleton from "@/components/routine/BuilderSkeleton";
+import MerchantOffersNotice from "@/components/products/MerchantOffersNotice";
 import BuilderProductNotesSection from "@/components/routine/BuilderProductNotesSection";
 import SaveRoutineModal from "@/components/routine/SaveRoutineModal";
 import { createRoutine } from "@/lib/routines";
@@ -49,6 +50,9 @@ export default function Builder() {
     isLoaded: routineLoaded,
     removeProductFromSlot,
     clearRoutine,
+    merchantOfferError,
+    isRetryingOffers,
+    retryMerchantOffers,
   } = useBuilderRoutine();
   const {
     entries: noteEntries,
@@ -235,6 +239,14 @@ export default function Builder() {
           <AuthSessionUnavailable
             retryAt={getSessionRetryAt()}
             onRetry={refetchSession}
+          />
+        )}
+
+        {merchantOfferError && (
+          <MerchantOffersNotice
+            error={merchantOfferError}
+            isRetrying={isRetryingOffers}
+            onRetry={retryMerchantOffers}
           />
         )}
 

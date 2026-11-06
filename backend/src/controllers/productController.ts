@@ -180,19 +180,25 @@ export class ProductController {
   async getMerchantsBatch(req: Request, res: Response): Promise<void> {
     try {
       const raw = req.query.ids;
-      if (typeof raw !== "string" || !raw.trim()) {
+      if (raw === undefined || raw === "") {
         res.json({});
         return;
       }
-      const ids = raw
-        .split(",")
-        .map((s) => parseInt(s.trim(), 10))
-        .filter((n) => !Number.isNaN(n) && n > 0);
-      const MAX_IDS = 25; // Max 25 products per request. This is to prevent abuse of the API.
-      if (ids.length > MAX_IDS) {
+      const MAX_IDS = 40; // One catalog page per batch; keep the database query bounded.
+      if (typeof raw !== "string") {
+        res.status(400).json({ error: "ids must be comma-separated positive integers" });
+        return;
+      }
+      const values = raw.split(",").map((value) => value.trim());
+      if (values.length > MAX_IDS) {
         res.status(400).json({ error: `At most ${MAX_IDS} product ids` });
         return;
       }
+      if (values.some((value) => !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1)) {
+        res.status(400).json({ error: "ids must be comma-separated positive integers" });
+        return;
+      }
+      const ids = [...new Set(values.map(Number))];
       const grouped =
         await this.productService.getMerchantsGroupedByProductId(ids);
       res.json(grouped);

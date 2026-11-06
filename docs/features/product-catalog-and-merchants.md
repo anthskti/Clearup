@@ -32,7 +32,7 @@ Base path: `/api/products`
 
 Catalog product and merchant directory GET/HEAD routes share the `catalog` IP token bucket (burst 20, refill 2/sec). Policies are configured in `backend/src/config/rateLimitPolicies.ts`; changes require a code change and redeployment. Exhaustion returns 429 with retry timing. Next.js server traffic shares its egress IP's budget. See [rate limiting](../backend-architecture.md#5-rate-limiting-summary) for deployment and in-memory storage limitations.
 
-Global and category listings default to `limit=25&offset=0`. Explicit limits must be integers from 1–100; offsets must be nonnegative safe integers. Malformed, repeated, or oversized pagination parameters return 400 before querying the service. Response shapes are unchanged. Merchant batches remain limited to 25 product IDs.
+Global and category listings default to `limit=25&offset=0`. Explicit limits must be integers from 1–100; offsets must be nonnegative safe integers. Malformed, repeated, or oversized pagination parameters return 400 before querying the service. Response shapes are unchanged. Merchant batches accept at most 40 comma-separated positive safe-integer product IDs (matching one catalog page). Malformed, repeated query parameters or oversized batches return 400; valid duplicate IDs are deduplicated after the size check. Missing or empty `ids` returns an empty object.
 
 | Method | Path | Access | Purpose |
 |--------|------|--------|---------|
@@ -40,7 +40,7 @@ Global and category listings default to `limit=25&offset=0`. Explicit limits mus
 | GET | `/category/:category` | Public | Category listing |
 | GET | `/id/:id` | Public | Product detail |
 | GET | `/id/:id/merchants` | Public | Offers for one product |
-| GET | `/merchants/batch?ids=1,2,3` | Public | Batched offers (routine pages) |
+| GET | `/merchants/batch?ids=1,2,3` | Public | Batched offers (catalog, builder, routine pages) |
 | POST | `/` | Admin | Create product |
 | PUT/DELETE | `/id/:id` | Admin | Update/delete |
 | POST | `/id/:id/merchants` | Admin | Link merchant to product |
@@ -72,6 +72,10 @@ Server fetches use Next.js `revalidate` tiers:
 | Product-by-id (`getProductById`) | `no-store` | PDP body — always fresh after catalog edits |
 
 This keeps catalog pages fast without stale prices living forever on high-churn offers.
+
+Browser catalog and builder reads share `frontend/src/lib/catalogMerchantOffers.ts`: successful offers, including confirmed empty results, are cached for 60 seconds with a 200-product bound. Only missing or expired IDs are requested, in batches of 40. Cache and cooldown state are browser memory only and reset on a full reload. Product images come from the product's `imageUrls`, not this offer endpoint.
+
+Changing catalog results aborts obsolete offer fetches. A failed batch stops further batches, retains previously displayed prices, and shows a retry notice. A 429 establishes a shared browser cooldown using `Retry-After` (or `X-Retry-After`, with a one-second fallback); uncached requests return that cooldown to the UI without queuing automatic retries. Successful cached offers remain usable during cooldown. Already accepted requests can still consume backend tokens after cancellation. These changes do not increase the shared catalog rate budget or remove the Next.js shared-egress-IP limitation.
 
 ## Admin import
 

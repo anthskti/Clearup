@@ -108,7 +108,7 @@ export async function getMerchantOffersByProductIds(
   const out: Record<number, ProductMerchantWithDetails[]> = Object.fromEntries(
     sortedIds.map((id) => [id, []]),
   );
-  const batchSize = 25;
+  const batchSize = 40;
 
   for (let start = 0; start < sortedIds.length; start += batchSize) {
     const batch = sortedIds.slice(start, start + batchSize);
@@ -133,63 +133,6 @@ export async function getMerchantOffersByProductIds(
     }
   }
   return out;
-}
-
-/** Catalog offer fetch that lets the UI retain prior prices for failed batches. */
-export async function getCatalogMerchantOffersByProductIds(
-  productIds: number[],
-): Promise<{
-  offers: Record<number, ProductMerchantWithDetails[]>;
-  failedIds: number[];
-}> {
-  const ids = [
-    ...new Set(productIds.filter((id) => Number.isFinite(id) && id > 0)),
-  ];
-  const offers: Record<number, ProductMerchantWithDetails[]> = {};
-  const failedIds: number[] = [];
-  for (let start = 0; start < ids.length; start += 25) {
-    const batch = ids.slice(start, start + 25);
-    let res: Response;
-    try {
-      res = await fetch(
-        `${API_URL}/api/products/merchants/batch?ids=${encodeURIComponent(batch.join(","))}`,
-        { cache: "no-store" },
-      );
-    } catch {
-      failedIds.push(...batch);
-      continue;
-    }
-    if (!res.ok) {
-      const metadata = catalogError(res);
-      console.error("getCatalogMerchantOffersByProductIds failed", {
-        status: metadata.status,
-        requestId: metadata.requestId,
-        retryAt: metadata.retryAt,
-      });
-      failedIds.push(...batch);
-      continue;
-    }
-    let data: unknown;
-    try {
-      data = await res.json();
-    } catch {
-      failedIds.push(...batch);
-      continue;
-    }
-    if (!data || typeof data !== "object" || Array.isArray(data)) {
-      failedIds.push(...batch);
-      continue;
-    }
-    const record = data as Record<string, unknown>;
-    for (const id of batch) {
-      if (Array.isArray(record[String(id)])) {
-        offers[id] = record[String(id)] as ProductMerchantWithDetails[];
-      } else {
-        failedIds.push(id);
-      }
-    }
-  }
-  return { offers, failedIds };
 }
 
 export const getAllProducts = async (
