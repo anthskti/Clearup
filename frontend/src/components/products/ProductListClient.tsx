@@ -4,7 +4,6 @@ import ProductImage from "@/components/ui/ProductImage";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import ProductRating from "@/components/product/ProductRating";
-import { useInView } from "react-intersection-observer";
 import { CountryMapping } from "../../constants/CountryMapping";
 
 import {
@@ -14,14 +13,15 @@ import {
   type ColumnConfig,
 } from "@/constants/filters";
 import ProceduralWave from "@/components/themes/ProceduralWave";
-import type { Product, ProductListFilters } from "@/types/product";
+import type { CatalogError, Product, ProductListFilters } from "@/types/product";
 import AddToRoutineButton from "@/components/routine/AddToRoutineButton";
 import { SkinTypeTags } from "./SkinTypeTags";
 import ProductListFiltersSidebar from "./ProductListFiltersSidebar";
-import {
-  getMerchantOffersByProductIds,
-  pickLowestPriceOffer,
-} from "@/lib/products";
+import ProductCatalogPagination from "./ProductCatalogPagination";
+import MerchantOffersNotice from "./MerchantOffersNotice";
+import { PRODUCT_CATALOG_PAGE_SIZE } from "@/lib/productListFilters";
+import { pickLowestPriceOffer } from "@/lib/products";
+import { getCatalogMerchantOffersByProductIds } from "@/lib/catalogMerchantOffers";
 import {
   type CatalogScope,
   useProductCatalog,
@@ -33,6 +33,9 @@ interface ProductListClientProps {
   initialTotal: number;
   initialFilters: ProductListFilters;
   initialSearch?: string;
+  initialPage: number;
+  catalogError: import("@/types/product").CatalogError | null;
+  resultQuery: string;
   availableBrands: string[];
 }
 
@@ -47,11 +50,20 @@ export default function ProductListClient({
   initialTotal,
   initialFilters,
   initialSearch = "",
+  initialPage,
+  catalogError,
+  resultQuery,
   availableBrands,
 }: ProductListClientProps) {
   const [offerPrices, setOfferPrices] = useState<Record<number, number | null>>(
     {},
   );
+  const [offerRetryVersion, setOfferRetryVersion] = useState(0);
+  const [offerFailure, setOfferFailure] = useState<{
+    productKey: string;
+    error: CatalogError;
+    isRetrying: boolean;
+  } | null>(null);
   const {
     products,
     filters,
@@ -64,53 +76,63 @@ export default function ProductListClient({
     setInputValue,
     commitSearch,
     clearAll,
-    isLoading,
-    hasMore,
-    loadMore,
     isFiltered,
     totalCount,
+    isNavigating,
+    page,
+    goToPage,
+    error,
+    retry,
+    retryDisabled,
+    isRetrying,
   } = useProductCatalog({
     scope,
     initialProducts,
     initialTotal,
     initialFilters,
     initialSearch,
+    initialPage,
+    catalogError,
+    resultQuery,
   });
 
-  const { ref, inView } = useInView({
-    threshold: 0,
-    rootMargin: "400px", // Starts loading when 400px from the bottom.
-    skip: products.length === 0 && !isLoading,
-  });
+  const productKey = products.map((product) => product.id).join(",");
+  const currentOfferFailure = offerFailure?.productKey === productKey ? offerFailure : null;
 
   useEffect(() => {
-    if (inView && hasMore && !isLoading) {
-      loadMore();
-    }
-  }, [inView, hasMore, isLoading, loadMore]);
-
-  useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const productIds = products.map((product) => product.id);
     if (!productIds.length) return;
 
-    void getMerchantOffersByProductIds(productIds).then((offersByProductId) => {
-      if (cancelled) return;
-      setOfferPrices(
-        Object.fromEntries(
-          productIds.map((productId) => [
+    void getCatalogMerchantOffersByProductIds(productIds, { signal: controller.signal }).then(({ offers, error: offerError }) => {
+      if (controller.signal.aborted) return;
+      setOfferPrices((previous) => ({
+        ...previous,
+        ...Object.fromEntries(
+          productIds.filter((id) => offers[id] !== undefined).map((productId) => [
             productId,
-            pickLowestPriceOffer(offersByProductId[productId] ?? [])?.price ??
+            pickLowestPriceOffer(offers[productId] ?? [])?.price ??
               null,
           ]),
         ),
-      );
+      }));
+      setOfferFailure(offerError ? { productKey, error: offerError, isRetrying: false } : null);
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      console.error("Catalog merchant offers failed", error);
+      setOfferFailure({ productKey, error: { status: null, requestId: null, retryAt: null }, isRetrying: false });
     });
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [products]);
+  }, [products, productKey, offerRetryVersion]);
+
+  const retryOffers = () => {
+    if (currentOfferFailure?.isRetrying) return;
+    setOfferFailure((previous) => previous ? { ...previous, isRetrying: true } : null);
+    setOfferRetryVersion((previous) => previous + 1);
+  };
 
   const config =
     scope.type === "all"
@@ -180,7 +202,7 @@ export default function ProductListClient({
                 {product.brand}
               </div>
               <div className="font-bold text-zinc-900 text-sm">
-                <Link href={`/product/id/${product.id}`}>{product.name}</Link>
+                <Link href={`/product/id/${product.id}`} prefetch={false}>{product.name}</Link>
               </div>
             </div>
           </div>
@@ -236,6 +258,7 @@ export default function ProductListClient({
         return (
           <Link
             href={`/products/category/${product.category}`}
+            prefetch={false}
             className="text-[12px] font-semibold capitalize text-[#0e4a84]"
           >
             {product.category}
@@ -304,9 +327,9 @@ export default function ProductListClient({
 
   const emptyState = (
     <div className="p-12 text-center text-sm text-zinc-500">
-      <p className="font-medium text-zinc-700">No products found</p>
+      <p className="font-medium text-zinc-700">{error ? "Products couldn’t be loaded" : "No products found"}</p>
       <p className="mt-1">
-        {isFiltered
+        {error ? "Retry when the service is available." : isFiltered
           ? "Try adjusting your filters or search."
           : "No products here yet."}
       </p>
@@ -344,9 +367,20 @@ export default function ProductListClient({
           {/* List Header */}
           <div className="mb-6 flex items-center justify-end">
             <p className="text-sm font-medium text-zinc-500">
-              Showing {products.length} of {totalCount} results
+              Showing {totalCount === 0 || products.length === 0 ? 0 : (page - 1) * PRODUCT_CATALOG_PAGE_SIZE + 1}–{(page - 1) * PRODUCT_CATALOG_PAGE_SIZE + products.length} of {totalCount} results
             </p>
           </div>
+          {error && <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Couldn’t load this page.{products.length > 0 ? " Showing your previous results." : ""}{error.status ? ` (HTTP ${error.status})` : ""}<button className="underline disabled:opacity-50" disabled={retryDisabled} onClick={retry}>{retryDisabled ? "Retry available shortly" : "Retry"}</button></div>}
+          {currentOfferFailure && (
+            <MerchantOffersNotice
+              error={currentOfferFailure.error}
+              isRetrying={currentOfferFailure.isRetrying}
+              onRetry={retryOffers}
+            />
+          )}
+          {isNavigating && (
+            <p role="status" className="sr-only">Updating results…</p>
+          )}
           {/* Search Bar */}
           <div className="relative mb-8 w-full lg:ml-auto lg:w-[40%]">
             <Search className="absolute left-3 top-3 text-zinc-400" size={16} />
@@ -362,7 +396,7 @@ export default function ProductListClient({
 
           {/* Mobile: card list */}
           <div className="mb-10 space-y-3 lg:hidden">
-            {products.length === 0 && !isLoading ? (
+            {products.length === 0 ? (
               <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
                 {emptyState}
               </div>
@@ -418,7 +452,7 @@ export default function ProductListClient({
             </div>
 
             <div className="divide-y divide-zinc-100">
-              {products.length === 0 && !isLoading
+              {products.length === 0
                 ? emptyState
                 : products.map((product) => (
                     <div
@@ -438,19 +472,12 @@ export default function ProductListClient({
             </div>
           </div>
 
-          <div ref={ref} className="flex w-full justify-center p-4 lg:p-8">
-            {isLoading && (
-              <div className="flex items-center gap-2 text-sm text-zinc-400">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-600" />
-                Loading more products...
-              </div>
-            )}
-            {!hasMore && products.length > 0 && (
-              <p className="text-sm italic text-zinc-400 mb-8">
-                You&apos;ve reached the end of the shelf.
-              </p>
-            )}
-          </div>
+          <ProductCatalogPagination
+            page={page}
+            total={totalCount}
+            onPage={goToPage}
+            disabled={isNavigating || retryDisabled || isRetrying}
+          />
         </main>
       </div>
     </div>

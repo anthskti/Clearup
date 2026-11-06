@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import ProceduralWave from "@/components/themes/ProceduralWave";
 import ProductImage from "@/components/ui/ProductImage";
 import { authClient } from "@/lib/auth-client";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
+import { AuthSessionUnavailable } from "@/components/AuthSessionUnavailable";
 import { useRouter } from "next/navigation";
 import { useBuilderRoutine } from "@/hooks/useBuilderRoutine";
 import { useBuilderProductNotes } from "@/hooks/useBuilderProductNotes";
@@ -16,6 +18,7 @@ import {
 import type { SkinType } from "@/types/product";
 import RoutineSkinTypeTagPicker from "@/components/routine/RoutineSkinTypeTagPicker";
 import BuilderSkeleton from "@/components/routine/BuilderSkeleton";
+import MerchantOffersNotice from "@/components/products/MerchantOffersNotice";
 import BuilderProductNotesSection from "@/components/routine/BuilderProductNotesSection";
 import SaveRoutineModal from "@/components/routine/SaveRoutineModal";
 import { createRoutine } from "@/lib/routines";
@@ -47,6 +50,9 @@ export default function Builder() {
     isLoaded: routineLoaded,
     removeProductFromSlot,
     clearRoutine,
+    merchantOfferError,
+    isRetryingOffers,
+    retryMerchantOffers,
   } = useBuilderRoutine();
   const {
     entries: noteEntries,
@@ -117,7 +123,7 @@ export default function Builder() {
   );
 
   const [skinTypeTags, setSkinTypeTags] = useState<SkinType[]>([]);
-  const { data: session } = authClient.useSession(); // session data
+  const { data: session, error: sessionError, refetch: refetchSession } = authClient.useSession();
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, startSaveTransition] = useTransition(); // lowers priority update so UI is responsive (laggy since so much is being pushed.)
@@ -157,6 +163,7 @@ export default function Builder() {
   };
 
   const handleInitialSave = () => {
+    if (sessionError && isTemporaryAuthError(sessionError)) return;
     if (!session) {
       alert("Please log in to save your routine."); // Update with Toaster
       router.push("/login");
@@ -227,6 +234,21 @@ export default function Builder() {
             </button>
           </div> */}
         </div>
+
+        {sessionError && isTemporaryAuthError(sessionError) && (
+          <AuthSessionUnavailable
+            retryAt={getSessionRetryAt()}
+            onRetry={refetchSession}
+          />
+        )}
+
+        {merchantOfferError && (
+          <MerchantOffersNotice
+            error={merchantOfferError}
+            isRetrying={isRetryingOffers}
+            onRetry={retryMerchantOffers}
+          />
+        )}
 
         {/* Table header */}
         <div className="hidden md:grid grid-cols-12 gap-4 text-zinc-500 font-bold uppercase text-xs border-b border-zinc-200 px-2 pb-2 mb-2">

@@ -25,9 +25,11 @@ import RoutinePreviewCard, {
   previewUrlsFromRoutineProducts,
 } from "@/components/guides/RoutinePreviewCard";
 import ProductImage from "@/components/ui/ProductImage";
+import { AuthSessionUnavailable } from "@/components/AuthSessionUnavailable";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
 
 export default function CreatedRoutinesPage() {
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending, error: sessionError, refetch } = authClient.useSession();
   const router = useRouter();
   const [routines, setRoutines] = useState<RoutineWithProducts[]>([]);
   const [isLoadingRoutines, setIsLoadingRoutines] = useState(true);
@@ -48,16 +50,19 @@ export default function CreatedRoutinesPage() {
       }
     };
 
-    if (!isPending) {
+    if (!isPending && !sessionError) {
       fetchRoutines();
     }
-  }, [session, isPending]);
+  }, [session, isPending, sessionError]);
 
   useEffect(() => {
-    if (!isPending && !session) {
+    if (
+      !isPending &&
+      (sessionError?.status === 401 || (!session && !sessionError))
+    ) {
       router.push("/login");
     }
-  }, [isPending, session, router]);
+  }, [isPending, sessionError, session, router]);
 
   if (isPending) {
     return (
@@ -65,6 +70,12 @@ export default function CreatedRoutinesPage() {
         <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
       </div>
     );
+  }
+  if (sessionError && isTemporaryAuthError(sessionError)) {
+    return <AuthSessionUnavailable retryAt={getSessionRetryAt()} onRetry={refetch} />;
+  }
+  if (sessionError?.status === 403) {
+    return <div className="p-10 text-center">Your account cannot access this page.</div>;
   }
 
   return (

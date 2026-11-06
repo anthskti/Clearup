@@ -6,19 +6,20 @@ import userRoutes from "./routes/userRoutes";
 import webhookRoutes from "./routes/webhookRoutes";
 import defineAssociations from "./associations";
 import sequelize from "./db";
-import rateLimit from "express-rate-limit";
 import compression from "compression";
+import rateLimit from "express-rate-limit";
 
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./config/auth";
-import {
-  authAuditLogger,
-  authBruteForceLimiter,
-  authRouteLimiter,
-} from "./middleware/security";
+import { authAuditLogger } from "./middleware/security";
 import { requireAuth } from "./middleware/requireAuth";
 import { validateSecurityConfig } from "./lib/security";
 import { runMigrations } from "./migrations";
+import { requestLogger } from "./middleware/requestLogger";
+import { requestPolicyLimiter, globalLimiter, RATE_LIMIT_EXPOSED_HEADERS } from "./middleware/rateLimits";
+import { RATE_LIMIT_POLICIES } from "./config/rateLimitPolicies";
+import { handleExpressError } from "./lib/httpError";
+import logger, { reportError } from "./lib/logger";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -28,43 +29,39 @@ const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(",")
   .filter(Boolean) ?? ["http://localhost:3000"];
 
 // Security and Handshakes First
+app.use(requestLogger);
 app.use(
   cors({
     origin: trustedOrigins,
     credentials: true,
+    exposedHeaders: RATE_LIMIT_EXPOSED_HEADERS,
   }),
 );
 app.set("trust proxy", 1);
 
-// SNS → SES bounce/complaint events are posted as text/plain JSON; keep outside global rate limit.
+// SNS → SES bounce/complaint events are posted as text/plain JSON; keep outside application limits.
 app.use(
   "/api/webhooks",
   express.text({ type: "*/*", limit: "512kb" }),
   webhookRoutes,
 );
 
-app.use(express.json());
-
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: "Too many requests from this IP, please try again later.",
-});
+app.use("/api/auth", authAuditLogger);
+app.use(requestPolicyLimiter);
 app.use(globalLimiter);
+app.use(express.json());
 
 // Optimization (Compress before parsing saving overhead)
 
 const createStrictLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10,
+  windowMs: RATE_LIMIT_POLICIES.fixedWindows.routineCreate.windowMs,
+  max: RATE_LIMIT_POLICIES.fixedWindows.routineCreate.max,
   message: "You are creating too many routines. Please wait a while.",
 });
 
 const routineMutateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 60,
+  windowMs: RATE_LIMIT_POLICIES.fixedWindows.routineMutation.windowMs,
+  max: RATE_LIMIT_POLICIES.fixedWindows.routineMutation.max,
   standardHeaders: true,
   legacyHeaders: false,
   message: "Too many routine updates. Please try again later.",
@@ -80,9 +77,6 @@ app.use(
     },
   }),
 );
-// Audits all auth routes (sign-in, sign-up, sign-out, etc.)
-app.use("/api/auth", authRouteLimiter, authBruteForceLimiter, authAuditLogger);
-
 // Authorizes user and returns their effective role (user or admin)
 app.get("/api/auth/me", requireAuth, (req, res) => {
   if (!req.user) {
@@ -125,7 +119,7 @@ app.use(
 );
 
 // Health
-app.get("/health", async (_req, res) => {
+app.get("/health", async (req, res) => {
   try {
     await sequelize.authenticate();
     res.status(200).json({
@@ -134,7 +128,7 @@ app.get("/health", async (_req, res) => {
       message: "Server and database are reachable.",
     });
   } catch (error: unknown) {
-    console.error("[health] database check failed:", error);
+    reportError(error, { scope: "health.database" }, req.log);
     res.status(503).json({
       ok: false,
       status: "DEGRADED",
@@ -143,36 +137,36 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+app.use(handleExpressError);
+
 // Initialize database and start server
 const startServer = async () => {
   try {
     validateSecurityConfig();
     // Test database connection
-    console.log("Testing database connection...");
+    logger.info({ event: "startup.database.connect" }, "Testing database connection");
     await sequelize.authenticate();
     // Define associations between models 
-    console.log("Database connection established successfully.");
+    logger.info({ event: "startup.database.connected" }, "Database connection established");
 
     // Define associations between models (restarting local dev needs)
     defineAssociations();
 
     // Create tables from models if they don't exist
-    console.log("Syncing database models...");
+    logger.info({ event: "startup.database.sync" }, "Syncing database models");
     await sequelize.sync();
 
-    console.log("Running DB migrations...");
+    logger.info({ event: "startup.database.migrations" }, "Running database migrations");
     await runMigrations();
-    console.log("Database migrations complete.");
+    logger.info({ event: "startup.database.migrations_complete" }, "Database migrations complete");
 
     // Start the server
     app.listen(port, () => {
-      console.log(`Server running on http://localhost:${port}`);
-      console.log(`Health check: http://localhost:${port}/health`);
+      logger.info({ event: "startup.server.listening", port: Number(port) }, "Server listening");
     });
-  } catch (error: any) {
-    console.error("Unable to start server:", error);
-    console.error("Error details:", error.message);
-    process.exit(1);
+  } catch (error: unknown) {
+    reportError(error, { scope: "startup" });
+    logger.flush(() => process.exit(1));
   }
 };
 

@@ -10,6 +10,12 @@ Two independent bun packages in one repo (no workspace tooling): run all command
 | `docs/`     | Architecture, migrations, feature docs | Markdown                                                                   |
 | `data/`     | CSV product/merchant data              | Do not edit by hand                                                        |
 
+## Code readability
+
+- Keep changes focused and code easy for the owner to understand, maintain, and tweak.
+- Prefer straightforward control flow and descriptive names over unnecessary abstractions.
+- Add short comments explaining non-obvious decisions. Flag confusing related code without refactoring unrelated areas.
+
 ## Commands
 
 Backend (`cd backend`): `bun install`, `bun dev`, `bun run build` (tsc, the type check), `bun run migrate:up` / `migrate:down`, `bun run seed:merchants`.
