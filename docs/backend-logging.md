@@ -43,7 +43,9 @@ For example, a normal successful request is one record:
 {"level":30,"time":1793900000000,"service":"clearup-api","environment":"development","requestId":"a-guid","req":{"id":"a-guid","method":"GET","path":"/api/products"},"res":{"statusCode":200},"durationMs":18,"msg":"GET /api/products 200"}
 ```
 
-Copy the response's `X-Request-ID` into a log search to find that request's completion and any request-scoped application error. Error message text and raw stacks are not included. A safe error can include `error.name`, a constrained `error.code`, `error.statusCode`, and up to three `backend/src/...` source locations.
+Copy the response's `X-Request-ID` into a log search to find that request's completion and any request-scoped application error. Error message text and raw stacks are not included. A safe error can include `error.name`, a constrained `error.code`, `error.statusCode`, and up to three application locations.
+
+Locations are normalized relative to the API's runtime root, supporting both a local checkout and Docker's `/app` directory. A source frame such as `/app/src/controllers/productController.ts:42:9` becomes `backend/src/controllers/productController.ts:42:9`; a compiled frame under `/app/dist/` becomes `backend/dist/...js:line:column`. Compiled line numbers refer to JavaScript unless the runtime maps the stack back to TypeScript. Dependency frames and paths outside the API's `src`/`dist` trees are omitted, and host directory prefixes are never included.
 
 ## Events and severity
 

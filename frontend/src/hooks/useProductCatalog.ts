@@ -102,10 +102,7 @@ export function useProductCatalog({
     markSettled,
   } = useCatalogUrlNavigation({
     basePath,
-    pathname,
     committedQuery,
-    scopeType,
-    scopeSlug,
     onBeginNavigation: snapshotDraftVersions,
     onBrowserHistoryChange: bumpDraftVersionsForHistory,
   });

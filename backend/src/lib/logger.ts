@@ -1,5 +1,29 @@
 import pino, { type Logger } from "pino";
+import { relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { sanitizeLogPath } from "./logPath";
+
+// Both src/lib and dist/lib live two levels below the API root, including /app in Docker.
+const applicationRoot = resolve(__dirname, "../..");
+const safeLocationPattern = /^backend\/(?:src|dist)\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.(?:ts|js):\d+:\d+$/;
+
+function stackLocation(frame: string): string[] {
+  if (!/^\s*at\s/.test(frame)) return [];
+  const match = frame.match(/((?:file:\/\/)?\/[^():]+):(\d+):(\d+)\)?\s*$/);
+  if (!match) return [];
+
+  try {
+    const filename = match[1].startsWith("file://") ? fileURLToPath(match[1]) : match[1];
+    const path = relative(applicationRoot, filename).replace(/\\/g, "/");
+    const location = `backend/${path}:${match[2]}:${match[3]}`;
+    // Keep only application files; omit host directories, dependency frames and raw stack text.
+    return safeLocationPattern.test(location) && !path.split("/").includes("node_modules")
+      ? [location]
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 const configuredLevel = process.env.LOG_LEVEL;
 const allowedLevels = ["fatal", "error", "warn", "info", "debug", "trace", "silent"];
@@ -134,10 +158,7 @@ export function safeError(error: unknown): Record<string, unknown> {
     const locations = source.stack
       .split("\n")
       .slice(1)
-      .flatMap((line) => {
-        const match = line.match(/\/backend\/src\/([^():]+):(\d+):(\d+)\)?\s*$/);
-        return match ? [`backend/src/${match[1]}:${match[2]}:${match[3]}`] : [];
-      })
+      .flatMap(stackLocation)
       .slice(0, 3);
     if (locations.length) result.locations = locations;
   }
@@ -146,7 +167,8 @@ export function safeError(error: unknown): Record<string, unknown> {
       .filter(
         (location): location is string =>
           typeof location === "string" &&
-          /^backend\/src\/[^():]+:\d+:\d+$/.test(location),
+          safeLocationPattern.test(location) &&
+          !location.split("/").includes("node_modules"),
       )
       .slice(0, 3);
     if (locations.length) result.locations = locations;
