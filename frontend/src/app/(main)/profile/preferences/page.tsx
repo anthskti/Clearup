@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, ChevronDown } from "lucide-react";
 import BrandedLoadingScreen from "@/components/BrandedLoadingScreen";
+import { AuthSessionUnavailable } from "@/components/AuthSessionUnavailable";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
 
 export default function ProfilePage() {
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending, error: sessionError, refetch } = authClient.useSession();
   const router = useRouter();
 
   const sessionName = session?.user?.name || "";
@@ -79,10 +81,13 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (!isPending && !session) {
+    if (
+      !isPending &&
+      (sessionError?.status === 401 || (!session && !sessionError))
+    ) {
       router.push("/login");
     }
-  }, [isPending, session, router]);
+  }, [isPending, sessionError, session, router]);
 
   if (isPending)
     return (
@@ -91,6 +96,10 @@ export default function ProfilePage() {
         subtitle="Checking your preferences."
       />
     );
+  if (sessionError && isTemporaryAuthError(sessionError))
+    return <AuthSessionUnavailable retryAt={getSessionRetryAt()} onRetry={refetch} />;
+  if (sessionError?.status === 403)
+    return <div className="p-10 text-center">Your account cannot access this page.</div>;
   if (!session) return <div className="p-10 text-center">Please log in.</div>; 
 
   return (

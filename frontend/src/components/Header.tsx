@@ -18,6 +18,9 @@ import {
   X,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { getSessionRetryAt } from "@/lib/auth-retry";
+import { isTemporaryAuthError } from "@/lib/auth-retry";
+import { AuthRetryButton } from "@/components/AuthRetryButton";
 import { broadcastSignOut } from "@/hooks/useCrossTabSignOut";
 import { useEffectiveRole } from "@/hooks/useEffectiveRole";
 
@@ -50,7 +53,7 @@ function Header() {
   const [navPath, setNavPath] = useState(path);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const productsDropdownRef = useRef<HTMLDivElement>(null);
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending, error: sessionError, refetch: refetchSession } = authClient.useSession();
   const { isAdmin } = useEffectiveRole();
 
   if (path !== navPath) {
@@ -217,6 +220,13 @@ function Header() {
         <div className="flex items-center justify-end">
           {!mounted || isPending ? (
             <div className="h-[34px] w-[72px] shrink-0 animate-pulse rounded-md border border-transparent bg-gray-200 sm:w-[84px]"></div>
+          ) : sessionError && isTemporaryAuthError(sessionError) ? (
+            <AuthRetryButton
+              retryAt={getSessionRetryAt()}
+              onRetry={refetchSession}
+              label="Session unavailable · Retry"
+              className={authButtonClass}
+            />
           ) : session ? (
             <div className="relative group" ref={profileDropdownRef}>
               <button

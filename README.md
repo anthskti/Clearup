@@ -162,7 +162,7 @@ backend/src/
 ├── index.ts              # Express bootstrap, middleware, route mounting
 ├── db.ts                 # Sequelize singleton
 ├── associations.ts       # model relationships
-├── config/               # auth, pagination, product categories
+├── config/               # auth, pagination, product categories, rate-limit policies
 ├── routes/               # product, routine, merchant, user, webhook
 ├── controllers/          # HTTP handlers
 ├── services/             # business logic
@@ -177,8 +177,8 @@ backend/src/
 
 1. Request logger (request ID + completion record), CORS (`TRUSTED_ORIGINS`, `credentials: true`) + `trust proxy`
 2. Webhook route (raw body) before JSON parser
-3. JSON parser, global rate limit (300 / 15 min except public catalog reads), catalog IP bucket (burst 20, refill 2/sec), compression
-4. Auth stack on `/api/auth` (rate limits + audit logging)
+3. Auth audit, classified app IP buckets, global IP limiter, JSON parser, compression
+4. Better Auth handler on `/api/auth` (also applies its own production limits)
 5. Feature routes: `/api/users`, `/api/products`, `/api/routines`, `/api/merchant`
 6. `GET /health` — DB connectivity probe
 7. `validateSecurityConfig` → `sequelize.authenticate` → associations → `sync()` → `runMigrations()` → `listen`
@@ -199,7 +199,7 @@ Schema evolves via **Umzug migrations** (stored in `sequelize_meta`); `sequelize
 - **`requireAuth`** resolves the session, hydrates the user from DB if needed, and promotes `ADMIN_EMAILS` whitelist entries to `role: "admin"`.
 - **`requireAdmin`** gates admin routes and CSV imports.
 - **`requireMutationHeader`** on routine POST/PUT/PATCH/DELETE, blocks cross-origin form CSRF.
-- **Rate limits:** catalog reads use a configurable IP token bucket (burst 20, refill 2/sec); other routes retain global 300/15 min; routine POST 10/hr; routine mutations 60/15 min; merchant POST 10/hr; dedicated auth brute-force limiters. See [configuration and limitations](docs/backend-architecture.md#5-rate-limiting-summary).
+- **Rate limits:** app policies are centralized in `backend/src/config/rateLimitPolicies.ts`. Catalog, session, login, recovery, and other auth actions have separate IP token buckets; remaining routes use the global 300/15 min cap, with fixed creation and routine mutation limits. Better Auth also applies its own production limits. See [configuration and limitations](docs/backend-architecture.md#5-rate-limiting-summary).
 - **Email:** SES for verification and password reset; `/api/webhooks/aws-ses` (SNS) updates `user.emailStatus` on bounces/complaints.
 
 **OAuth note:** redirect URIs must point at the **API host** (e.g. `http://localhost:5050/api/auth/callback/google`), not the Next.js port. When frontend and API are on different origins in production, set `BETTER_AUTH_CROSS_SITE_COOKIES=1`.
@@ -259,7 +259,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/api/webhooks/aws-ses` | SNS          | Bounce/complaint handling               |
 | `/health`               | Public       | DB connectivity probe                   |
 
-Rate limits: public catalog reads use an IP token bucket (burst 20, refill 2/sec); other routes use the global 300 / 15 min budget, plus stricter caps on routine/merchant POST and auth brute-force paths.
+Rate limits: classified catalog and auth requests use dedicated IP token buckets; unmatched requests use the global 300 / 15 min budget, alongside fixed routine creation and mutation caps. Details: [rate limiting](docs/backend-architecture.md#5-rate-limiting-summary).
 
 ## Frontend routes (high level)
 

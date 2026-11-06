@@ -5,6 +5,8 @@ import { authClient } from "@/lib/auth-client";
 import { usePathname, useRouter } from "next/navigation";
 import BrandedLoadingScreen from "@/components/BrandedLoadingScreen";
 import ClearupLogoLink from "@/components/ClearupLogoLink";
+import { AuthSessionUnavailable } from "@/components/AuthSessionUnavailable";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
 
 export default function AuthLayout({
   children,
@@ -13,15 +15,15 @@ export default function AuthLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending, error: sessionError, refetch } = authClient.useSession();
 
   // If there is a session token, DO NOT show auth pages,
   // except verify-email which must be reachable after sign-up.
   useEffect(() => {
-    if (!isPending && session && pathname !== "/verify-email") {
+    if (!isPending && !sessionError && session && pathname !== "/verify-email") {
       router.push("/");
     }
-  }, [isPending, session, pathname, router]);
+  }, [isPending, sessionError, session, pathname, router]);
 
   if (isPending) {
     return (
@@ -38,6 +40,9 @@ export default function AuthLayout({
       <div className="fixed top-0 left-0 z-20 px-4 py-4 md:px-6 md:py-5">
         <ClearupLogoLink priority />
       </div>
+      {sessionError && isTemporaryAuthError(sessionError) && (
+        <AuthSessionUnavailable retryAt={getSessionRetryAt()} onRetry={refetch} />
+      )}
       {children}
     </div>
   );
