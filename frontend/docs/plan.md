@@ -19,7 +19,7 @@ Red Hat Display is the shared interface font. The type scale, brand colors, canv
 
 **Current files:** `src/components/header/Header.tsx` coordinates scroll and menu state; `DesktopNav.tsx`, `MobileNavDrawer.tsx`, `ProfileMenu.tsx`, and `navConfig.ts` hold the related UI and links. The shared footer remains in `src/components/Footer.tsx`.
 
-Builder leads the navigation. Products links directly to the catalog and exposes an attached category shelf on desktop; the phone drawer offers the same destinations. The account control uses an avatar fallback and includes Saved products. The footer links to the full catalog and uses consistent alignment. The header is opaque from first paint, hides when scrolling down, and returns when scrolling toward the top; open menus and keyboard focus keep it visible.
+Builder leads the navigation. Products links directly to the catalog and exposes an attached category shelf on desktop; the phone drawer offers the same destinations. The account control uses the profile photo with an avatar fallback and includes Saved products. The footer links to the full catalog and uses consistent alignment. The header is opaque from first paint, hides when scrolling down, and returns when scrolling toward the top; open menus and keyboard focus keep it visible.
 
 **Carry forward:** Signed-in account behavior and touch feel on a real phone still need checking. The Saved products destination now has a page shell; product saving remains deferred (Batch 6).
 
@@ -119,7 +119,13 @@ Kept the hero artwork and slogan. Removed the trust-banner copy and claims; rest
 
 **Verification:** Frontend lint/build passed. Chrome checks covered desktop and 320px phone layouts, associated labels, 16px/44px inputs, password visibility, preserved values, pending/duplicate-submit states, mismatch focus, invalid/expired recovery, resend feedback, and explicit success actions. Mocked successful verification makes one request and remains mounted through background session refreshes. Google completion, real reset/verification email delivery, and physical-phone keyboard behavior remain unchecked. One registration escaped the browser mock during a device switch and created a test account; it was retained and reported to the user.
 
-**Remaining work:** Profile/preferences are a separate pass: present primary email as read-only, tidy field layout, replace save alerts with inline feedback, and review the account-deletion confirmation flow.
+**Avatars and Preferences — implemented:** Preferences now uses a stable reading column, shared page styling, a photo editor, read-only email/verification status, and a labeled Display name form. Name editing permits spaces and trims on save; unchanged/empty names cannot be submitted, and progress/success/errors are inline. The shared `UserAvatar` renders Google or custom image URLs with a fallback and is also used in the header. Photo selection previews locally; Save photo uploads and saves the URL, Cancel discards the preview, and Remove photo clears the URL. Prior R2 objects are retained. Account deletion is visually quieter; its existing confirmation and mutation behavior are preserved.
+
+**R2 integration:** The authenticated, rate-limited `POST /api/users/me/avatar` endpoint validates bounded JPEG/PNG/WebP uploads and creates a 256px WebP. SHA-256 filenames live under `profilephotos/production/` when the backend's `NODE_ENV` is `production`, otherwise `profilephotos/staging/`. The existing `user.image` field stores the result; there is no migration. Google photos remain at their existing URLs. Setup and variable names are documented in [avatars.md](./avatars.md) and `backend/.env.example`.
+
+**Avatar verification — complete for this iteration:** Backend build and frontend lint/build passed. Offline checks covered normalization, stable hashes, environment prefixes, missing configuration, unsupported/corrupt/animated/oversized images, and the 5 MiB parser limit, with storage calls stubbed. Chrome checks at 1440px and 320–390px covered Google photos, preview/cancel, validation, upload/save failures, header updates, removal, display-name feedback, and no horizontal overflow. Browser mutations were intercepted; the real account remained unchanged during those checks. A hydration mismatch was fixed using the header's existing hydration pattern. After configuring R2, the user confirmed that live avatar uploads work.
+
+**Deferred:** Password setup/onboarding, skin preferences, public profiles, and the account-deletion confirmation redesign remain separate follow-ups. The avatar and Preferences cleanup pass is complete for this iteration.
 
 **Approval point:** Confirm the language and consequences shown in account deletion before changing that flow.
 

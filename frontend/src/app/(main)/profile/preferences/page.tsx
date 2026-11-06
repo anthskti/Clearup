@@ -1,35 +1,63 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { authClient } from "@/lib/auth-client";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+import ProfilePhotoEditor from "@/components/auth/ProfilePhotoEditor";
+import BrandedLoadingScreen from "@/components/BrandedLoadingScreen";
+import ProceduralWave from "@/components/themes/ProceduralWave";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, ChevronDown } from "lucide-react";
-import BrandedLoadingScreen from "@/components/BrandedLoadingScreen";
+import { authClient } from "@/lib/auth-client";
 
-export default function ProfilePage() {
+const emptySubscribe = () => () => {};
+
+export default function PreferencesPage() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
-
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const sessionName = session?.user?.name || "";
   const [username, setUsername] = useState(sessionName);
-  const [prevSessionName, setPrevSessionName] = useState(sessionName);
+  const [previousName, setPreviousName] = useState(sessionName);
+  const [sessionChecked, setSessionChecked] = useState(!isPending);
+  const [isSaving, setIsSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileStatus, setProfileStatus] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const savingName = useRef(false);
 
-  if (sessionName !== prevSessionName) {
-    setPrevSessionName(sessionName);
+  if (sessionName !== previousName) {
+    setPreviousName(sessionName);
     setUsername(sessionName);
   }
+  // Keep draft changes mounted while Better Auth refreshes the session.
+  if (!isPending && !sessionChecked) setSessionChecked(true);
 
-  const handleUpdateProfile = async () => {
-    await authClient.updateUser({
-      name: username,
-      // image: "new-pfp-url"
-    });
-    alert("Profile updated!");
-  };
+  async function handleUpdateProfile(event: React.FormEvent) {
+    event.preventDefault();
+    const name = username.trim();
+    if (!name || savingName.current) return;
+    savingName.current = true;
+    setIsSaving(true);
+    setProfileError("");
+    setProfileStatus("");
+
+    try {
+      const { error } = await authClient.updateUser({ name });
+      if (error) {
+        setProfileError(error.message || "Could not save your display name. Please try again.");
+        return;
+      }
+      setUsername(name);
+      setProfileStatus("Display name updated.");
+    } catch {
+      setProfileError("Could not save your display name. Check your connection and try again.");
+    } finally {
+      savingName.current = false;
+      setIsSaving(false);
+    }
+  }
 
   const handleDeleteAccount = async () => {
     if (
@@ -79,120 +107,121 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (!isPending && !session) {
-      router.push("/login");
-    }
+    if (!isPending && !session) router.push("/login");
   }, [isPending, session, router]);
 
-  if (isPending)
+  if (!mounted || (isPending && !sessionChecked)) {
     return (
       <BrandedLoadingScreen
         title="Loading session"
         subtitle="Checking your preferences."
       />
     );
-  if (!session) return <div className="p-10 text-center">Please log in.</div>; 
+  }
+  if (!session) return null;
+
+  const nameChanged = username.trim() !== sessionName;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen pt-20">
-      <div className="w-full px-4 md:w-[80%] lg:w-[50%]">
-        {/* Top */}
-        <div>
-          <div className="text-2xl font-semibold mb-4">Preferences</div>
-        </div>
-        {/* Account Information Section */}
-        <div className="text-xl font-semibold mb-4 pt-8">
-          Profile Information
-        </div>
-        <p className="text-sm mb-4">Update your profile preferences here:</p>
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
-          {/* Email Row (with sub-label) */}
-          <div className="flex items-center justify-between p-6 border-b border-zinc-200">
-            <div className="flex flex-col">
-              <label className="text-sm font-medium text-zinc-900">
-                Primary email
-              </label>
-            </div>
-            <div className="relative w-2/3">
-              <select className="w-full appearance-none border border-zinc-400 rounded-lg px-4 py-2 text-sm text-zinc-900 focus:outline-none">
-                <option>{session.user.email}</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-zinc-500 pointer-events-none" />
-            </div>
-          </div>
+    <div className="relative min-h-screen bg-[#F8F8F8]">
+      <ProceduralWave
+        seed={7}
+        height={160}
+        gradientFrom="#e9f6ff"
+        gradientTo="#f0f8fc"
+        flip
+      />
+      <div className="relative z-1 mx-auto max-w-3xl px-4 pt-34 pb-20 sm:px-6">
+        <header className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+            Preferences
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+            Manage how you appear across Clearup and your account information.
+          </p>
+        </header>
 
-          {/* Username Row */}
-          <div className="flex items-center justify-between p-6 border-b border-zinc-200">
-            <div className="flex flex-col">
-              <label className="text-sm font-medium text-zinc-900">
-                Username
-              </label>
-              <span className="text-xs text-zinc-500 mt-1">
-                Display name used across Clearup
-              </span>
+        <section aria-labelledby="profile-title">
+          <h2 id="profile-title" className="mb-3 text-lg font-semibold text-zinc-900">
+            Profile
+          </h2>
+          <div className="divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            <div className="p-5 sm:p-6">
+              <ProfilePhotoEditor image={session.user.image ?? null} />
             </div>
-            <Input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value.trim())}
-              className="w-2/3 border border-zinc-400"
-            />
+            <div className="p-5 sm:p-6">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="text-sm font-medium text-zinc-900">Email</h3>
+                <span className="text-xs text-zinc-500">
+                  {session.user.emailVerified ? "Verified" : "Not verified"}
+                </span>
+              </div>
+              <p className="mt-2 break-words text-sm text-zinc-700">{session.user.email}</p>
+              <p className="mt-1 text-sm text-zinc-500">The email associated with your account.</p>
+            </div>
+            <form onSubmit={handleUpdateProfile} className="p-5 sm:p-6" aria-busy={isSaving}>
+              <label htmlFor="display-name" className="block text-sm font-medium text-zinc-900">
+                Display name
+              </label>
+              <p id="display-name-help" className="mt-1 text-sm text-zinc-500">
+                Shown alongside your community routines.
+              </p>
+              <Input
+                id="display-name"
+                name="name"
+                autoComplete="nickname"
+                aria-describedby="display-name-help"
+                value={username}
+                onChange={(event) => {
+                  setUsername(event.target.value);
+                  setProfileError("");
+                  setProfileStatus("");
+                }}
+                disabled={isSaving}
+                className="mt-3 min-h-11 border-zinc-300 text-base md:text-base"
+                required
+              />
+              <div className="mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm">
+                  {profileError && <p role="alert" className="text-red-700">{profileError}</p>}
+                  <p role="status" className="text-zinc-600">{profileStatus}</p>
+                </div>
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  className="min-h-11"
+                  disabled={isSaving || !username.trim() || !nameChanged}
+                >
+                  {isSaving ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
+            </form>
           </div>
-          <div className="flex items-center justify-between p-6">
-            <span></span>
-            <Button variant="outline" size="sm" onClick={handleUpdateProfile}>
-              Save
+        </section>
+
+        <section aria-labelledby="delete-account-title" className="mt-10">
+          <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-5 sm:flex-row sm:items-center sm:p-6">
+            <div>
+              <h2 id="delete-account-title" className="text-base font-semibold text-zinc-900">
+                Delete account
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                Permanently delete your Clearup account. This cannot be undone.
+              </p>
+              {deleteError && <p role="alert" className="mt-3 text-sm text-red-700">{deleteError}</p>}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 border-red-200 bg-white text-red-700 hover:bg-red-50"
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              {isDeleting ? "Deleting…" : "Delete account"}
             </Button>
           </div>
-        </div>
-        {/* DISABLED */}
-        {/* Website Theme; Light, Dark, or System */}
-        {/* <div className="py-10">
-          <div className="text-2xl font-semibold mb-4">Appearance</div>
-          <div className="text-sm mb-4">Choose how ClearUp looks.</div>
-          <div className="bg-white border border-zinc-200 rounded-lg p-6">
-            <div className="">1</div>
-          </div>
-        </div> */}
-
-        {/* DISABLED */}
-        {/* Passsword and Auth from outside thing. Will either have Password, update, or oauth connection */}
-        {/* <div className="py-10">
-          <div className="text-2xl font-semibold mb-4">
-            Password and Authentication
-          </div>
-        </div> */}
-
-        {/* Account Removal */}
-        <div className="py-10">
-          <div className="text-2xl font-semibold mb-4">Account Removal</div>
-          <p className="text-sm mb-4">
-            Permanently delete your Clearup Account.
-          </p>
-          <div className="border border-red-700/50 bg-red-700/10 p-6 rounded-lg">
-            <div className="flex flex-col gap-2">
-              <div className="text-sm font-bold">
-                Request for account deletion
-              </div>
-              <div className="text-sm">
-                Request for account deletion. Deleting your account is permanent
-                and cannot be undone. Your data will be deleted immediately.
-              </div>
-              {deleteError && (
-                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
-                  {deleteError}
-                </p>
-              )}
-              <Button
-                variant="destructive"
-                onClick={handleDeleteAccount}
-                disabled={isDeleting}
-              >
-                <Trash2 className="w-4 h-4" /> Delete Account
-              </Button>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );

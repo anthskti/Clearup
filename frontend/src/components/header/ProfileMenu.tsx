@@ -12,6 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { accountLinkClass, authButtonClass } from "./navConfig";
+import UserAvatar from "@/components/ui/UserAvatar";
 
 type ProfileMenuProps = {
   mounted: boolean;
@@ -21,6 +22,7 @@ type ProfileMenuProps = {
   isProfileOpen: boolean;
   userName?: string | null;
   userEmail?: string | null;
+  userImage?: string | null;
   profileDropdownRef: RefObject<HTMLDivElement | null>;
   profileButtonRef: RefObject<HTMLButtonElement | null>;
   setIsProfileOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
@@ -37,6 +39,7 @@ export default function ProfileMenu({
   isProfileOpen,
   userName,
   userEmail,
+  userImage,
   profileDropdownRef,
   profileButtonRef,
   setIsProfileOpen,
@@ -87,9 +90,7 @@ export default function ProfileMenu({
           aria-expanded={isProfileOpen}
           aria-controls="account-menu"
         >
-          <span className="flex size-7 items-center justify-center rounded-full bg-brand-soft text-brand">
-            <UserRound className="size-4" aria-hidden="true" />
-          </span>
+          <UserAvatar src={userImage} className="size-7" />
           <span className="hidden sm:inline">Account</span>
           <ChevronDown
             className="hidden size-4 sm:block"

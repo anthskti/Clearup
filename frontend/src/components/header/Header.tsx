@@ -221,6 +221,7 @@ function Header() {
           isProfileOpen={isProfileOpen}
           userName={session?.user.name}
           userEmail={session?.user.email}
+          userImage={session?.user.image}
           profileDropdownRef={profileDropdownRef}
           profileButtonRef={profileButtonRef}
           setIsProfileOpen={setIsProfileOpen}
