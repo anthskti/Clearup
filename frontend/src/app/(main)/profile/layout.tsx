@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { getSession } from "@/lib/auth";
+import { AuthForbiddenError, AuthUnavailableError, getSession } from "@/lib/auth";
 import { Metadata } from "next";
+import { AuthUnavailable } from "@/components/AuthUnavailable";
 
 export const metadata: Metadata = {
   title: "Profile | Clearup",
@@ -18,11 +19,19 @@ export default async function ProfileLayout({
 
   try {
     const session = await getSession(cookieString);
-    if (!session?.user?.id) {
-      redirect("/login");
+    if (!session?.user?.id) redirect("/login");
+  } catch (error) {
+    if (error instanceof AuthUnavailableError) return <AuthUnavailable retryAt={error.retryAt} />;
+    if (error instanceof AuthForbiddenError) {
+      return (
+        <main className="mx-auto flex min-h-[50vh] max-w-lg items-center justify-center px-6 text-center">
+          <p className="text-sm text-zinc-600">
+            Your account cannot access this page.
+          </p>
+        </main>
+      );
     }
-  } catch {
-    redirect("/login");
+    throw error;
   }
 
   return <>{children}</>;

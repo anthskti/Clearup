@@ -1,5 +1,6 @@
 import express from "express";
 import User from "../models/User";
+import { reportError } from "../lib/logger";
 
 const router = express.Router();
 
@@ -24,11 +25,11 @@ router.post("/aws-ses", async (req, res) => {
     if (payload.Type === "SubscriptionConfirmation") {
       const subscribeUrl = payload.SubscribeURL;
       if (!subscribeUrl || !isAwsSnsSubscribeUrl(subscribeUrl)) {
-        console.error("[webhook/aws-ses] rejected SubscriptionConfirmation URL");
+        req.log.warn({ event: "webhook.sns.subscription.rejected" }, "Rejected SNS subscription confirmation");
         return res.status(400).send("Bad Request");
       }
       await fetch(subscribeUrl);
-      console.log("[webhook/aws-ses] SNS subscription confirmed");
+      req.log.info({ event: "webhook.sns.subscription.confirmed" }, "SNS subscription confirmed");
       return res.status(200).send("OK");
     }
 
@@ -41,28 +42,32 @@ router.post("/aws-ses", async (req, res) => {
 
       if (message.notificationType === "Bounce") {
         const recipients = message.bounce?.bouncedRecipients ?? [];
+        let updated = 0;
         for (const recipient of recipients) {
           const email = recipient.emailAddress;
           if (!email) continue;
           await User.update({ emailStatus: "bounced" }, { where: { email } });
-          console.log(`[webhook/aws-ses] flagged ${email} as bounced`);
+          updated += 1;
         }
+        req.log.info({ event: "webhook.ses.bounce.processed", recipientCount: updated }, "Bounce notification processed");
       }
 
       if (message.notificationType === "Complaint") {
         const recipients = message.complaint?.complainedRecipients ?? [];
+        let updated = 0;
         for (const recipient of recipients) {
           const email = recipient.emailAddress;
           if (!email) continue;
           await User.update({ emailStatus: "complained" }, { where: { email } });
-          console.log(`[webhook/aws-ses] flagged ${email} as complained`);
+          updated += 1;
         }
+        req.log.info({ event: "webhook.ses.complaint.processed", recipientCount: updated }, "Complaint notification processed");
       }
     }
 
     return res.status(200).send("OK");
   } catch (error) {
-    console.error("[webhook/aws-ses] error:", error);
+    reportError(error, { scope: "webhook.aws_ses" }, req.log);
     return res.status(500).send("Error");
   }
 });

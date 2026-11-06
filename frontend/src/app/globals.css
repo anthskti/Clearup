@@ -54,7 +54,7 @@
     @apply bg-background text-foreground;
   }
   html {
-    font-family: var(--font-red-hat-display), Arial, sans-serif;
+    @apply font-sans;
   }
 }
 

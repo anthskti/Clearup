@@ -12,11 +12,13 @@ import CreatedRoutineRow from "@/components/routine/CreatedRoutineRow";
 import ProceduralWave from "@/components/themes/ProceduralWave";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { AuthSessionUnavailable } from "@/components/AuthSessionUnavailable";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
 import { getMyRoutines } from "@/lib/routines";
 import type { RoutineWithProducts } from "@/types/routine";
 
 export default function CreatedRoutinesPage() {
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending, error: sessionError, refetch } = authClient.useSession();
   const router = useRouter();
   const userId = session?.user?.id;
   const [routines, setRoutines] = useState<RoutineWithProducts[]>([]);
@@ -26,7 +28,7 @@ export default function CreatedRoutinesPage() {
   const [isListView, setIsListView] = useState(false);
 
   useEffect(() => {
-    if (isPending || !userId) return;
+    if (isPending || sessionError || !userId) return;
     let active = true;
 
     async function fetchRoutines() {
@@ -44,16 +46,24 @@ export default function CreatedRoutinesPage() {
     return () => {
       active = false;
     };
-  }, [userId, isPending, retryCount]);
+  }, [userId, isPending, sessionError, retryCount]);
 
   useEffect(() => {
-    if (!isPending && !session) router.push("/login");
-  }, [isPending, session, router]);
+    if (!isPending && (sessionError?.status === 401 || (!session && !sessionError))) {
+      router.push("/login");
+    }
+  }, [isPending, sessionError, session, router]);
 
   function retryLoading() {
     setError("");
     setIsLoadingRoutines(true);
     setRetryCount((count) => count + 1);
+  }
+  if (sessionError && isTemporaryAuthError(sessionError)) {
+    return <AuthSessionUnavailable retryAt={getSessionRetryAt()} onRetry={refetch} />;
+  }
+  if (sessionError?.status === 403) {
+    return <div className="p-10 text-center">Your account cannot access this page.</div>;
   }
 
   const isLoading = isPending || !userId || isLoadingRoutines;

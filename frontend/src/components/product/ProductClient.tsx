@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { ChevronDown, ExternalLink, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AuthRetryButton } from "@/components/AuthRetryButton";
 import ProductImageGallery from "@/components/ui/ProductGallery";
 import ProceduralWave from "@/components/themes/ProceduralWave";
 import getProductData from "@/components/product/details";
@@ -36,7 +37,7 @@ export default function ProductClient({
 
   const [isMerchantModalOpen, setIsMerchantModalOpen] = useState(false);
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
-  const { isAdmin } = useEffectiveRole();
+  const { isAdmin, error: roleError, retryAt, retry: retryRole } = useEffectiveRole();
   const hasIngredients = Boolean(product.ingredients);
   const facts = config.sheet.map((entry) => ({
     ...entry,
@@ -168,7 +169,9 @@ export default function ProductClient({
           <div className="mt-auto border-t border-zinc-200 pt-4">
             <div className="mb-4 flex justify-between items-end">
               <h2 className="text-lg font-semibold text-zinc-900">Marketplace data</h2>
-              {isAdmin ? (
+              {roleError ? (
+                <AuthRetryButton retryAt={retryAt} onRetry={retryRole} label="Admin access check unavailable · Retry" variant="outline" />
+              ) : isAdmin ? (
                 <span>
                   <Button
                     variant="outline"

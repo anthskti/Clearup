@@ -67,6 +67,12 @@ export interface ProductCatalogPage {
   total: number;
 }
 
+export interface CatalogError {
+  status: number | null;
+  requestId: string | null;
+  retryAt: number | null;
+}
+
 export interface ProductCatalogFetchOptions {
   search?: string;
   filters?: ProductListFilters;

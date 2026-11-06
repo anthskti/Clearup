@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useSyncExternalStore } from "react";
 import { Menu } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
 import { broadcastSignOut } from "@/hooks/useCrossTabSignOut";
 import { useEffectiveRole } from "@/hooks/useEffectiveRole";
 import DesktopNav from "./DesktopNav";
@@ -33,7 +34,7 @@ function Header() {
   const mobileButtonRef = useRef<HTMLButtonElement>(null);
   const mobileDrawerRef = useRef<HTMLElement>(null);
   const mobileCloseRef = useRef<HTMLButtonElement>(null);
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending, error: sessionError, refetch: refetchSession } = authClient.useSession();
   const { isAdmin } = useEffectiveRole();
   const isProductsMenuOpen = isProductsOpen || isProductsPinnedOpen;
   const isHeaderMenuOpen = isProductsMenuOpen || isProfileOpen || mobileNavOpen;
@@ -228,6 +229,9 @@ function Header() {
           setIsProductsOpen={setIsProductsOpen}
           setIsProductsPinnedOpen={setIsProductsPinnedOpen}
           onSignOut={handleSignOut}
+          sessionUnavailable={Boolean(sessionError && isTemporaryAuthError(sessionError))}
+          retryAt={getSessionRetryAt()}
+          onRetrySession={refetchSession}
         />
       </nav>
 

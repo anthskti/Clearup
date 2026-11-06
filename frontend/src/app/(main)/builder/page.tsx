@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import ProceduralWave from "@/components/themes/ProceduralWave";
 import ProductImage from "@/components/ui/ProductImage";
 import { authClient } from "@/lib/auth-client";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
+import { AuthSessionUnavailable } from "@/components/AuthSessionUnavailable";
 import { useBuilderRoutine } from "@/hooks/useBuilderRoutine";
 import { useBuilderProductNotes } from "@/hooks/useBuilderProductNotes";
 import { useBuilderSkinTypeTags } from "@/hooks/useBuilderSkinTypeTags";
@@ -16,6 +18,7 @@ import {
 import type { SkinType } from "@/types/product";
 import RoutineSkinTypeTagPicker from "@/components/routine/RoutineSkinTypeTagPicker";
 import BuilderSkeleton from "@/components/routine/BuilderSkeleton";
+import MerchantOffersNotice from "@/components/products/MerchantOffersNotice";
 import BuilderProductNotesSection from "@/components/routine/BuilderProductNotesSection";
 import SaveRoutineModal from "@/components/routine/SaveRoutineModal";
 import { createRoutine } from "@/lib/routines";
@@ -48,6 +51,9 @@ export default function Builder() {
     persistence: routinePersistence,
     removeProductFromSlot,
     clearRoutine,
+    merchantOfferError,
+    isRetryingOffers,
+    retryMerchantOffers,
   } = useBuilderRoutine();
   const {
     entries: noteEntries,
@@ -119,7 +125,8 @@ export default function Builder() {
   );
 
   const { tags: skinTypeTags, setTags: setSkinTypeTags, isLoaded: tagsLoaded, persistence: tagsPersistence } = useBuilderSkinTypeTags();
-  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const { data: session, isPending: sessionPending, error: sessionError, refetch: refetchSession } = authClient.useSession();
+  const sessionUnavailable = Boolean(sessionError && isTemporaryAuthError(sessionError));
   const [saveFeedback, setSaveFeedback] = useState<{ message: string; needsLogin?: boolean } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, startSaveTransition] = useTransition(); // lowers priority update so UI is responsive (laggy since so much is being pushed.)
@@ -160,6 +167,7 @@ export default function Builder() {
 
   const handleInitialSave = () => {
     setSaveFeedback(null);
+    if (sessionUnavailable) return;
     try {
       assertRoutineSaveItemsValid(saveItems);
     } catch (e) {
@@ -239,6 +247,21 @@ export default function Builder() {
             </button>
           </div> */}
         </div>
+
+        {sessionError && isTemporaryAuthError(sessionError) && (
+          <AuthSessionUnavailable
+            retryAt={getSessionRetryAt()}
+            onRetry={refetchSession}
+          />
+        )}
+
+        {merchantOfferError && (
+          <MerchantOffersNotice
+            error={merchantOfferError}
+            isRetrying={isRetryingOffers}
+            onRetry={retryMerchantOffers}
+          />
+        )}
 
         {/* Table header */}
         <div className="hidden md:grid grid-cols-12 gap-4 text-zinc-600 font-semibold text-sm border-b border-zinc-200 px-2 pb-2 mb-2">
@@ -412,7 +435,7 @@ export default function Builder() {
               onToggle={toggleSkinTypeTag}
             />
           </div>
-          {!sessionPending && !session && (
+          {!sessionPending && !sessionUnavailable && !session && (
             <p id="builder-save-auth" className="mb-4 text-sm text-zinc-600">
               Log in or create an account to save your routine to your profile.
             </p>
@@ -430,7 +453,7 @@ export default function Builder() {
               <span className="hidden sm:flex items-center text-sm font-medium text-zinc-500 mr-2">
                 {totalItems} items selected
               </span>
-              {!sessionPending && !session ? (
+              {!sessionPending && !sessionUnavailable && !session ? (
                 <Button asChild variant="secondary" className="min-h-11">
                   <Link href="/login" aria-describedby="builder-save-auth">Log in to save</Link>
                 </Button>
@@ -438,7 +461,7 @@ export default function Builder() {
               <Button
                 variant="secondary"
                 onClick={handleInitialSave}
-                disabled={totalItems === 0 || sessionPending}
+                disabled={totalItems === 0 || sessionPending || sessionUnavailable}
                 className="min-h-11"
               >
                 {sessionPending ? "Checking account…" : "Save routine"}

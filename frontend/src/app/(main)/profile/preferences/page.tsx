@@ -9,11 +9,13 @@ import ProceduralWave from "@/components/themes/ProceduralWave";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { AuthSessionUnavailable } from "@/components/AuthSessionUnavailable";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
 
 const emptySubscribe = () => () => {};
 
 export default function PreferencesPage() {
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending, error: sessionError, refetch } = authClient.useSession();
   const router = useRouter();
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const sessionName = session?.user?.name || "";
@@ -24,6 +26,10 @@ export default function PreferencesPage() {
   const [profileError, setProfileError] = useState("");
   const [profileStatus, setProfileStatus] = useState("");
   const savingName = useRef(false);
+
+  useEffect(() => {
+    if (!isPending && (sessionError?.status === 401 || (!session && !sessionError))) router.push("/login");
+  }, [isPending, sessionError, session, router]);
 
   if (sessionName !== previousName) {
     setPreviousName(sessionName);
@@ -57,10 +63,6 @@ export default function PreferencesPage() {
     }
   }
 
-  useEffect(() => {
-    if (!isPending && !session) router.push("/login");
-  }, [isPending, session, router]);
-
   if (!mounted || (isPending && !sessionChecked)) {
     return (
       <BrandedLoadingScreen
@@ -68,6 +70,12 @@ export default function PreferencesPage() {
         subtitle="Checking your preferences."
       />
     );
+  }
+  if (sessionError && isTemporaryAuthError(sessionError)) {
+    return <AuthSessionUnavailable retryAt={getSessionRetryAt()} onRetry={refetch} />;
+  }
+  if (sessionError?.status === 403) {
+    return <div className="p-10 text-center">Your account cannot access this page.</div>;
   }
   if (!session) return null;
 

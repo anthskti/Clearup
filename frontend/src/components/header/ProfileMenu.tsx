@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { accountLinkClass, authButtonClass } from "./navConfig";
 import UserAvatar from "@/components/ui/UserAvatar";
+import { AuthRetryButton } from "@/components/AuthRetryButton";
 
 type ProfileMenuProps = {
   mounted: boolean;
@@ -29,6 +30,9 @@ type ProfileMenuProps = {
   setIsProductsOpen: (open: boolean) => void;
   setIsProductsPinnedOpen: (open: boolean) => void;
   onSignOut: () => void;
+  sessionUnavailable: boolean;
+  retryAt: number | null;
+  onRetrySession: () => void;
 };
 
 export default function ProfileMenu({
@@ -46,6 +50,9 @@ export default function ProfileMenu({
   setIsProductsOpen,
   setIsProductsPinnedOpen,
   onSignOut,
+  sessionUnavailable,
+  retryAt,
+  onRetrySession,
 }: ProfileMenuProps) {
   if (!mounted || isPending) {
     return (
@@ -53,6 +60,10 @@ export default function ProfileMenu({
         <div className="size-11 shrink-0 animate-pulse rounded-xl bg-white/60 sm:w-28" />
       </div>
     );
+  }
+
+  if (sessionUnavailable) {
+    return <div className="flex items-center justify-end"><AuthRetryButton retryAt={retryAt} onRetry={onRetrySession} label="Account check unavailable · Retry" variant="outline" /></div>;
   }
 
   if (!isAuthenticated) {

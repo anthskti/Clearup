@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "../config/auth";
 import UserModel from "../models/User";
+import { reportError } from "../lib/logger";
 
 export type AppRole = "user" | "admin";
 
@@ -51,11 +52,7 @@ const applyAdminWhitelist = async (
   try {
     await UserModel.update({ role: "admin" }, { where: { id: user.id } });
   } catch (error) {
-    console.warn("[auth] Failed to persist admin role for whitelisted user", {
-      userId: user.id,
-      email: effectiveEmail,
-      error,
-    });
+    reportError(error, { scope: "auth.admin_role_persist" });
   }
 
   return { ...user, email: effectiveEmail, role: "admin" };
