@@ -63,7 +63,24 @@ export default function ProfileMenu({
   }
 
   if (sessionUnavailable) {
-    return <div className="flex items-center justify-end"><AuthRetryButton retryAt={retryAt} onRetry={onRetrySession} label="Account check unavailable · Retry" variant="outline" /></div>;
+    return (
+      <div className="flex items-center justify-end">
+        <AuthRetryButton
+          retryAt={retryAt}
+          onRetry={onRetrySession}
+          label={
+            <>
+              <span className="sr-only sm:not-sr-only">
+                Account check unavailable ·{" "}
+              </span>
+              Retry
+            </>
+          }
+          className="min-h-11"
+          variant="outline"
+        />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

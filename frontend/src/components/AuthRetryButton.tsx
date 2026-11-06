@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 export function AuthRetryButton({
   retryAt,
@@ -13,7 +13,7 @@ export function AuthRetryButton({
 }: {
   retryAt: number | null;
   onRetry: () => void | Promise<void>;
-  label?: string;
+  label?: ReactNode;
   className?: string;
   variant?: ComponentProps<typeof Button>["variant"];
 }) {
@@ -35,7 +35,10 @@ export function AuthRetryButton({
   const cooldownPending = Boolean(retryAt && now === 0);
   return (
     <Button className={className} variant={variant} disabled={cooldownPending || seconds > 0} onClick={() => void onRetry()}>
-      {seconds > 0 ? `${label} in ${seconds}s` : label}
+      <span>
+        {label}
+        {seconds > 0 && ` in ${seconds}s`}
+      </span>
     </Button>
   );
 }
