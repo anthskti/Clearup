@@ -53,9 +53,9 @@ export default async function CommunityRoutinesPage({ searchParams }: Props) {
         gradientTo="#f0f8fc" 
         flip={true} 
       />
-      <div className="relative z-1 mx-auto max-w-6xl px-6 pt-26 pb-20">
-        <header className="mb-10">
-          <h1 className="text-3xl font-extrabold uppercase text-[#2E2E2E] md:text-4xl">
+      <div className="relative z-1 mx-auto max-w-7xl px-4 pt-34 pb-20 sm:px-6">
+        <header className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
             Community Routines
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-zinc-600">
@@ -64,24 +64,22 @@ export default async function CommunityRoutinesPage({ searchParams }: Props) {
           </p>
         </header>
 
-        <div className="mb-10">
-          <GuidesFilters
-            key={`tags=${tagsParam}|min=${minPriceParam}|max=${maxPriceParam}`}
-            initialTags={initialTags}
-            initialMinPrice={minPriceParam}
-            initialMaxPrice={maxPriceParam}
+        <GuidesFilters
+          key={`tags=${tagsParam}|min=${minPriceParam}|max=${maxPriceParam}`}
+          initialTags={initialTags}
+          initialMinPrice={minPriceParam}
+          initialMaxPrice={maxPriceParam}
+        >
+          <GuidesGrid items={routines} filtered={initialTags.length > 0 || !!minPriceParam || !!maxPriceParam} />
+
+          <GuidesPagination
+            page={page}
+            hasNext={hasNext}
+            tags={tagsParam}
+            minPrice={minPriceParam}
+            maxPrice={maxPriceParam}
           />
-        </div>
-
-        <GuidesGrid items={routines} />
-
-        <GuidesPagination
-          page={page}
-          hasNext={hasNext}
-          tags={tagsParam}
-          minPrice={minPriceParam}
-          maxPrice={maxPriceParam}
-        />
+        </GuidesFilters>
       </div>
     </div>
   );

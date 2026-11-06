@@ -1,6 +1,7 @@
 import Link from "next/link";
-import ProductImage from "@/components/ui/ProductImage";
 import { ExternalLink } from "lucide-react";
+import ProductImage from "@/components/ui/ProductImage";
+import { Button } from "@/components/ui/button";
 import ProceduralWave from "@/components/themes/ProceduralWave";
 import { getRoutineById, getRoutineWithProducts } from "@/lib/routines";
 import {
@@ -11,13 +12,12 @@ import { effectiveRoutineProductCategory } from "@/lib/routineProductCategory";
 
 import DeleteRoutineButton from "@/components/routine/DeleteRoutineButton";
 import RoutineDetailsEditor from "@/components/routine/RoutineDetailsEditor";
-import RoutineProductNotesView from "@/components/routine/RoutineProductNotesView";
-import RoutineProductsNotesEditor from "@/components/routine/RoutineProductsNotesEditor";
+import RoutineUsageSection from "@/components/routine/RoutineUsageSection";
+import { skinTypeLabel } from "@/lib/routineSkinTypeTags";
 import RoutineShareLink from "@/components/routine/RoutineShareLink";
 import { getEffectiveUser } from "@/lib/auth";
 import { headers } from "next/headers";
 import { Metadata } from "next";
-import { Button } from "@/components/ui/button";
 
 interface RoutineProps {
   params: Promise<{ id: string }>;
@@ -131,27 +131,55 @@ export default async function ViewRoutine({ params }: RoutineProps) {
         gradientTo="#f0f8fc" 
         flip={true} 
       />
-      <div className="relative z-1 max-w-6xl mx-auto px-6 pt-20 pb-20">
-        {/* header */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-4 gap-4">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-[#2E2E2E] uppercase">
-            {routineData.name}
-            {authorName !== "Clearup User" && (
-              <div className="text-lg text-zinc-500">
-                Viewing Routine by{" "}
-                <span className="underline">{authorName}</span>
+      <div className="relative z-1 max-w-6xl mx-auto px-4 pt-34 pb-20 sm:px-6">
+        <header className="mb-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_320px] md:gap-8 lg:grid-cols-[minmax(0,1fr)_480px]">
+          <div className="min-w-0">
+            <h1 className="break-words text-3xl font-bold leading-tight tracking-tight text-zinc-900 sm:text-4xl">{routineData.name}</h1>
+            <p className="mt-3 text-sm text-zinc-500">by <span className="font-medium text-zinc-700">{authorName}</span></p>
+            {(canEditRoutine || routineData.description?.trim()) && <div className="mt-4 max-w-prose">
+              {canEditRoutine && (
+                <div className="mb-1 flex items-center justify-between gap-3 md:justify-start">
+                  <h2 className="text-sm font-medium text-zinc-500">Description</h2>
+                  <RoutineDetailsEditor routineId={routineData.id} canEdit initialDescription={routineData.description} />
+                </div>
+              )}
+              {routineData.description?.trim() && (
+                <p className="whitespace-pre-wrap break-words text-base leading-relaxed text-zinc-600">{routineData.description}</p>
+              )}
+            </div>}
+          </div>
+          <aside aria-label="Routine total price" className="self-start rounded-2xl border border-zinc-200 bg-white p-5">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:justify-between">
+              <div>
+                <h2 className="text-sm font-medium text-zinc-500">Total price</h2>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">{totalPrice === null ? "Price unavailable" : `CA $${totalPrice.toFixed(2)}`}</p>
+                <p className="mt-1 text-xs text-zinc-500">{totalItems} products</p>
               </div>
-            )}
-          </h1>
-          <RoutineShareLink routineId={id} />
-        </div>
+              {routineData.skinTypeTags.length > 0 && (
+                <div className="max-w-32">
+                  <p className="mb-2 text-xs font-medium text-zinc-500">Skin types</p>
+                  <p className="text-sm leading-relaxed text-zinc-700">{routineData.skinTypeTags.map(skinTypeLabel).join(" · ")}</p>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex items-start gap-2 border-t border-zinc-100 pt-4">
+              <RoutineShareLink routineId={id} />
+              {canEditRoutine && <DeleteRoutineButton routineId={routineData.id} />}
+            </div>
+          </aside>
+        </header>
 
+        <section aria-labelledby="routine-products-title">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 id="routine-products-title" className="text-xl font-semibold text-zinc-900">The products</h2>
+            <span className="text-xs text-zinc-500">Prices in CAD</span>
+          </div>
         {/* Table header */}
-        <div className="hidden md:grid grid-cols-12 gap-4 text-zinc-500 font-bold uppercase text-xs border-b border-zinc-200 px-2 pb-2 mb-2">
+        <div className="hidden md:grid grid-cols-12 gap-4 text-zinc-600 font-semibold text-sm border-b border-zinc-200 px-2 pb-2 mb-2">
           <div className="col-span-2">Category</div>
-          <div className="col-span-7">Product Selection</div>
+          <div className="col-span-6">Product selection</div>
           <div className="col-span-1 text-center">Seller</div>
-          <div className="col-span-1 text-right">Price</div>
+          <div className="col-span-2 text-right">Price</div>
           <div className="col-span-1" /> {/* Buy */}
         </div>
 
@@ -176,13 +204,13 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                     : undefined
                 }
               >
-                <span className="font-bold text-zinc-900 uppercase text-sm md:text-xs tracking-wide">
+                <span className="font-semibold text-zinc-900 text-sm md:text-xs">
                   {step.label}
                 </span>
                 {/* Mobile Price Display, top corner */}
                 {step.products.length > 0 && (
                   <span className="md:hidden font-bold text-zinc-900">
-                    {stepPrice === null ? "-" : `$${stepPrice.toFixed(2)}`}
+                    {stepPrice === null ? "-" : `CA $${stepPrice.toFixed(2)}`}
                   </span>
                 )}
               </div>
@@ -199,7 +227,7 @@ export default async function ViewRoutine({ params }: RoutineProps) {
 
                   return (
                     <div key={prod.id} className="col-span-1 md:contents">
-                      <div className="flex items-center gap-4 md:col-span-7 md:col-start-3">
+                      <div className="flex items-center gap-4 md:col-span-6 md:col-start-3">
                         <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-100 rounded-md border border-zinc-200 shrink-0 overflow-hidden">
                           {prod.imageUrls && prod.imageUrls[0] ? (
                             <ProductImage
@@ -207,7 +235,7 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                               alt={prod.name}
                               width={64}
                               height={64}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               sizes="64px"
                             />
                           ) : (
@@ -216,33 +244,29 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                         </div>
 
                         <div className="grow min-w-0">
-                          <div className="text-xs font-bold text-zinc-400 uppercase mb-0.5">
-                            {prod.brand}
-                          </div>
                           <Link
                             href={`/product/id/${prod.id}`}
-                            className="font-medium text-black leading-tight hover:text-blue-800 block transition-all duration-200 hover:underline"
+                            aria-label={`${prod.brand} ${prod.name}`}
+                            className="block text-sm leading-5 transition-colors hover:text-blue-800 hover:underline"
                           >
-                            {prod.name}
+                            <span className="font-medium text-zinc-600">{prod.brand}</span>
+                            <span aria-hidden="true" className="mx-1 mb-[0.12em] inline-block size-0.5 rounded-full bg-zinc-500 align-middle" />
+                            <span className="font-semibold text-zinc-900">{prod.name}</span>
                           </Link>
-                          {/* Mobile Merchant Display */}
-                          <div className="md:hidden text-xs text-zinc-500 mt-1 flex items-center gap-1 flex-wrap">
-                            <span>via</span>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 md:hidden">
+                            {displayPrice !== null && <span className="text-sm font-medium text-zinc-700">CA ${displayPrice.toFixed(2)}</span>}
+                            <span className="text-xs text-zinc-500">via</span>
                             {merchantHref ? (
                               <a
                                 href={merchantHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="underline underline-offset-2"
+                                aria-label={`Visit ${merchantName} for ${prod.name}`}
+                                className="inline-flex min-h-11 items-center gap-0.5 text-xs font-medium text-[#0e4a84] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4a84]"
                               >
-                                {merchantName}
+                                {merchantName} <ExternalLink size={13} aria-hidden="true" />
                               </a>
-                            ) : (
-                              <span>{merchantName}</span>
-                            )}
-                            {merchantHref ? (
-                              <ExternalLink size={10} className="shrink-0" />
-                            ) : null}
+                            ) : <span className="text-xs text-zinc-500">{merchantName}</span>}
                           </div>
                         </div>
                       </div>
@@ -268,22 +292,18 @@ export default async function ViewRoutine({ params }: RoutineProps) {
                         </div>
                       </div>
 
-                      <div className="hidden md:block md:col-span-1 text-right text-lg font-bold text-zinc-900">
+                      <div className="hidden md:block md:col-span-2 text-right text-lg font-bold text-zinc-900">
                         {displayPrice === null
                           ? "-"
                           : `$${displayPrice.toFixed(2)}`}
                       </div>
 
                       <div className="hidden md:flex md:col-span-1 items-center justify-end">
-                        <a
-                          href={merchantHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Button variant="secondary" size="sm">
-                            Buy
+                        {merchantHref && (
+                          <Button asChild variant="secondary" size="sm">
+                            <a href={merchantHref} target="_blank" rel="noopener noreferrer" aria-label={`Buy ${prod.name} at ${merchantName}`}>Buy</a>
                           </Button>
-                        </a>
+                        )}
                       </div>
                     </div>
                   );
@@ -293,68 +313,8 @@ export default async function ViewRoutine({ params }: RoutineProps) {
             );
           })}
         </div>
-        {canEditRoutine ? (
-          <RoutineProductsNotesEditor
-            routineId={routineData.id}
-            canEdit={canEditRoutine}
-            initialProducts={routineProducts}
-          />
-        ) : (
-          <RoutineProductNotesView products={routineProducts} />
-        )}
-        <div
-          className={`
-          bottom-0 left-0 w-full bg-white border border-zinc-200 shadow-md rounded-lg mt-4 z-20 px-6 py-4
-          lg:top-20 lg:bottom-auto lg:shadow-sm 
-          `}
-        >
-          {routineData.skinTypeTags.length > 0 && (
-            <div className="mb-4">
-              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
-                Skin Type for this Routine
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {routineData.skinTypeTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-900 ring-1 ring-blue-200"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-xs uppercase font-bold text-zinc-400 tracking-wider">
-                Estimated Total
-              </div>
-              <div className="text-2xl font-extrabold text-black">
-                {totalPrice === null ? "-" : `CA $${totalPrice.toFixed(2)}`}
-              </div>
-              <span className="hidden sm:flex items-center text-sm font-medium text-zinc-500 mr-2">
-                {totalItems} items selected
-              </span>
-              {routineData.description?.trim() ? (
-                <p className="mt-2 max-w-2xl text-sm text-zinc-800">
-                  <span className="font-bold">Description:</span> <br />{" "}
-                  {routineData.description}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <RoutineDetailsEditor
-                routineId={routineData.id}
-                canEdit={canEditRoutine}
-                initialName={routineData.name}
-                initialDescription={routineData.description}
-                initialTags={routineData.skinTypeTags ?? []}
-              />
-            </div>
-          </div>
-        </div>
-        {canEditRoutine && <DeleteRoutineButton routineId={routineData.id} />}
+        </section>
+        <RoutineUsageSection routineId={routineData.id} canEdit={canEditRoutine} products={routineProducts} />
       </div>
     </div>
   );

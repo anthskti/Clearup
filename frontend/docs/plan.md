@@ -82,10 +82,18 @@ Kept the hero artwork and slogan. Removed the trust-banner copy and claims; rest
 
 ## Batch 6 — routine browsing, detail, and personal library
 
+**Browsing pass complete for this iteration:** Community routines use a 240px desktop filter rail and the catalog filter sheet on phone/tablet. Filters retain draft/apply behavior, removable active tags, and clear actions. Browsing uses two card columns from small tablet widths upward and one on phone. Cards keep equal heights, with an invisible placeholder when skin-type tags are absent. Shared cards use one link, contained product previews, readable metadata, and a compact estimated-CAD footer. Empty browse states offer Clear filters or Build a routine.
+
+**Deferred:** Routine description previews may be added to cards later. Revisit grid density if the collection grows.
+
+**Routine detail pass implemented:** The page leads with the author and description beside a wider, compact desktop summary; price, product count, skin types, and sharing are grouped together, and stack on phone. Products and readable Morning/Night usage follow. Sharing retains the attached URL field and copy icon, displays a short domain/path, and copies a complete URL with feedback. Public Morning/Night notes match the builder’s numbered entries, dividers, and amber/violet headings, without timeline rails or duplicate headings. Owners can edit the description or explicitly open notes editing; name, tags, and products are not editable here. The summary is labeled Total price. Product rows follow the builder’s inline brand/name and category layout, with a separate Buy column using compact catalog-blue buttons; phone cards use “via” followed by a linked merchant name and external-link icon. Description editing sits beside its label on desktop, with a quiet pencil/Edit action (Add when empty). Delete routine is in an owner-only actions menu aligned beside the share field in the total-price card’s footer, retaining confirmation. Notes edit/cancel buttons remain outlined; save actions use blue, with 44px targets.
+
+**Deferred:** Before/after uploads can become a results section beneath the introduction when images exist; no empty photo area is shown. “Use in builder” duplication remains future work. Created and saved routines are next.
+
 **Review section:** [Community routines and profile routines](./apple-design.md#6-community-routines-saved-routine-detail-and-profile-routines).  
 **Likely files:** `src/app/(main)/routines/page.tsx`, `src/app/(main)/routine/[id]/page.tsx`, `src/app/(main)/profile/created-routines/page.tsx`, relevant `src/components/guides/*` and `src/components/routine/*`.
 
-**Work:** Shorten the phone browse filter block; make routine cards more visual and consistent. Put routine description, author, tags, and cost before the product table on detail pages. Give phone users clear store actions and share confirmation. Keep owner edit and destructive actions distinct. Resolve the Saved Routines placeholder already linked from the account menu.
+**Remaining work:** Review created routines and resolve the Saved Routines placeholder already linked from the account menu.
 
 **Approval point:** Decide whether Saved Routines will be built, replaced with a useful empty state, or removed from navigation for now.
 
