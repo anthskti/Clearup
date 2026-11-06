@@ -1,64 +1,86 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { AboutHero } from "@/components/info/AboutHero";
 import { InfoArticle } from "@/components/info/InfoArticle";
-import ProceduralWave from "@/components/themes/ProceduralWave";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/constants/mail";
 
-export default function AboutUsPage() {
+export const metadata: Metadata = {
+  title: "About Clearup",
+  description: "The story behind Clearup, a simpler way to build and share skincare routines.",
+};
+
+// Add your video URL and replace the temporary skincare still when ready.
+const ABOUT_VIDEO_SRC: string = "";
+const ABOUT_POSTER_SRC = "/assets/home.jpg";
+
+export default function AboutClearupPage() {
   return (
-    <div>
-      <ProceduralWave seed={7} height={190} />
-      <InfoArticle
-        title="About Clearup"
-        description="What is the purpose of Clearup?"
-      >
-        <h2>The Problem</h2>
+    <InfoArticle
+      currentPage="/about-clearup"
+      title="About Clearup"
+      description="A place to make sense of skincare, build a routine, and learn from one another."
+      hero={<AboutHero videoSrc={ABOUT_VIDEO_SRC} poster={ABOUT_POSTER_SRC} />}
+    >
+      <section id="clearup-story">
+        <h2>Why I built Clearup</h2>
         <p>
-          When I was a teenager, I faced moments where my acne was terrible, so
-          I got into skincare to take care of my skin, but the endless amount of
-          products become overwhelming; I didn&apos;t know what my skin type was, I
+          When I was a teenager, my acne was terrible, so
+          I wanted to get into skincare to take care of my skin, but the endless amount of
+          products become overwhelming. I didn&apos;t know what my skin type was, I
           didn&apos;t have much to spend, and I didn&apos;t know how to use half of the
-          products I&apos;ve received. So, I wanted to make a website that can help
+          products I&apos;ve gotten from my sister. So, I wanted to make a website that can help
           anybody learn how to take care of their skin via sharing their
           routines with others to learn about skincare.
         </p>
         <p>
-          The skincare industry is massive, yet there was no centralized place
-          to organize products, remember application orders (AM vs PM), or
-          calculate costs without relying on messy spreadsheets. Building an
-          effective routine shouldn&apos;t require spending hundreds of dollars on a
-          whim or guessing what combinations are safe.
+          PCPartPicker was an inspiration: choosing parts, comparing prices, and
+          sharing a build all in one place. Clearup brings that approach to
+          organizing skincare, while recognizing that everyone&apos;s skin is different.
         </p>
-        <h2>The Solution</h2>
+      </section>
+      <section>
+        <h2>Clarity for your routine</h2>
         <p>
-          If you&apos;ve ever built a computer, you&apos;ve probably used PCPartPicker to
-          check compatibility, track prices, and share builds. I realized
-          skincare needed the exact same thing: a &quot;PCPartPicker for skincare.&quot;
+          Clearup helps you browse products, compare listed merchant prices, and
+          arrange your morning and evening steps. You can publish a routine with
+          notes about how you use it, or explore community routines for ideas.
         </p>
         <p>
-          Clearup is a community-driven routine builder and discovery platform.
-          We provide the tools to:
+          Whether you use three products or ten, the goal is the same: make your
+          routine easier to understand and share.
         </p>
-        <ul>
-          <li>
-            Build Your Routine: Visually organize your morning and evening
-            skincare steps.
-          </li>
-          <li>
-            Track Your Budget: See the real cost of your daily routine at a
-            glance.
-          </li>
-          <li>
-            Discover & Share: Browse public guides and copy routines from users
-            with similar skin profiles.
-          </li>
-        </ul>
-        <h2>Growing Together</h2>
         <p>
-          Whether you are a skincare minimalist or have a dedicated 10-step
-          routine, Clearup will help you track what works for your skin. As a
-          solo developer, my goal is to continuously grow and refine this
-          platform alongside the community, redefining how we share and learn
-          about skincare.
+          <Link href="/builder">Build a routine</Link> or{" "}
+          <Link href="/routines">explore community routines</Link>.
         </p>
-      </InfoArticle>
-    </div>
+      </section>
+      <section>
+        <h2>How product information is prepared</h2>
+        <p>
+          Product details, images, and listed prices come from third-party
+          retailers. A locally run language model helps infer some product
+          attributes, including skin-type labels, from ingredients and product
+          characteristics. These labels may also be manually adjusted. This was 
+          for consistency and products data across platforms state different things.
+        </p>
+        <p>
+          This automated inferences can be wrong and a skin-type label does not
+          guarantee that a product will suit you. Check the manufacturer&apos;s
+          current ingredient list and the retailer&apos;s price before buying.
+          Clearup and community routines provide information, not medical advice.
+        </p>
+      </section>
+      <section>
+        <h2>Built independently, growing together</h2>
+        <p>
+          I&apos;m building Clearup as a solo developer, with room to keep learning
+          and improving it alongside the community. If something is confusing or
+          a product detail looks wrong, I&apos;d like to hear about it.
+        </p>
+        <p>
+          Get in touch at <a href={SUPPORT_MAILTO}>{SUPPORT_EMAIL}</a>.
+        </p>
+      </section>
+    </InfoArticle>
   );
 }

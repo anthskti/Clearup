@@ -134,11 +134,17 @@ Kept the hero artwork and slogan. Removed the trust-banner copy and claims; rest
 ## Batch 8 — information pages
 
 **Review section:** [Information pages](./apple-design.md#8-information-pages).  
-**Likely files:** `src/components/info/InfoArticle.tsx` and affected pages under `src/app/(info)/`.
+**Current files:** `src/components/info/InfoArticle.tsx`, `AboutHero.tsx`, and pages/layout under `src/app/(info)/`.
 
-**Work:** Set a comfortable reading width, improve heading and link hierarchy, and make FAQ questions easy to scan. Apply the same type foundation without adding decorative wave weight to long reading pages.
+**Status: complete for this iteration.** Shared About/FAQ/Privacy/Terms navigation, the existing Red Hat type scale, a reading column capped at 720px, and normal phone gutters replace the percentage-based layout and waves. Longer pages have sticky desktop section navigation and a collapsed native “On this page” menu on phone/tablet. FAQ questions use native expandable rows, grouped by topic.
 
-**Approval point:** Confirm whether FAQ should remain an article or become individually expandable questions.
+**About hero:** A full-width video-ready introduction follows the fixed header, with stationary overlay text and an Our story anchor. The nonsticky information tabs sit below it, followed by the existing story. Native video playback is silent, looping, and inline, with a 44px play/pause control. Reduced motion leaves the still visible without assigning a video source; blocked playback offers Play, and media errors retain the still. Other information pages keep their top tabs.
+
+**Add the final media:** Set `ABOUT_VIDEO_SRC` to the direct Cloudflare video URL in `src/app/(info)/about-clearup/page.tsx`, and update `ABOUT_POSTER_SRC` with a matching still. The video URL is currently empty; `/assets/home.jpg` provides the temporary still. Recheck text contrast and the centered phone crop against the final footage. Photography for FAQ and legal pages is deferred.
+
+**Content:** Updated outdated feature and deletion instructions. About/FAQ/Terms explain retailer-sourced data, locally inferred skin-type labels, manual adjustments, and accuracy limits. Privacy explains public routine content, Cloudflare R2 photo storage and retained image files, Google photo URLs, session cookies, and the existing Vercel analytics/performance integrations. No account, storage, or API behavior changes.
+
+**Verification:** Frontend lint/build passed. Chrome checks at 320, 390, 768, and 1440px covered page navigation, contents/anchor links, keyboard expansion, phone layout, and enlarged text. A temporary synthetic clip verified About autoplay, keyboard play/pause, reduced-motion changes, simulated autoplay denial, and invalid-media fallback. The test source was removed and the empty configuration restored. Final Cloudflare media and real-phone playback are still pending; no new dependencies were introduced.
 
 ## Batch 9 — admin screens
 

@@ -195,11 +195,14 @@ Phone:    Build your routine
 
 ## 8. Information pages
 
-**Evidence:** `src/components/info/InfoArticle.tsx`, `src/app/(info)/*`.
+**Evidence:** `src/components/info/InfoArticle.tsx`, `AboutHero.tsx`, `src/app/(info)/*`.
 
-- The article container uses `max-w-[70%]`, which makes the line length depend on viewport width. On a wide desktop this can create very long lines; on a phone it can become narrow after padding. Use a reading column around 65–75 characters with a max width near 680–760px, while allowing full width minus phone gutters.
-- FAQ is currently a long article of questions and answers. Give it a contents list or individually separated question blocks, but keep answers visible or easily expandable. Privacy and terms can stay as readable articles with a clear section hierarchy and anchored headings.
-- The information pages should use the same title scale, link treatment, and background rhythm as functional pages. A wave atop every legal or help article is less useful than a stable reading surface.
+- **Shared layout — implemented.** About, FAQ, Privacy, and Terms share quiet page navigation, the existing Red Hat type scale, and a reading column capped at 720px with generous phone gutters. The percentage-based width and decorative waves are removed. Long articles have sticky section links beside the text on desktop and a collapsed native “On this page” menu above it on phone and tablet.
+- **About — implemented.** Opens with a full-width video-ready hero below the opaque header. Stationary text sits over dark gradients, with a brief summary and an Our story anchor. Information tabs follow the hero and remain nonsticky; FAQ and legal pages retain their tabs at the top. A temporary skincare still fills the hero while the video URL is empty. Silent looping playback has a 44px play/pause control, respects reduced motion before assigning a source, and retains the still when playback is blocked or fails. The reading column keeps the founder's story, PCPartPicker inspiration, and product-data explanation.
+- **FAQ — implemented.** Groups expandable questions by topic, using subtle dividers and keyboard-accessible controls. Account deletion instructions match the sign-in-method-aware dialog; answers explain photo storage and the limitations of product information.
+- **Privacy and Terms — implemented.** Readable articles have anchored sections and clear update dates. Copy explains public routine content, Cloudflare R2 image storage, Google-provided photo URLs, Vercel usage/performance tools, and the current retention of stored photo objects after removal. Substantive existing terms are preserved; outdated feature references and unsupported promises are removed.
+
+**Verification:** Frontend lint/build and Chrome checks passed at 320, 390, 768, and 1440px. Checked navigation state, reading width, section targets, FAQ keyboard expansion, phone contents disclosure, and enlarged text. About playback was checked using a temporary synthetic clip: autoplay, keyboard play/pause, reduced-motion changes, simulated autoplay denial, and invalid-media fallback. The test source was removed. The user's final Cloudflare clip, poster, and real-phone playback remain to be checked when supplied.
 
 ## 9. Admin screens
 
