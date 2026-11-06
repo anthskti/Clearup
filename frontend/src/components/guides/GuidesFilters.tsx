@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { SlidersHorizontal, X } from "lucide-react";
+import { LoaderCircle, SlidersHorizontal, X } from "lucide-react";
 import type { SkinType } from "@/types/product";
 import { ROUTINE_SKIN_TYPE_OPTIONS, skinTypeLabel } from "@/lib/routineSkinTypeTags";
 import { Button } from "@/components/ui/button";
@@ -10,17 +10,25 @@ import { Checkbox } from "@/components/ui/checkbox";
 import PriceRangeFilter from "@/components/filters/PriceRangeFilter";
 import ProductFiltersSheet from "@/components/products/ProductFiltersSheet";
 import { formatPriceRangeLabel, toPriceRange } from "@/lib/priceRange";
+import GuidesPagination, {
+  buildGuidesHref,
+} from "@/components/guides/GuidesPagination";
 
 export const GUIDES_PRICE_SLIDER_MAX = 300;
 
-export default function GuidesFilters({ initialTags, initialMinPrice, initialMaxPrice, children }: {
+export default function GuidesFilters({ initialTags, initialTagsParam, initialMinPrice, initialMaxPrice, page, total, loadError, children }: {
   initialTags: SkinType[];
+  initialTagsParam: string;
   initialMinPrice: string;
   initialMaxPrice: string;
+  page: number;
+  total: number;
+  loadError: string | null;
   children: ReactNode;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const paginationIntent = useRef<{ fromPage: number } | null>(null);
   const appliedPrice = toPriceRange(initialMinPrice, initialMaxPrice, GUIDES_PRICE_SLIDER_MAX);
   const [tags, setTags] = useState(initialTags);
   const [priceRange, setPriceRange] = useState<[number, number]>(appliedPrice);
@@ -30,12 +38,56 @@ export default function GuidesFilters({ initialTags, initialMinPrice, initialMax
   const draftCount = tags.length + Number(priceRange[0] > 0 || priceRange[1] < GUIDES_PRICE_SLIDER_MAX);
 
   function navigate(nextTags: SkinType[], range: [number, number]) {
+    paginationIntent.current = null;
     const params = new URLSearchParams();
     if (nextTags.length) params.set("tags", nextTags.join(","));
     if (range[0] > 0) params.set("minPrice", String(range[0]));
     if (range[1] < GUIDES_PRICE_SLIDER_MAX) params.set("maxPrice", String(range[1]));
     startTransition(() => router.push(params.size ? `/routines?${params}` : "/routines"));
   }
+
+  function navigatePage(nextPage: number) {
+    if (pending || nextPage === page) return;
+    paginationIntent.current = { fromPage: page };
+    startTransition(() =>
+      router.push(
+        buildGuidesHref(
+          nextPage,
+          initialTagsParam,
+          initialMinPrice,
+          initialMaxPrice,
+        ),
+        { scroll: false },
+      ),
+    );
+  }
+
+  useEffect(() => {
+    if (pending) return;
+    const intent = paginationIntent.current;
+    if (!intent) return;
+
+    if (!loadError && page !== intent.fromPage) {
+      const heading = document.getElementById("guides-results-heading");
+      if (heading) {
+        const top = Math.max(
+          0,
+          window.scrollY + heading.getBoundingClientRect().top - 72,
+        );
+        window.scrollTo({ top, behavior: "auto" });
+        heading.focus({ preventScroll: true });
+      }
+    }
+    paginationIntent.current = null;
+  }, [loadError, page, pending]);
+
+  useEffect(() => {
+    const clearPaginationIntent = () => {
+      paginationIntent.current = null;
+    };
+    window.addEventListener("popstate", clearPaginationIntent);
+    return () => window.removeEventListener("popstate", clearPaginationIntent);
+  }, []);
 
   function resetDraft() {
     setTags([]);
@@ -79,7 +131,7 @@ export default function GuidesFilters({ initialTags, initialMinPrice, initialMax
   }
 
   return (
-    <div aria-busy={pending}>
+    <div>
       <button
         type="button"
         onClick={() => { setTags(initialTags); setPriceRange(appliedPrice); setOpen(true); }}
@@ -113,6 +165,16 @@ export default function GuidesFilters({ initialTags, initialMinPrice, initialMax
           </button>}
         </div>
       )}
+      {pending && (
+        <p role="status" className="mb-3 flex items-center gap-2 text-sm text-zinc-600">
+          <LoaderCircle
+            size={16}
+            className="animate-spin motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+          Loading results…
+        </p>
+      )}
       <div className="xl:grid xl:grid-cols-[240px_minmax(0,1fr)] xl:items-start xl:gap-8">
         <aside
           aria-label="Routine filters"
@@ -136,7 +198,47 @@ export default function GuidesFilters({ initialTags, initialMinPrice, initialMax
             >{pending ? "Applying…" : "Apply filters"}</Button>
           </div>
         </aside>
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0">
+          {loadError ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+            >
+              <p>{loadError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 min-h-11"
+                disabled={pending}
+                onClick={() => startTransition(() => router.refresh())}
+              >
+                {pending ? "Retrying…" : "Retry"}
+              </Button>
+            </div>
+          ) : (
+            <div aria-busy={pending}>
+              <h2
+                id="guides-results-heading"
+                tabIndex={-1}
+                className="mb-3 text-lg font-semibold text-zinc-900"
+              >
+                Community routines
+              </h2>
+              {children}
+            </div>
+          )}
+          {!loadError && (
+            <GuidesPagination
+              page={page}
+              total={total}
+              tags={initialTagsParam}
+              minPrice={initialMinPrice}
+              maxPrice={initialMaxPrice}
+              pending={pending}
+              onPage={navigatePage}
+            />
+          )}
+        </div>
       </div>
       <ProductFiltersSheet
         open={open}

@@ -21,12 +21,6 @@ export const EMPTY_PRODUCT_LIST_FILTERS: ProductListFilters = {
 
 export const PRODUCT_CATALOG_PAGE_SIZE = 40;
 
-export function parseCatalogPage(raw: string | undefined): number {
-  if (!raw || !/^\d+$/.test(raw)) return 1;
-  const page = Number(raw);
-  return Number.isSafeInteger(page) && page > 0 && Number.isSafeInteger((page - 1) * PRODUCT_CATALOG_PAGE_SIZE) ? page : 1;
-}
-
 function parseCsvParam(raw: string | undefined): string[] {
   if (!raw?.trim()) return [];
   return [

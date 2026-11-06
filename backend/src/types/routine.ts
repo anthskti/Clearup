@@ -88,3 +88,8 @@ export type GuideRoutineView = {
   /** Sum of linked product prices (CAD in catalog). */
   estimatedTotalPrice: number;
 };
+
+export type GuideRoutinePage = {
+  routines: GuideRoutineView[];
+  total: number;
+};

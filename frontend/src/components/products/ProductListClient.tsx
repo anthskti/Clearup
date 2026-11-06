@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import ProductImage from "@/components/ui/ProductImage";
 import Link from "next/link";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { LoaderCircle, Search, SlidersHorizontal, X } from "lucide-react";
 import ProductRating from "@/components/product/ProductRating";
 import { CountryMapping } from "../../constants/CountryMapping";
 
@@ -583,7 +583,25 @@ export default function ProductListClient({
             </div>
           )}
           {currentOfferFailure && <MerchantOffersNotice error={currentOfferFailure.error} isRetrying={currentOfferFailure.isRetrying} onRetry={retryOffers} />}
-          {isNavigating && <p role="status" className="sr-only">Updating results…</p>}
+          <h2
+            id="product-results-heading"
+            tabIndex={-1}
+            className="mb-3 text-lg font-semibold text-zinc-900 focus:outline-none"
+          >
+            Results
+          </h2>
+          {isNavigating && (
+            <p
+              role="status"
+              className="mb-3 flex items-center gap-2 text-sm text-zinc-600"
+            >
+              <LoaderCircle
+                size={16}
+                className="animate-spin motion-reduce:animate-none"
+              />
+              Loading results…
+            </p>
+          )}
           <ProductFiltersSheet
             open={isFilterSheetOpen}
             onOpenChange={setIsFilterSheetOpen}
@@ -610,7 +628,7 @@ export default function ProductListClient({
           </ProductFiltersSheet>
 
           {/* Mobile: card list */}
-          <div className="mb-10 space-y-3 lg:hidden">
+          <div aria-busy={isNavigating} className="space-y-3 lg:hidden">
             {products.length === 0 ? (
               <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
                 {emptyState}
@@ -657,7 +675,7 @@ export default function ProductListClient({
           </div>
 
           {/* Desktop: table */}
-          <div className="mb-10 hidden overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm lg:block">
+          <div aria-busy={isNavigating} className="hidden overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm lg:block">
             <div className="grid h-11 grid-cols-12 items-center border-b border-zinc-200 bg-zinc-50 px-4 text-xs font-medium text-zinc-500">
               {config.tableColumns.map((col) => (
                 <div key={col.id} className={`${col.width} px-1`}>
@@ -691,7 +709,8 @@ export default function ProductListClient({
             page={page}
             total={totalCount}
             onPage={goToPage}
-            disabled={isNavigating || retryDisabled || isRetrying}
+            pending={isNavigating}
+            disabled={retryDisabled || isRetrying}
           />
         </main>
       </div>

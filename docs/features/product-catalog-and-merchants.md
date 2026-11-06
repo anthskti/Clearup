@@ -60,6 +60,8 @@ Merchant CRUD: `/api/merchant` (admin for writes).
 
 Catalog listings use server-rendered numbered pages of 40 products. The `page` query parameter is 1-based; page 1 is omitted from canonical URLs. Search and filters remain in the URL, filter changes reset to page 1, and browser history restores the selected page and controls. Catalog failures retain the last successful rows and show a retry notice; malformed catalog payloads are treated as failures.
 
+Products and community routines share pagination controls with 44px minimum touch targets. Phones show previous/next arrows and up to three nearby page numbers; larger screens include first/last pages and ellipses. Page changes show visible loading feedback and disable repeated pagination requests. After a successful user-initiated page change, focus and scroll move to the results heading with space for the fixed header. Initial loads, filter changes, and browser history navigation do not trigger this pagination scroll.
+
 Filter navigation is debounced by 250 ms. Clearing a change before it is issued cancels it without navigating; clearing an issued change replaces its destination. Navigation completion follows the router transition and committed URL, allowing same-URL replacements and out-of-range page redirects to settle without leaving pagination disabled.
 
 ### Caching strategy (`frontend/src/lib/products.ts`)

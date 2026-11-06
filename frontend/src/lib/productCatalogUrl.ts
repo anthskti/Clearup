@@ -1,9 +1,10 @@
 import {
   parseGlobalProductListFiltersFromSearchParams,
   parseProductListFiltersFromSearchParams,
-  parseCatalogPage,
   productListFiltersToSearchParams,
+  PRODUCT_CATALOG_PAGE_SIZE,
 } from "@/lib/productListFilters";
+import { parsePageParam } from "@/lib/pagination";
 import type { ProductListFilters } from "@/types/product";
 
 export type CatalogScope =
@@ -42,7 +43,11 @@ export function normalizeQuery(
     scopeType === "all"
       ? parseGlobalProductListFiltersFromSearchParams(values)
       : parseProductListFiltersFromSearchParams(values, scopeSlug);
-  return queryFor(filters, values.search ?? "", parseCatalogPage(values.page));
+  return queryFor(
+    filters,
+    values.search ?? "",
+    parsePageParam(values.page, PRODUCT_CATALOG_PAGE_SIZE),
+  );
 }
 
 export function catalogIdentity(path: string, query: string): string {

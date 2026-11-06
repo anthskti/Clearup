@@ -8,10 +8,10 @@ import { Metadata } from "next";
 import {
   flattenSearchParams,
   parseProductListFiltersFromSearchParams,
-  parseCatalogPage,
   productListFiltersToSearchParams,
   PRODUCT_CATALOG_PAGE_SIZE,
 } from "@/lib/productListFilters";
+import { parsePageParam } from "@/lib/pagination";
 import type { CatalogError, Product } from "@/types/product";
 import { redirect } from "next/navigation";
 
@@ -32,13 +32,14 @@ export default async function ProductListPage({
   searchParams,
 }: PageProps) {
   const { slug } = await params;
-  const flatParams = flattenSearchParams(await searchParams);
+  const rawParams = await searchParams;
+  const flatParams = flattenSearchParams(rawParams);
   const initialFilters = parseProductListFiltersFromSearchParams(
     flatParams,
     slug,
   );
   const initialSearch = flatParams.search ?? "";
-  const page = parseCatalogPage(flatParams.page);
+  const page = parsePageParam(rawParams.page, PRODUCT_CATALOG_PAGE_SIZE);
   const resultParams = productListFiltersToSearchParams(initialFilters, initialSearch);
   if (page > 1) resultParams.set("page", String(page));
   const resultQuery = resultParams.toString();

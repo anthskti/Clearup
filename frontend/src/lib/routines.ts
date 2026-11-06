@@ -4,7 +4,7 @@ import {
   Routine,
   RoutineWithProducts,
   FeaturedRoutine,
-  GuideRoutine,
+  GuideRoutinePage,
   RoutineNoteUpdate,
 } from "@/types/routine";
 import type { AdminDashboardStats } from "@/types/routine-admin";
@@ -92,7 +92,7 @@ export async function getPublicGuides(params: {
   maxPrice?: string;
   limit?: number;
   offset?: number;
-}): Promise<GuideRoutine[]> {
+}): Promise<GuideRoutinePage> {
   const search = new URLSearchParams();
   if (params.tags?.trim()) {
     search.set("tags", params.tags.trim());
@@ -120,7 +120,18 @@ export async function getPublicGuides(params: {
       .catch(() => ({ error: "Failed to load guides" }));
     throw new Error(errorData.error || "Failed to load guides");
   }
-  return res.json();
+  const payload: unknown = await res.json();
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !Array.isArray((payload as { routines?: unknown }).routines) ||
+    !Number.isSafeInteger((payload as { total?: unknown }).total) ||
+    (payload as { total: number }).total < 0
+  ) {
+    throw new Error("Failed to load guides: invalid response");
+  }
+
+  return payload as GuideRoutinePage;
 }
 
 export const featureRoutine = async (routineId: number): Promise<void> => {

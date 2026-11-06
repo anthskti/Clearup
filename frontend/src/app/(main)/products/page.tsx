@@ -8,10 +8,10 @@ import { Metadata } from "next";
 import {
   flattenSearchParams,
   parseGlobalProductListFiltersFromSearchParams,
-  parseCatalogPage,
   productListFiltersToSearchParams,
   PRODUCT_CATALOG_PAGE_SIZE,
 } from "@/lib/productListFilters";
+import { parsePageParam } from "@/lib/pagination";
 import type { CatalogError, Product } from "@/types/product";
 import { redirect } from "next/navigation";
 
@@ -27,11 +27,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AllProductsPage({ searchParams }: PageProps) {
-  const flatParams = flattenSearchParams(await searchParams);
+  const rawParams = await searchParams;
+  const flatParams = flattenSearchParams(rawParams);
   const initialFilters =
     parseGlobalProductListFiltersFromSearchParams(flatParams);
   const initialSearch = flatParams.search ?? "";
-  const page = parseCatalogPage(flatParams.page);
+  const page = parsePageParam(rawParams.page, PRODUCT_CATALOG_PAGE_SIZE);
   const resultParams = productListFiltersToSearchParams(initialFilters, initialSearch);
   if (page > 1) resultParams.set("page", String(page));
   const resultQuery = resultParams.toString();
