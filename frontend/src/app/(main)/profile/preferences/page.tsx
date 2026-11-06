@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import DeleteAccountDialog from "@/components/auth/DeleteAccountDialog";
 import ProfilePhotoEditor from "@/components/auth/ProfilePhotoEditor";
 import BrandedLoadingScreen from "@/components/BrandedLoadingScreen";
 import ProceduralWave from "@/components/themes/ProceduralWave";
@@ -23,8 +23,6 @@ export default function PreferencesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileStatus, setProfileStatus] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const savingName = useRef(false);
 
   if (sessionName !== previousName) {
@@ -58,53 +56,6 @@ export default function PreferencesPage() {
       setIsSaving(false);
     }
   }
-
-  const handleDeleteAccount = async () => {
-    if (
-      !confirm(
-        "Are you absolutely sure? This cannot be undone. If you signed in with no password, don't enter a password.",
-      )
-    )
-      return;
-
-    setIsDeleting(true);
-    setDeleteError(null);
-
-    try {
-      // Better Auth delete-user may require fresh session.
-      // We collect password up front to make delete reliable.
-      const password = prompt(
-        "For security, enter your password to confirm account deletion.",
-      );
-
-      if (password === null) {
-        setIsDeleting(false);
-        return;
-      }
-
-      const payload: { callbackURL: string; password?: string } = {
-        callbackURL: `${window.location.origin}/`,
-      };
-
-      if (password.trim().length > 0) {
-        payload.password = password;
-      }
-
-      const { error } = await authClient.deleteUser(payload);
-      if (error) {
-        setDeleteError(error.message || "Could not delete account.");
-        setIsDeleting(false);
-        return;
-      }
-
-      router.push("/");
-    } catch (err: unknown) {
-      setDeleteError(
-        err instanceof Error ? err.message : "Could not delete account.",
-      );
-      setIsDeleting(false);
-    }
-  };
 
   useEffect(() => {
     if (!isPending && !session) router.push("/login");
@@ -208,18 +159,8 @@ export default function PreferencesPage() {
               <p className="mt-2 text-sm leading-relaxed text-zinc-600">
                 Permanently delete your Clearup account. This cannot be undone.
               </p>
-              {deleteError && <p role="alert" className="mt-3 text-sm text-red-700">{deleteError}</p>}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11 border-red-200 bg-white text-red-700 hover:bg-red-50"
-              onClick={handleDeleteAccount}
-              disabled={isDeleting}
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-              {isDeleting ? "Deleting…" : "Delete account"}
-            </Button>
+            <DeleteAccountDialog />
           </div>
         </section>
       </div>
