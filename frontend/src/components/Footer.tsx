@@ -41,6 +41,7 @@ function Footer() {
                 alt="Clearup"
                 width={2048}
                 height={663}
+                sizes="190px"
                 draggable={false}
                 onContextMenu={(e) => e.preventDefault()}
                 className="h-auto w-[190px]"
