@@ -4,7 +4,6 @@ export default function MainLoading() {
   return (
     <BrandedLoadingScreen
       title="Loading page"
-      subtitle="Gathering your products, routines, and recommendations."
     />
   );
 }

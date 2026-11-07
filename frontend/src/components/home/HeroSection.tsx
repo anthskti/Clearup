@@ -4,8 +4,8 @@ import { Button } from "../ui/button";
 import { ArrowRight } from "lucide-react";
 
 const Hero_Images = {
-  desktop: "/assets/landingpagedesktop.png",
-  mobile: "/assets/culandingmobile.png",
+  desktop: "/assets/landingpagedesktop.webp",
+  mobile: "/assets/culandingmobile.webp",
 }
 
 const HeroSection = () => {
@@ -91,7 +91,7 @@ const HeroSection = () => {
           {/* With bg image, leaving right side avail is nice */}
           {/* <div className="absolute inset-0 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden transform -rotate-1 transition-transform duration-500">
             <Image
-              src="/assets/home.jpg"
+              src="/assets/home.webp"
               alt="ClearUp Interface"
               fill
               draggable={false}

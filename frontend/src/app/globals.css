@@ -59,6 +59,7 @@
 }
 
 @theme inline {
+  --animate-loading-star: loading-star 1.25s ease-in-out infinite;
   --font-heading: var(--font-red-hat-display), Arial, sans-serif;
   --font-sans: var(--font-red-hat-display), Arial, sans-serif;
   --font-edu: var(--font-edu-qld);
@@ -118,6 +119,11 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@keyframes loading-star {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 
 .dark {

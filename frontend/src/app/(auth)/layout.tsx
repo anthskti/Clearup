@@ -37,7 +37,6 @@ export default function AuthLayout({
       <BrandedLoadingScreen
         fullScreen
         title="Loading session"
-        subtitle="Checking your Clearup account."
       />
     );
   }

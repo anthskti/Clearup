@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 // Add your video URL and replace the temporary skincare still when ready.
 const ABOUT_VIDEO_SRC: string = "";
-const ABOUT_POSTER_SRC = "/assets/home.jpg";
+const ABOUT_POSTER_SRC = "/assets/home.webp";
 
 export default function AboutClearupPage() {
   return (

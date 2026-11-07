@@ -140,7 +140,7 @@ Kept the hero artwork and slogan. Removed the trust-banner copy and claims; rest
 
 **About hero:** A full-width video-ready introduction follows the fixed header, with stationary overlay text and an Our story anchor. The nonsticky information tabs sit below it, followed by the existing story. Native video playback is silent, looping, and inline, with a 44px play/pause control. Reduced motion leaves the still visible without assigning a video source; blocked playback offers Play, and media errors retain the still. Other information pages keep their top tabs.
 
-**Add the final media:** Set `ABOUT_VIDEO_SRC` to the direct Cloudflare video URL in `src/app/(info)/about-clearup/page.tsx`, and update `ABOUT_POSTER_SRC` with a matching still. The video URL is currently empty; `/assets/home.jpg` provides the temporary still. Recheck text contrast and the centered phone crop against the final footage. Photography for FAQ and legal pages is deferred.
+**Add the final media:** Set `ABOUT_VIDEO_SRC` to the direct Cloudflare video URL in `src/app/(info)/about-clearup/page.tsx`, and update `ABOUT_POSTER_SRC` with a matching still. The video URL is currently empty; `/assets/home.webp` provides the temporary still. Recheck text contrast and the centered phone crop against the final footage. Photography for FAQ and legal pages is deferred.
 
 **Content:** Updated outdated feature and deletion instructions. About/FAQ/Terms explain retailer-sourced data, locally inferred skin-type labels, manual adjustments, and accuracy limits. Privacy explains public routine content, Cloudflare R2 photo storage and retained image files, Google photo URLs, session cookies, and the existing Vercel analytics/performance integrations. No account, storage, or API behavior changes.
 

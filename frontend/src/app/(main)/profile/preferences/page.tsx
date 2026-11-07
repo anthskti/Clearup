@@ -67,7 +67,6 @@ export default function PreferencesPage() {
     return (
       <BrandedLoadingScreen
         title="Loading session"
-        subtitle="Checking your preferences."
       />
     );
   }

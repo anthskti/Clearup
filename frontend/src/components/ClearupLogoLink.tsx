@@ -14,7 +14,7 @@ export default function ClearupLogoLink({
   return (
     <Link href="/" className={cn("inline-flex min-w-0 shrink", className)}>
       <Image
-        src="/assets/clearuplogov11.png"
+        src="/assets/clearuplogov11.webp"
         alt="Clearup"
         width={2048}
         height={663}

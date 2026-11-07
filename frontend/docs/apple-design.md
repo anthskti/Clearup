@@ -34,7 +34,7 @@ The values above are design targets, not an implementation spec. Check contrast 
 
 **Current direction:** Keep the hero artwork and slogan. Matches uses a horizontal scroll rail with arrow controls on phone and tablet and keeps the desktop grid; imagery is optional for a later pass. The phone hero begins below the fixed header, and its base color matches the next section. A text-free procedural wave and blue gradient sit between Matches and the global footer; the former trust claims and product count remain removed. Motion and other wave changes are deferred.
 
-**Evidence:** `src/components/home/HeroSection.tsx`, `HowItWorks.tsx`, `FeaturedRoutinesSection.tsx`, `Matches.tsx`, `src/components/animations/ScrollReveal.tsx`, and `public/assets/landingpagedesktop.png`, `culandingmobile.png`.
+**Evidence:** `src/components/home/HeroSection.tsx`, `HowItWorks.tsx`, `FeaturedRoutinesSection.tsx`, `Matches.tsx`, `src/components/animations/ScrollReveal.tsx`, and `public/assets/landingpagedesktop.webp`, `culandingmobile.webp`.
 
 ### Hero and imagery
 

@@ -37,7 +37,7 @@ function Footer() {
           <div className="md:col-span-4">
             <div className="flex justify-start">
               <Image
-                src="/assets/clearuplogo-white.png"
+                src="/assets/clearuplogo-white.webp"
                 alt="Clearup"
                 width={2048}
                 height={663}
