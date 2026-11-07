@@ -46,7 +46,7 @@ export default async function CommunityRoutinesPage({ searchParams }: Props) {
     routines = result.routines;
     total = result.total;
   } catch {
-    loadError = "Couldn’t load community routines. Try again.";
+    loadError = "We couldn’t load community routines.";
   }
 
   const lastPage = Math.max(1, Math.ceil(total / limit));
@@ -68,7 +68,7 @@ export default async function CommunityRoutinesPage({ searchParams }: Props) {
         gradientTo="#f0f8fc" 
         flip={true} 
       />
-      <div className="relative z-1 mx-auto max-w-7xl px-4 pt-34 pb-20 sm:px-6">
+      <div className="relative z-1 mx-auto max-w-7xl px-4 pt-34 pb-6 sm:px-6">
         <header className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
             Community Routines

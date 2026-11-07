@@ -20,6 +20,7 @@ import ProductListFiltersSidebar from "./ProductListFiltersSidebar";
 import ProductFiltersSheet from "./ProductFiltersSheet";
 import ProductCatalogPagination from "./ProductCatalogPagination";
 import MerchantOffersNotice from "./MerchantOffersNotice";
+import { ServiceNotice } from "@/components/ServiceNotice";
 import { getCatalogMerchantOffersByProductIds } from "@/lib/catalogMerchantOffers";
 import { pickLowestPriceOffer } from "@/lib/products";
 import {
@@ -388,7 +389,7 @@ export default function ProductListClient({
     <div className="p-12 text-center text-sm text-zinc-500">
       <p className="font-medium text-zinc-700">{error ? "Products couldn’t be loaded" : "No products found"}</p>
       <p className="mt-1">
-        {error ? "Retry when the service is available." : isFiltered
+        {error ? "Results will return when the service is available." : isFiltered
           ? "Try adjusting your filters or search."
           : "No products here yet."}
       </p>
@@ -414,7 +415,7 @@ export default function ProductListClient({
   );
 
   return (
-    <div className="relative mt-18 min-h-screen bg-[#F8F8F8] pt-8">
+    <div className="relative mt-18 min-h-screen bg-[#F8F8F8] pt-8 pb-6">
       <ProceduralWave 
         seed={6}
         height={190} 
@@ -574,13 +575,24 @@ export default function ProductListClient({
 
         <main className="min-w-0">
           {error && (
-            <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-              Couldn’t load this page.{products.length > 0 ? " Showing your previous results." : ""}
-              {error.status ? ` (HTTP ${error.status})` : ""}
-              <button className="underline disabled:opacity-50" disabled={retryDisabled} onClick={retry}>
-                {retryDisabled ? "Retry available shortly" : "Retry"}
-              </button>
-            </div>
+            <ServiceNotice
+              retryAt={error.retryAt}
+              isRetrying={isRetrying}
+              disabled={retryDisabled}
+              onRetry={retry}
+              className="mb-5"
+            >
+              <p>
+                {error.status === 429
+                  ? "Too many requests right now. Please wait before retrying."
+                  : "We couldn’t load these products."}
+              </p>
+              {products.length > 0 && (
+                <p className="mt-1 text-amber-900">
+                  Your previous results are still shown.
+                </p>
+              )}
+            </ServiceNotice>
           )}
           {currentOfferFailure && <MerchantOffersNotice error={currentOfferFailure.error} isRetrying={currentOfferFailure.isRetrying} onRetry={retryOffers} />}
           <h2

@@ -72,7 +72,14 @@ export default function PreferencesPage() {
     );
   }
   if (sessionError && isTemporaryAuthError(sessionError)) {
-    return <AuthSessionUnavailable retryAt={getSessionRetryAt()} onRetry={refetch} />;
+    return (
+      <div className="mx-auto max-w-3xl px-4 pt-24 pb-12 sm:px-6">
+        <AuthSessionUnavailable
+          retryAt={getSessionRetryAt()}
+          onRetry={refetch}
+        />
+      </div>
+    );
   }
   if (sessionError?.status === 403) {
     return <div className="p-10 text-center">Your account cannot access this page.</div>;

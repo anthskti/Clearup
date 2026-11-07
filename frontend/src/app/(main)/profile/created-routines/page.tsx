@@ -60,7 +60,14 @@ export default function CreatedRoutinesPage() {
     setRetryCount((count) => count + 1);
   }
   if (sessionError && isTemporaryAuthError(sessionError)) {
-    return <AuthSessionUnavailable retryAt={getSessionRetryAt()} onRetry={refetch} />;
+    return (
+      <div className="mx-auto max-w-6xl px-4 pt-24 pb-12 sm:px-6">
+        <AuthSessionUnavailable
+          retryAt={getSessionRetryAt()}
+          onRetry={refetch}
+        />
+      </div>
+    );
   }
   if (sessionError?.status === 403) {
     return <div className="p-10 text-center">Your account cannot access this page.</div>;
@@ -104,7 +111,7 @@ export default function CreatedRoutinesPage() {
           <div className="rounded-2xl border border-zinc-200 bg-white px-6 py-12 text-center">
             <p role="alert" className="text-sm text-zinc-600">{error}</p>
             <Button variant="secondary" className="mt-5 min-h-11" onClick={retryLoading}>
-              Try again
+              Retry
             </Button>
           </div>
         ) : routines.length === 0 ? (

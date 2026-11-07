@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { ChevronDown, ExternalLink, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { AuthRetryButton } from "@/components/AuthRetryButton";
+import { ServiceNotice } from "@/components/ServiceNotice";
 import ProductImageGallery from "@/components/ui/ProductGallery";
 import ProceduralWave from "@/components/themes/ProceduralWave";
 import getProductData from "@/components/product/details";
@@ -169,9 +169,7 @@ export default function ProductClient({
           <div className="mt-auto border-t border-zinc-200 pt-4">
             <div className="mb-4 flex justify-between items-end">
               <h2 className="text-lg font-semibold text-zinc-900">Marketplace data</h2>
-              {roleError ? (
-                <AuthRetryButton retryAt={retryAt} onRetry={retryRole} label="Admin access check unavailable · Retry" variant="outline" />
-              ) : isAdmin ? (
+              {isAdmin && !roleError ? (
                 <span>
                   <Button
                     variant="outline"
@@ -183,6 +181,18 @@ export default function ProductClient({
                 </span>
               ) : null}
             </div>
+
+            {roleError && (
+              <ServiceNotice
+                retryAt={retryAt}
+                onRetry={retryRole}
+                role="status"
+                className="mb-4"
+              >
+                Admin access couldn’t be checked. Admin actions are temporarily
+                unavailable.
+              </ServiceNotice>
+            )}
 
             {merchantList.length === 0 ? (
               <p className="rounded-lg border border-zinc-200 bg-white p-4 text-sm text-zinc-600">

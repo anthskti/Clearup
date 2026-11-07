@@ -55,7 +55,14 @@ export default function AuthLayout({
       <div className="absolute top-0 left-0 z-20 px-4 py-4 md:px-6 md:py-5">
         <ClearupLogoLink priority />
       </div>
-      {sessionError && isTemporaryAuthError(sessionError) && <AuthSessionUnavailable retryAt={getSessionRetryAt()} onRetry={refetch} />}
+      {sessionError && isTemporaryAuthError(sessionError) && (
+        <div className="px-4 pt-20 sm:px-6">
+          <AuthSessionUnavailable
+            retryAt={getSessionRetryAt()}
+            onRetry={refetch}
+          />
+        </div>
+      )}
       {children}
     </div>
   );

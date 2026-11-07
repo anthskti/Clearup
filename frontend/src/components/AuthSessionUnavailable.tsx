@@ -1,6 +1,6 @@
 "use client";
 
-import { AuthRetryButton } from "@/components/AuthRetryButton";
+import { ServiceNotice } from "@/components/ServiceNotice";
 
 export function AuthSessionUnavailable({
   retryAt,
@@ -10,11 +10,13 @@ export function AuthSessionUnavailable({
   onRetry: () => void | Promise<void>;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-      <p className="text-sm text-zinc-600">
-        We couldn’t check your session. Please try again.
-      </p>
-      <AuthRetryButton retryAt={retryAt} onRetry={onRetry} />
-    </div>
+    <ServiceNotice
+      retryAt={retryAt}
+      onRetry={onRetry}
+      className="mb-4 w-full text-left"
+    >
+      We couldn’t check your session. Your account details are temporarily
+      unavailable.
+    </ServiceNotice>
   );
 }

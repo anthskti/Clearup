@@ -76,6 +76,14 @@ export default function ProfileMenu({
               Retry
             </>
           }
+          busyLabel={
+            <>
+              <span className="sr-only sm:not-sr-only">
+                Account check unavailable ·{" "}
+              </span>
+              Retrying…
+            </>
+          }
           className="min-h-11"
           variant="outline"
         />

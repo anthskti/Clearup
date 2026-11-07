@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import PriceRangeFilter from "@/components/filters/PriceRangeFilter";
 import ProductFiltersSheet from "@/components/products/ProductFiltersSheet";
 import { formatPriceRangeLabel, toPriceRange } from "@/lib/priceRange";
+import { ServiceNotice } from "@/components/ServiceNotice";
 import GuidesPagination, {
   buildGuidesHref,
 } from "@/components/guides/GuidesPagination";
@@ -200,21 +201,13 @@ export default function GuidesFilters({ initialTags, initialTagsParam, initialMi
         </aside>
         <div className="min-w-0">
           {loadError ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+            <ServiceNotice
+              onRetry={() => startTransition(() => router.refresh())}
+              isRetrying={pending}
+              className="items-start"
             >
-              <p>{loadError}</p>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-3 min-h-11"
-                disabled={pending}
-                onClick={() => startTransition(() => router.refresh())}
-              >
-                {pending ? "Retrying…" : "Retry"}
-              </Button>
-            </div>
+              {loadError}
+            </ServiceNotice>
           ) : (
             <div aria-busy={pending}>
               <h2
