@@ -210,13 +210,6 @@ export default function GuidesFilters({ initialTags, initialTagsParam, initialMi
             </ServiceNotice>
           ) : (
             <div aria-busy={pending}>
-              <h2
-                id="guides-results-heading"
-                tabIndex={-1}
-                className="mb-3 text-lg font-semibold text-zinc-900"
-              >
-                Community routines
-              </h2>
               {children}
             </div>
           )}

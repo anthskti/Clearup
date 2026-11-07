@@ -388,11 +388,11 @@ export default function ProductListClient({
   const emptyState = (
     <div className="p-12 text-center text-sm text-zinc-500">
       <p className="font-medium text-zinc-700">{error ? "Products couldn’t be loaded" : "No products found"}</p>
-      <p className="mt-1">
+      {/* <p className="mt-1">
         {error ? "Results will return when the service is available." : isFiltered
           ? "Try adjusting your filters or search."
           : "No products here yet."}
-      </p>
+      </p> */}
       {activeFilterCount > 0 && (
         <button
           type="button"
@@ -595,13 +595,6 @@ export default function ProductListClient({
             </ServiceNotice>
           )}
           {currentOfferFailure && <MerchantOffersNotice error={currentOfferFailure.error} isRetrying={currentOfferFailure.isRetrying} onRetry={retryOffers} />}
-          <h2
-            id="product-results-heading"
-            tabIndex={-1}
-            className="mb-3 text-lg font-semibold text-zinc-900 focus:outline-none"
-          >
-            Results
-          </h2>
           {isNavigating && (
             <p
               role="status"

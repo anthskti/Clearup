@@ -16,9 +16,7 @@ const Home = () => {
   return (
     <main className="bg-white min-h-screen">
       <HeroSection />
-      <ScrollReveal>
         <HowItWorks />
-      </ScrollReveal>
       <ScrollReveal>
         <FeaturedRoutinesSection />
       </ScrollReveal>

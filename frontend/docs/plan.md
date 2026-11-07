@@ -27,9 +27,13 @@ Builder leads the navigation. Products links directly to the catalog and exposes
 
 **Review section:** [Home page](./apple-design.md#2-home-page).
 
-Kept the hero artwork and slogan. Removed the trust-banner copy and claims; restored its procedural wave and gradient as a text-free transition into the global footer. On phone, the hero begins below the fixed header, its background meets the next section without a color seam, and the headline and actions sit over the illustration with more breathing room. Matches now uses a swipeable, snapping row with labeled previous/next buttons on phone and tablet; desktop keeps its six-card grid.
+Kept the hero slogan and handwritten font, using the updated portrait and landscape artwork. Removed the white gradient/blur overlays so the artwork retains its color. The hero starts below the 72px header; its smaller text and actions sit below the bottles on phone/tablet and lower-left on desktop. Headline sizes are 28/32/38px in scalable rem units. Portrait artwork continues through tablet widths, and the desktop height responds to screen width to avoid excessive cropping. The two links have 44px minimum targets, fit beside each other at 320px, and wrap when text is enlarged.
 
-**Carry forward:** The artwork's wordmark duplicates the header logo, some headline/art overlap remains on narrow phones, and Matches cards are tall. Review these with the three-step copy and featured cards when revisiting the home page. Wave motion and reduced-motion work are deferred. No new image set is needed for Matches.
+Removed the trust-banner copy and claims; restored its procedural wave and gradient as a text-free transition into the global footer. Matches uses a swipeable, snapping row with labeled previous/next buttons on phone and tablet; desktop keeps its six-card grid.
+
+**Hero verification:** Chrome checks covered 320, 390, 768, 1024, and 1440px, including a tall tablet, 200% text, reduced motion, image visibility, and button sizing/wrapping. Frontend lint/build passed. The image files remain unchanged.
+
+**Carry forward:** Matches cards are tall. Review these with the three-step copy and featured cards when revisiting the home page. Broader wave/scroll-reveal motion and reduced-motion work remain deferred; the hero entry respects reduced motion. No new image set is needed for Matches.
 
 ## Batch 3 — product catalog and search
 
