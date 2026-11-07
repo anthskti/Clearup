@@ -1,85 +1,159 @@
+import type { Metadata } from "next";
+import Link from "next/link";
 import { InfoArticle } from "@/components/info/InfoArticle";
-import ProceduralWave from "@/components/themes/ProceduralWave";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/constants/mail";
 
-export default function FAQPage() {
+export const metadata: Metadata = {
+  title: "Privacy policy | Clearup",
+  description: "How Clearup handles account information, public routines, and profile photos.",
+};
+
+const sections = [
+  { id: "information-we-collect", title: "Information we collect" },
+  { id: "how-we-use-information", title: "How we use information" },
+  { id: "public-content", title: "Public routines" },
+  { id: "profile-photos", title: "Profile photos" },
+  { id: "service-providers", title: "Service providers" },
+  { id: "retention-and-security", title: "Retention and security" },
+  { id: "your-account-and-choices", title: "Your account and choices" },
+];
+
+export default function PrivacyPage() {
   return (
-    <div>
-      <ProceduralWave seed={3} height={190} />
-      <InfoArticle
-        title="Privacy Policy"
-        description="Protecting your personal data."
-      >
-        <h3>Terms of Service Last Updated: May 25, 2026</h3>
-        <h2>Information We Collect</h2>
+    <InfoArticle
+      currentPage="/privacy"
+      title="Privacy policy"
+      description="What information Clearup uses, what you share publicly, and the choices you have."
+      updated={{ date: "2026-11-06", label: "November 6, 2026" }}
+      sections={sections}
+    >
+      <section id="information-we-collect">
+        <h2>Information we collect</h2>
         <p>
-          We collect personal information that you voluntarily provide to us
-          when you register on the application, express an interest in obtaining
-          information about us or our products, or otherwise contact us. The
-          personal information we collect may include the following:
+          We collect information you provide when you create an account, use
+          Clearup, or contact us. This includes:
         </p>
         <ul>
           <li>
-            Account Information: Name, email address, and authentication
-            credentials used to create and secure your account.
+            <strong>Account information:</strong> Your display name, email
+            address, and information needed to authenticate your account. If you
+            sign in with Google, we receive account information such as your
+            name, email address, and profile photo URL.
           </li>
           <li>
-            Profile & Usage Data: Skincare routines, product preferences, custom
-            categories (like sunscreens and eye care), and organizational
-            structures you build within the platform.
+            <strong>Content you create:</strong> Routine titles, descriptions,
+            product selections, notes, and any profile photo you upload.
           </li>
           <li>
-            Automatically Collected Information: We automatically collect
-            certain information when you visit, use, or navigate the
-            application. This information does not reveal your specific identity
-            but may include device and usage information, such as your IP
-            address, browser and device characteristics, operating system, and
-            information about how and when you use our platform.
+            <strong>Technical and usage information:</strong> Information about
+            visits and performance, such as pages viewed, browser and device
+            characteristics, and loading times. Infrastructure providers may
+            also process request information such as IP addresses to deliver
+            and secure the service.
           </li>
         </ul>
-        <h2>How We Use Your Information</h2>
+      </section>
+      <section id="how-we-use-information">
+        <h2>How we use information</h2>
+        <p>We use this information to:</p>
+        <ul>
+          <li>Create your account, sign you in, and keep your session secure.</li>
+          <li>Let you build, publish, and manage your skincare routines.</li>
+          <li>Display your chosen name and profile photo within Clearup.</li>
+          <li>Send account emails, including verification and password-reset links.</li>
+          <li>Respond to support requests and improve the service&apos;s usability and performance.</li>
+        </ul>
         <p>
-          We use personal information collected via our application for a
-          variety of business purposes described below:
+          Clearup uses cookies required for account sessions. We do not send
+          marketing newsletters or sell or rent your email address to marketers
+          or data brokers.
+        </p>
+      </section>
+      <section id="public-content">
+        <h2>Public routines</h2>
+        <p>
+          Routines you publish are visible to other visitors. This includes
+          their titles, descriptions, selected products, notes, and your author
+          display name. Do not include information in a public routine that you
+          do not want others to see.
+        </p>
+      </section>
+      <section id="profile-photos">
+        <h2>Profile photos</h2>
+        <p>
+          Custom profile photos are processed into a smaller image and stored on
+          Cloudflare R2. These images are served through public URLs and can be
+          accessed by anyone with the image URL. Product images are also hosted
+          on Cloudflare R2.
+        </p>
+        <p>
+          If you sign in with Google, Clearup can display your Google-provided
+          photo URL directly instead of uploading a copy to R2. Loading that
+          image requires your browser to request it from the image provider.
+        </p>
+        <p>
+          Replacing or removing your photo updates the URL associated with your
+          account. Previously uploaded files are currently retained in R2;
+          removing a photo or deleting your account does not automatically delete
+          those stored files. Contact us if you need help with a stored photo.
+        </p>
+      </section>
+      <section id="service-providers">
+        <h2>Service providers and sharing</h2>
+        <p>
+          We use service providers to operate Clearup, including hosting,
+          database management, authentication, email delivery, and image storage.
+          They process information needed to provide those services. We may also
+          share information with your consent, to comply with legal obligations,
+          or to protect the service and its users.
         </p>
         <ul>
           <li>
-            To Facilitate Account Creation and Logon Process: We use the
-            information you provide to allow you to log in, manage your profile,
-            and keep your session secure.
+            <strong>Cloudflare R2</strong> stores and serves product images and
+            uploaded profile photos, as described above.
           </li>
           <li>
-            To Provide and Manage the Service: To allow you to build, customize,
-            and share your skincare routines, manage your virtual product
-            inventory, and ensure the core features of the platform function
-            correctly.
+            <strong>Google</strong> provides optional account sign-in and may
+            host the profile photo associated with your Google account.
           </li>
           <li>
-            To Improve the Platform: To understand how users interact with our
-            database of products and categories, allowing us to optimize our
-            data scraping, categorization (e.g., proper mapping of eye creams
-            and moisturizers), and overall user experience.
+            <strong>Vercel Web Analytics and Speed Insights</strong> help us
+            understand page usage, browser and device characteristics, and site
+            performance. Read the provider&apos;s{" "}
+            <a href="https://vercel.com/docs/analytics/privacy-policy">Web Analytics privacy information</a>{" "}
+            and{" "}
+            <a href="https://vercel.com/docs/speed-insights/privacy-policy">Speed Insights privacy information</a>.
           </li>
         </ul>
-        <h2>How We Share Your Information</h2>
+      </section>
+      <section id="retention-and-security">
+        <h2>Retention and security</h2>
         <p>
-          We only share information with your consent, to comply with laws, to
-          provide you with services, to protect your rights, or to fulfill
-          business obligations. We may share your data with third-party service
-          providers that perform services for us or on our behalf, such as
-          hosting services, database management, and authentication providers.
+          We retain personal information for as long as needed to provide the
+          service and for the purposes described in this policy, unless a longer
+          period is required or permitted by law. The current retention of
+          uploaded images is explained in the Profile photos section.
         </p>
-        <h2>Data Retention and Security</h2>
         <p>
-          We will only keep your personal information for as long as it is
-          necessary for the purposes set out in this privacy notice, unless a
-          longer retention period is required or permitted by law. We have
-          implemented appropriate technical and organizational security measures
-          designed to protect the security of any personal information we
-          process. However, despite our safeguards, no electronic transmission
-          over the Internet or information storage technology can be guaranteed
-          to be 100% secure.
+          We use technical and organizational safeguards to protect information.
+          However, no internet transmission or storage system can be guaranteed
+          to be completely secure.
         </p>
-      </InfoArticle>
-    </div>
+      </section>
+      <section id="your-account-and-choices">
+        <h2>Your account and choices</h2>
+        <p>
+          You can change your display name and profile photo in{" "}
+          <Link href="/profile/preferences">Preferences</Link>. You can also
+          permanently delete your account there. The confirmation explains the
+          loss of access to your account and routines; uploaded image retention
+          is described above.
+        </p>
+        <p>
+          If you have a privacy question or a request about your information,
+          contact <a href={SUPPORT_MAILTO}>{SUPPORT_EMAIL}</a>.
+        </p>
+      </section>
+    </InfoArticle>
   );
 }

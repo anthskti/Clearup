@@ -12,6 +12,7 @@ interface PriceRangeFilterProps {
   sliderMax: number;
   step?: number;
   size?: "default" | "compact";  // compact: fits narrow sidebars; default; matches regular filter card.
+  hideTitle?: boolean;
 }
 
 export default function PriceRangeFilter({
@@ -22,12 +23,19 @@ export default function PriceRangeFilter({
   sliderMax,
   step = 1,
   size = "default",
+  hideTitle = false,
 }: PriceRangeFilterProps) {
   const isCompact = size === "compact";
 
   return (
     <div className={isCompact ? "w-full" : "max-w-md"}>
-      <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+      <h2
+        className={
+          hideTitle
+            ? "sr-only"
+            : "mb-2 text-xs font-bold uppercase tracking-wider text-zinc-500"
+        }
+      >
         {title}
       </h2>
       <p className="mb-3 text-sm font-semibold text-zinc-800">

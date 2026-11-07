@@ -51,11 +51,7 @@ Protected API routes use `requireAuth` or `requireAdmin` after Better Auth valid
 
 ## Security middleware
 
-On `/api/auth`, the API applies (in order):
-
-- `authRouteLimiter` — general auth traffic cap
-- `authBruteForceLimiter` — tighter limits on sensitive paths
-- `authAuditLogger` — structured audit logs with redaction (`lib/security.ts`)
+On `/api/auth`, the API records sanitized auth audit data before app rate guards, then applies route-classified IP token buckets. Email/password login uses burst 5/refill 1 per 100 seconds; registration, reset, and verification share burst 5/refill 1 per 60 seconds; session reads use burst 30/refill 1 per second; other enabled auth actions use burst 20/refill 1 per second. Unknown auth actions retain the global limiter and use the other-auth fallback. Better Auth also enforces its own production limits, which can be stricter; see [rate limiting](../backend-architecture.md#5-rate-limiting-summary).
 
 Global rate limiting and CORS (`TRUSTED_ORIGINS`, `credentials: true`) are configured in `index.ts`.
 
@@ -74,6 +70,10 @@ Production may set cookie domain `.clearup.skin` in `auth.ts`. OAuth redirect UR
 - Auth pages live under `frontend/src/app/(auth)/` (login, register, forgot/reset password, verify email).
 - `frontend/src/proxy.ts` redirects authenticated users away from auth pages (when wired as middleware).
 - `AuthSync` in the main layout keeps client state aligned after navigation.
+
+Session checks treat rate limiting, server errors, and network failures as temporarily unavailable rather than evidence of a signed-out user. The UI can retain the last-known role for the same session during an outage; protected layouts still withhold their children until server-side verification succeeds, and the backend revalidates every protected request. The UI offers a user-driven retry after a cooldown informed by either retry header, avoiding false login redirects during API throttling or outages.
+
+Service notices use consistent spacing and 44px retry targets. Actions read “Retry”, “Retrying…” while a request is pending, or “Retry in Ns” during a server-provided cooldown. Countdown updates stay outside the notice’s live message so the full notice is not announced every second.
 
 ## Email webhooks
 

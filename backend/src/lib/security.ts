@@ -1,15 +1,21 @@
 import { Request } from "express";
+import logger from "./logger";
 
 const SENSITIVE_KEYS = new Set([
   "password",
-  "newPassword",
+  "newpassword",
   "token",
-  "accessToken",
-  "refreshToken",
+  "accesstoken",
+  "refreshtoken",
   "authorization",
   "cookie",
   "set-cookie",
   "secret",
+  "email",
+  "body",
+  "headers",
+  "query",
+  "url",
 ]);
 
 type JsonLike = Record<string, unknown> | unknown[] | unknown;
@@ -37,10 +43,8 @@ export function redactSensitiveFields(value: JsonLike): JsonLike {
 }
 
 export function getClientIp(req: Request): string {
-  const forwardedFor = req.headers["x-forwarded-for"];
-  if (typeof forwardedFor === "string" && forwardedFor.length > 0) {
-    return forwardedFor.split(",")[0].trim();
-  }
+  // Express resolves req.ip using the configured trusted proxy chain. Never trust
+  // the leftmost user-supplied X-Forwarded-For value directly.
   return req.ip || "unknown";
 }
 
@@ -49,12 +53,7 @@ export function logSecurityEvent(
   metadata: Record<string, unknown>,
 ): void {
   const safeMetadata = redactSensitiveFields(metadata) as Record<string, unknown>;
-  const payload = {
-    event,
-    ts: new Date().toISOString(),
-    ...safeMetadata,
-  };
-  console.info("[security]", JSON.stringify(payload));
+  logger.info({ event: "security.audit", securityEvent: event, ...safeMetadata }, "Security event");
 }
 
 export function validateSecurityConfig(): void {
@@ -70,16 +69,12 @@ export function validateSecurityConfig(): void {
       process.env.RENDER_EXTERNAL_URL?.trim().replace(/\/$/, "") ||
       "";
     if (!authUrl) {
-      console.warn(
-        "[security] Production: set BETTER_AUTH_URL (e.g. https://your-app.onrender.com) so OAuth state and redirects match the public host. RENDER_EXTERNAL_URL is used as a fallback on Render.",
-      );
+      logger.warn({ event: "security.config", config: "BETTER_AUTH_URL" }, "Production auth URL is not configured");
     }
 
     const hasWildcardOrigin = trustedOrigins.some((origin) => origin === "*");
     if (hasWildcardOrigin) {
-      console.warn(
-        "[security] TRUSTED_ORIGINS includes '*' in production. Restrict to explicit origins.",
-      );
+      logger.warn({ event: "security.config", config: "TRUSTED_ORIGINS" }, "Wildcard trusted origin configured in production");
     }
   }
 }

@@ -1,18 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
-import { Product, ProductCategory } from "@/types/product";
-import { getMerchantsByProductId, pickLowestPriceOffer } from "@/lib/products";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { Product, ProductCategory, type CatalogError } from "@/types/product";
+import { pickLowestPriceOffer } from "@/lib/products";
+import { useBuilderDraftPersistence } from "@/hooks/useBuilderDraftPersistence";
+import {
+  getCachedCatalogMerchantOffers,
+  getCatalogMerchantOffersByProductIds,
+} from "@/lib/catalogMerchantOffers";
 import {
   expandStoredRoutine,
   normalizeStoredSlots,
   slimRoutineForStorage,
 } from "@/lib/slimBuilderRoutineStorage";
 
+const emptySubscribe = () => () => {};
+
 export interface RoutineSlot {
   id: ProductCategory;
   label: string;
-  // Allow multiple products per slot now
   products: Array<
-    Product & {
+    Omit<Product, "price"> & {
+      price: number | null;
       merchant?: string;
       merchantLogo?: string;
       merchantLink?: string;
@@ -85,46 +92,88 @@ function dedupeProductsById<T extends { id: number }>(products: T[]): T[] {
   });
 }
 
+function readStoredRoutine(): RoutineSlot[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return createEmptyRoutine();
+    const parsed = JSON.parse(saved);
+    const normalized = expandStoredRoutine(normalizeStoredSlots(parsed));
+    return mergeStoredRoutine(normalized);
+  } catch (e) {
+    console.error("Failed to parse saved routine", e);
+    return createEmptyRoutine();
+  }
+}
+
+function serializeRoutine(routine: RoutineSlot[]) {
+  return routine.some((slot) => slot.products.length > 0)
+    ? JSON.stringify(slimRoutineForStorage(routine))
+    : null;
+}
+
 export const useBuilderRoutine = () => {
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [routine, setRoutine] = useState<RoutineSlot[]>(createEmptyRoutine);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [offerFailures, setOfferFailures] = useState<Record<number, CatalogError>>({});
+  const [isRetryingOffers, setIsRetryingOffers] = useState(false);
+  const [offerRequestIds, setOfferRequestIds] = useState<number[]>([]);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const normalized = expandStoredRoutine(normalizeStoredSlots(parsed));
-          setRoutine(mergeStoredRoutine(normalized));
-        } catch (e) {
-          console.error("Failed to parse saved routine", e);
-        }
-      }
-      setIsLoaded(true);
-    }
-  }, []);
+  if (isClient && !isLoaded) {
+    setRoutine(readStoredRoutine());
+    setIsLoaded(true);
+  }
+
+  const persistence = useBuilderDraftPersistence(STORAGE_KEY, routine, isLoaded, serializeRoutine);
 
   useEffect(() => {
-    if (!isLoaded || typeof window === "undefined") return;
-    const hasProducts = routine.some((slot) => slot.products.length > 0);
-    try {
-      if (!hasProducts) {
-        localStorage.removeItem(STORAGE_KEY);
-        return;
-      }
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(slimRoutineForStorage(routine)),
-      );
-    } catch (e) {
-      console.error("Failed to persist builder routine", e);
-    }
-  }, [routine, isLoaded]);
+    if (!offerRequestIds.length) return;
+    const controller = new AbortController();
+
+    void getCatalogMerchantOffersByProductIds(offerRequestIds, { signal: controller.signal }).then(({ offers, failedIds, error }) => {
+      if (controller.signal.aborted) return;
+      setRoutine((previous) => previous.map((slot) => ({
+        ...slot,
+        products: slot.products.map((product) => {
+          // A failed response never replaces a previously loaded price.
+          if (offers[product.id] === undefined) return product;
+          const bestOffer = pickLowestPriceOffer(offers[product.id]);
+          return {
+            ...product,
+            price: bestOffer?.price ?? null,
+            merchant: bestOffer?.merchant?.name || "-",
+            merchantLogo: bestOffer?.merchant?.logo || "-",
+            merchantLink: bestOffer?.website,
+          };
+        }),
+      })));
+      setOfferFailures((previous) => {
+        const next = { ...previous };
+        for (const id of offerRequestIds) delete next[id];
+        if (error) for (const id of failedIds) next[id] = error;
+        return next;
+      });
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      console.error("Builder merchant offers failed", error);
+      setOfferFailures((previous) => ({
+        ...previous,
+        ...Object.fromEntries(offerRequestIds.map((id) => [id, { status: null, requestId: null, retryAt: null }])),
+      }));
+    }).finally(() => {
+      if (controller.signal.aborted) return;
+      // Keep any newer additions queued while this request was completing.
+      setOfferRequestIds((current) => current === offerRequestIds ? [] : current);
+      setIsRetryingOffers(false);
+    });
+
+    return () => controller.abort();
+  }, [offerRequestIds]);
 
   const addProductToSlot = useCallback(
     async (category: ProductCategory, product: Product) => {
+      const cachedOffers = getCachedCatalogMerchantOffers(product.id);
+      const bestOffer = cachedOffers ? pickLowestPriceOffer(cachedOffers) : null;
       // Add product to the array for the slot if not already present
       setRoutine((prev) => {
         const slots = ensureSlotExists(prev, category);
@@ -138,8 +187,10 @@ export const useBuilderRoutine = () => {
                       ...slot.products,
                       {
                         ...product,
-                        merchant: "-",
-                        merchantLogo: "-",
+                        price: bestOffer?.price ?? null,
+                        merchant: bestOffer?.merchant?.name || "-",
+                        merchantLogo: bestOffer?.merchant?.logo || "-",
+                        merchantLink: bestOffer?.website,
                       },
                     ],
               }
@@ -147,55 +198,8 @@ export const useBuilderRoutine = () => {
         );
       });
 
-      // Fetch merchant info for this product and update only that product entry
-      try {
-        const merchants = await getMerchantsByProductId(String(product.id));
-        if (merchants && merchants.length > 0) {
-          const bestOffer = pickLowestPriceOffer(merchants)!;
-
-          setRoutine((prev) =>
-            prev.map((slot) =>
-              slot.id === category
-                ? {
-                    ...slot,
-                    products: slot.products.map((p) =>
-                      p.id === product.id
-                        ? {
-                            ...p,
-                            price: bestOffer.price,
-                            merchant: bestOffer.merchant?.name || "Unknown",
-                            merchantLogo: bestOffer.merchant?.logo || "-",
-                            merchantLink: bestOffer.website,
-                          }
-                        : p,
-                    ),
-                  }
-                : slot,
-            ),
-          );
-        } else {
-          setRoutine((prev) =>
-            prev.map((slot) =>
-              slot.id === category
-                ? {
-                    ...slot,
-                    products: slot.products.map((p) =>
-                      p.id === product.id
-                        ? {
-                            ...p,
-                            merchant: "-",
-                            merchantLogo: "/placeholder-logo.png",
-                          }
-                        : p,
-                    ),
-                  }
-                : slot,
-            ),
-          );
-        }
-      } catch (e: any) {
-        console.error("Failed to fetch merchants details for product", e);
-      }
+      // The effect batches additions and restarts cancelled work in Strict Mode.
+      setOfferRequestIds((previous) => [...new Set([...previous, product.id])]);
     },
     [],
   );
@@ -223,8 +227,23 @@ export const useBuilderRoutine = () => {
   );
 
   const clearRoutine = useCallback(() => {
+    setOfferRequestIds([]);
+    setOfferFailures({});
     setRoutine(createEmptyRoutine());
   }, []);
+
+  const failedProductIds = [...new Set(routine.flatMap((slot) => slot.products.map((product) => product.id)))]
+    .filter((id) => offerFailures[id]);
+  const merchantOfferError = failedProductIds.reduce<CatalogError | null>((latest, id) => {
+    const error = offerFailures[id];
+    return !latest || (error.retryAt ?? 0) > (latest.retryAt ?? 0) ? error : latest;
+  }, null);
+
+  const retryMerchantOffers = () => {
+    if (isRetryingOffers || !failedProductIds.length) return;
+    setIsRetryingOffers(true);
+    setOfferRequestIds((previous) => [...new Set([...previous, ...failedProductIds])]);
+  };
 
   // Listen for products added from other pages
   useEffect(() => {
@@ -233,7 +252,11 @@ export const useBuilderRoutine = () => {
     const handleAddToRoutine = (event: CustomEvent) => {
       const { product, category } = event.detail;
       addProductToSlot(category, product);
-      localStorage.removeItem("pending-routine-add");
+      try {
+        localStorage.removeItem("pending-routine-add");
+      } catch {
+        // Draft persistence reports storage failures without breaking the add.
+      }
     };
 
     window.addEventListener(
@@ -243,19 +266,18 @@ export const useBuilderRoutine = () => {
 
     // Check for pending add in localStorage (from page navigation)
     const checkPendingAdd = () => {
-      const pendingAdd = localStorage.getItem("pending-routine-add");
-      if (pendingAdd) {
-        try {
+      try {
+        const pendingAdd = localStorage.getItem("pending-routine-add");
+        if (pendingAdd) {
           const data = JSON.parse(pendingAdd);
           // Only process if it's recent (within last 30 seconds)
           if (Date.now() - data.timestamp < 30000) {
             addProductToSlot(data.category, data.product);
           }
           localStorage.removeItem("pending-routine-add");
-        } catch (e) {
-          console.error("Failed to parse pending routine add", e);
-          localStorage.removeItem("pending-routine-add");
         }
+      } catch (e) {
+        console.error("Failed to read pending routine add", e);
       }
     };
 
@@ -279,8 +301,12 @@ export const useBuilderRoutine = () => {
   return {
     routine,
     isLoaded,
+    persistence,
     addProductToSlot,
     removeProductFromSlot,
     clearRoutine,
+    merchantOfferError,
+    isRetryingOffers,
+    retryMerchantOffers,
   };
 };

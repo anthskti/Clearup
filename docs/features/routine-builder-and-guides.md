@@ -27,7 +27,7 @@ The builder is primarily **client-side** until the user saves:
 | Slot layout | Fixed categories: cleanser, toner, essence, serum, eyecare, moisturizer, sunscreen, other |
 | Persistence (draft) | `localStorage` key `builder-routine` via `useBuilderRoutine` |
 | Notes | `useBuilderNotes` — per-step notes, also local until save |
-| Merchant preview | When adding a product, fetches lowest `product_merchant` price |
+| Merchant preview | Reuses recent catalog offers; fetches missing/expired offers in batches, then selects the lowest `product_merchant` price |
 | Save | Requires login; opens `SaveRoutineModal`, then `POST /api/routines` + bulk product attach |
 
 Skin type tags on save use `RoutineSkinTypeTagPicker` and are stored on the routine record.
@@ -39,6 +39,8 @@ After save, users get a shareable URL: `/routine/[id]`.
 - `addProductToSlot(category, product)` — supports multiple products per slot (migrated from older single-product shape).
 - `removeProductFromSlot`, `clearRoutine`
 - Auto-save to `localStorage` after hydration
+
+The builder shares the catalog's browser offer cache (60 seconds, at most 200 products). Adding a recently priced catalog product normally needs no additional offer request. Existing draft prices, merchant details, and images survive failed lookups; 429 responses show a retry countdown and block new uncached offer requests during the shared cooldown. A successful empty offer result is distinct from a failure and clears an unavailable price. Restoring an existing local draft does not automatically refresh all its prices. Images are carried with the product separately from merchant lookups.
 
 ## Viewing a routine
 
@@ -54,7 +56,7 @@ Displayed prices favor the **lowest merchant offer** per product (`pickLowestPri
 
 ## Community guides
 
-**Route:** `/guides`
+**Route:** `/routines`
 
 Public, read-only listing of routines from **registered** authors (server-filtered).
 
@@ -63,10 +65,16 @@ Public, read-only listing of routines from **registered** authors (server-filter
 Query params (see `GuidesFilters`):
 
 - `tags` — skin type filter (parsed via `routineSkinTypeTags`)
-- `maxPrice` — budget ceiling on routine total
+- `minPrice` / `maxPrice` — lower/upper bounds on routine total
 - `limit` / `offset` — pagination (24 per page in UI)
 
-Guides are ordered with intentional randomness on the backend so the grid does not feel static.
+The endpoint returns `{ routines, total }`, where `total` counts registered-author routines matching the same skin-type and price filters, independent of the requested offset. Results are ordered newest first, with routine ID as a tie-breaker so unchanged results stay consistent across pages. Limits and offsets must be safe integers; limits are bounded to 1–50 and offsets must be nonnegative.
+
+The response envelope replaces the previous bare array, so the API and frontend must be deployed together. No database migration is required.
+
+The listing uses numbered URL pages, omits `page=1`, preserves filters, and redirects requests beyond the last page to a valid page. Changing filters resets to page 1. Failed requests show an error and retry action rather than an empty-results message.
+
+Pagination shares the Products design: 44px minimum touch targets, up to three nearby page numbers and arrow controls on phones, and first/last pages with ellipses on larger screens. Navigation shows visible loading feedback and blocks duplicate page requests. Successful user-initiated page changes focus and scroll to the results heading below the fixed header; initial loads, filter edits, and browser history navigation keep their existing behavior.
 
 ## Featured routines (home)
 
@@ -89,7 +97,7 @@ Admins curate featured guides at `/admin/content` (`ContentGuidesClient`), with 
 | `POST /api/routines/id/:id/products` | Yes | Add product to routine |
 | `PUT/DELETE /api/routines/products/:id` | Yes | Update/remove join row |
 
-Routine creation is rate-limited (10 per hour per IP) to reduce abuse.
+Routine creation is rate-limited (10 per hour per IP) to reduce abuse. Routine creation and merchant creation share this fixed-window budget. Routine updates and deletes allow 60 requests per IP per 15 minutes.
 
 ## Profile pages
 

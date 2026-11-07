@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ProductService } from "../services/ProductService";
-import PAGINATION from "../config/pagination";
+import { MAX_PRODUCT_PAGE_SIZE, parseProductPagination } from "../lib/productPagination";
 import { handleInternalError } from "../lib/httpError";
 import { csvFromRequestBody } from "../middleware/parseCsvBody";
 import {
@@ -29,8 +29,14 @@ export class ProductController {
   // GET /api/products OR /api/products?search=name&skinType=oily,dry&brands=Anua
   async getAllProducts(req: Request, res: Response): Promise<void> {
     try {
-      const limit = parseInt(req.query.limit as string) || PAGINATION.LIMIT;
-      const offset = parseInt(req.query.offset as string) || PAGINATION.OFFSET;
+      const pagination = parseProductPagination(req.query);
+      if (!pagination) {
+        res.status(400).json({
+          error: `limit must be an integer from 1 to ${MAX_PRODUCT_PAGE_SIZE}; offset must be a nonnegative safe integer`,
+        });
+        return;
+      }
+      const { limit, offset } = pagination;
       const searchQuery = req.query.search as string | undefined;
       const listFilters = parseProductListQuery(
         req.query as Record<string, unknown>,
@@ -60,8 +66,14 @@ export class ProductController {
   // ?search=...&skinType=oily&brands=Anua&texture=Gel,Foam&limit=20&offset=0
   async getProductsByCategory(req: Request, res: Response): Promise<void> {
     try {
-      const limit = parseInt(req.query.limit as string) || PAGINATION.LIMIT;
-      const offset = parseInt(req.query.offset as string) || PAGINATION.OFFSET;
+      const pagination = parseProductPagination(req.query);
+      if (!pagination) {
+        res.status(400).json({
+          error: `limit must be an integer from 1 to ${MAX_PRODUCT_PAGE_SIZE}; offset must be a nonnegative safe integer`,
+        });
+        return;
+      }
+      const { limit, offset } = pagination;
       const category = req.params.category as ProductCategory;
       const searchQuery = req.query.search as string | undefined;
 
@@ -168,19 +180,25 @@ export class ProductController {
   async getMerchantsBatch(req: Request, res: Response): Promise<void> {
     try {
       const raw = req.query.ids;
-      if (typeof raw !== "string" || !raw.trim()) {
+      if (raw === undefined || raw === "") {
         res.json({});
         return;
       }
-      const ids = raw
-        .split(",")
-        .map((s) => parseInt(s.trim(), 10))
-        .filter((n) => !Number.isNaN(n) && n > 0);
-      const MAX_IDS = 25; // Max 25 products per request. This is to prevent abuse of the API.
-      if (ids.length > MAX_IDS) {
+      const MAX_IDS = 40; // One catalog page per batch; keep the database query bounded.
+      if (typeof raw !== "string") {
+        res.status(400).json({ error: "ids must be comma-separated positive integers" });
+        return;
+      }
+      const values = raw.split(",").map((value) => value.trim());
+      if (values.length > MAX_IDS) {
         res.status(400).json({ error: `At most ${MAX_IDS} product ids` });
         return;
       }
+      if (values.some((value) => !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1)) {
+        res.status(400).json({ error: "ids must be comma-separated positive integers" });
+        return;
+      }
+      const ids = [...new Set(values.map(Number))];
       const grouped =
         await this.productService.getMerchantsGroupedByProductId(ids);
       res.json(grouped);
@@ -274,6 +292,23 @@ export class ProductController {
       res.status(200).json(result);
     } catch (error: unknown) {
       handleInternalError(res, "ProductController.importProductsCsv", error);
+    }
+  }
+
+  // POST /api/products/admin/import/offers
+  async importMerchantOffersCsv(req: Request, res: Response): Promise<void> {
+    try {
+      const csv = csvFromRequestBody(req.body);
+      if (!csv) {
+        res.status(400).json({
+          error: "Missing CSV body. Send raw text/csv or application/json { csv }.",
+        });
+        return;
+      }
+      const result = await this.productService.importMerchantOffersCsv(csv);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      handleInternalError(res, "ProductController.importMerchantOffersCsv", error);
     }
   }
 

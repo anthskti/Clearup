@@ -1,14 +1,13 @@
-import Header from "@/components/Header";
+import Header from "@/components/header/Header";
 import Footer from "@/components/Footer";
-import { AuthSync } from "@/components/auth/AuthSync";
 
-export default function MainLayout({
+export default function InfoLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <Header />
       <div className="flex-1">{children}</div>
       <Footer />

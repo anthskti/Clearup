@@ -5,7 +5,6 @@ export default function AuthLoading() {
     <BrandedLoadingScreen
       fullScreen
       title="Loading session"
-      subtitle="Checking your ClearUp account."
     />
   );
 }

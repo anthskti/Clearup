@@ -1,120 +1,85 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "../ui/button";
 import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Hero_Images = {
-  desktop: "/assets/landingpagedesktop.png",
-  mobile: "/assets/culandingmobile.png",
-}
+  desktop: "/assets/clearupv2_desktopv2.webp",
+  mobile: "/assets/clearupv2_mobile2.webp",
+};
 
 const HeroSection = () => {
   return (
-    <div className="relative flex items-center w-full h-[80vh] overflow-hidden bg-[#f9fcfb]/50">
-      <div className="absolute inset-0">
+    <section className="relative mt-18 grid bg-[#f9fcfb]">
+      {/* Intrinsic height so the full asset (top art + bottom alpha fade) stays in frame. */}
+      <div aria-hidden="true" className="relative col-start-1 row-start-1 w-full self-start">
         <Image
           src={Hero_Images.desktop}
-          alt="Home Background"
-          fill
+          alt=""
+          width={2880}
+          height={1320}
           priority
-          className="hidden md:block object-cover object-center"
+          className="hidden h-auto w-full lg:block"
           draggable={false}
-          sizes="(min-width: 768px) 100vw, 0px"
+          sizes="100vw"
           quality={90}
         />
         <Image
           src={Hero_Images.mobile}
-          alt="Home Background"
-          fill
+          alt=""
+          width={1760}
+          height={2000}
           priority
-          className="md:hidden object-cover object-center"
+          className="h-auto w-full lg:hidden"
           draggable={false}
-          sizes="(max-width: 767px) 100vw, 0px"
+          sizes="100vw"
           quality={90}
-          unoptimized={false}
         />
       </div>
-      {/* Blobs */}
-      {/* <div className="absolute top-[-10%] left-[-15%] w-[70%] h-[40%] bg-[#e8f6ff] rounded-full blur-3xl" /> */}
-      {/* <div className="absolute top-[0%] right-[-5%] w-[60%] h-[20%] bg-[#e8f6ff] rounded-full blur-3xl" /> */}
-      {/* <div className="bg-linear-to-r from-black to-[#0E4B84]/0" /> */}
 
-      {/* Desktop Fade */}
-      <div className="hidden md:block absolute top-0 left-0 w-full h-full bg-linear-to-r from-[#f8f8f8]/50 via-[#f8f8f8]/0 to-[#f8f8f8]/0" />
-      {/* Mobile Fade */}
-      <div className="md:hidden absolute top-0 left-[-20%] w-full h-full bg-[#f8f8f8]/30 rounded-full blur-3xl" />
+      {/* Share the image's grid cell, but let larger text expand the section instead of overflowing it. */}
+      <div className="pointer-events-none relative col-start-1 row-start-1 self-start pt-[56vw] pb-12 md:pb-16 lg:self-center lg:py-12">
+        <div className="container mx-auto flex flex-col items-center px-6 md:px-8 lg:items-start lg:px-6">
+          <div className="pointer-events-auto flex w-full max-w-md flex-col items-center gap-4 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000 motion-reduce:animate-none lg:max-w-[48%] lg:items-start lg:gap-5 lg:text-left">
+            <h1 className="font-edu text-[1.75rem] font-bold leading-[1.1] tracking-[-0.02em] text-stone-900 md:text-[2rem] lg:text-[2.75rem]">
+              Pick Products
+              <br />
+              <span className="text-[#0E4B84]">Build Your Routine</span>
+              <br />
+              Improve Your Skin!
+            </h1>
 
-      <div className="container mx-auto relative grid grid-cols-1 lg:grid-cols-2 gap-12 items-center z-10 px-6 py-12">
-        {/* Left Column */}
-        <div className="flex flex-col gap-6 max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <h1 className="font-edu text-4xl md:text-5xl font-bold text-stone-900 mb-6 max-w-3xl">
-            {/* font-medium font-serif */}
-            Pick <span className="">Products</span>
-            <br />
-            <span className="text-[#0E4B84]">
-              Build Your <span className="">Routine</span>
-            </span>{" "}
-            <br />
-            <span className="">Improve</span> Your Skin!
-          </h1>
+            <p className="hidden max-w-[25rem] text-base leading-6 text-stone-600 md:block">
+              Your skincare organizer to help you improve your skin, save money,
+              and age beautifully.
+            </p>
 
-          <p className="hidden md:block text-sm md:text-lg text-stone-500 leading-relaxed max-w-lg mb-4 delay-150 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards">
-            Your skincare organizer to help you improve your skin, save money,
-            and age beautifully.
-          </p>
-
-          {/* Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 delay-300 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards">
-            <Link href="/builder" passHref>
+            <div className="flex w-full flex-wrap justify-center gap-2 md:w-auto md:gap-4 lg:justify-start">
               <Button
+                asChild
                 variant="default"
-                size="lg"
-                className="w-full sm:w-auto gap-2 group transition-all hover:shadow-lg hover:shadow-[#0E4B84]/20"
+                className="group h-auto! min-h-11 min-w-0 max-w-full flex-auto gap-2 whitespace-normal! px-3! text-sm hover:shadow-lg hover:shadow-[#0E4B84]/20 md:flex-none"
               >
-                Start Your Build
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                <Link href="/builder">
+                  Start Your Build
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="size-4 transition-transform duration-150 group-hover:translate-x-1 motion-reduce:transform-none"
+                  />
+                </Link>
               </Button>
-            </Link>
-            <Link href="/routines" passHref>
               <Button
+                asChild
                 variant="secondary"
-                size="lg"
-                className="w-full sm:w-auto transition-all hover:shadow-lg hover:shadow-[#0E4B84]/20"
+                className="h-auto! min-h-11 min-w-0 max-w-full flex-auto whitespace-normal! px-3! text-sm hover:shadow-lg hover:shadow-[#0E4B84]/20 md:flex-none"
               >
-                View Routines
+                <Link href="/routines">View Routines</Link>
               </Button>
-            </Link>
+            </div>
           </div>
         </div>
-        {/* Left */}
-        <div className="relative h-[350px] hidden lg:block delay-500 animate-in fade-in zoom-in-95 duration-1000 fill-mode-backwards">
-          {/* With bg image, leaving right side avail is nice */}
-          {/* <div className="absolute inset-0 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden transform -rotate-1 transition-transform duration-500">
-            <Image
-              src="/assets/home.jpg"
-              alt="ClearUp Interface"
-              fill
-              draggable={false}
-              className="object-cover opacity-90"
-              sizes="(max-width: 768px) 100vw"
-              priority
-            />
-          </div> */}
-          {/* Floating Element 1 (e.g., A scraped target category) */}
-          {/* <div className="absolute -right-20 -top-10 bg-white p-4 rounded-xl shadow-xl border border-zinc-100 flex items-center gap-4 rotate-1 transition-transform duration-500 cursor-default">
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500">
-              <Droplets className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-stone-900">Warning</p>
-              <p className="text-xs text-stone-500">
-                You will level up your skin.
-              </p>
-            </div>
-          </div> */}
-        </div>
       </div>
-    </div>
+    </section>
   );
 };
 

@@ -5,16 +5,17 @@ import {
   resolveDatabaseUrl,
   usesCloudDatabase,
 } from "./lib/dbConfig";
+import logger from "./lib/logger";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const connectionString = resolveDatabaseUrl();
 const ssl = getPgSslConfig();
 
 if (usesCloudDatabase()) {
-  console.log("Connected to database via Connection String (Cloud)");
+  logger.info({ event: "database.config", mode: "cloud" }, "Database configured");
 } else {
-  console.log("Connected to database via Local Variables (Docker)");
+  logger.info({ event: "database.config", mode: "local" }, "Database configured");
 }
 
 const sequelize = new Sequelize(connectionString, {
