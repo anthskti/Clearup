@@ -6,6 +6,10 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Use page boundaries for navigation scroll instead of the first rendered node.
+    appNewScrollHandler: true,
+  },
   async redirects() {
     return [
       {
