@@ -39,6 +39,7 @@ export function normalizeQuery(
   scopeSlug: string,
 ): string {
   const values = Object.fromEntries(params.entries());
+  const pageValues = params.getAll("page");
   const filters =
     scopeType === "all"
       ? parseGlobalProductListFiltersFromSearchParams(values)
@@ -46,7 +47,10 @@ export function normalizeQuery(
   return queryFor(
     filters,
     values.search ?? "",
-    parsePageParam(values.page, PRODUCT_CATALOG_PAGE_SIZE),
+    parsePageParam(
+      pageValues.length === 1 ? pageValues[0] : undefined,
+      PRODUCT_CATALOG_PAGE_SIZE,
+    ),
   );
 }
 

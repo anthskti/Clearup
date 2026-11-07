@@ -58,7 +58,7 @@ Merchant CRUD: `/api/merchant` (admin for writes).
 | `/products/category/[slug]` | `ProductListClient` — grid, skin-type tooltips, add-to-builder |
 | `/product/id/[slug]` | `ProductClient` — gallery, ingredients, merchant table, add merchant (admin) |
 
-Catalog listings use server-rendered numbered pages of 40 products. The `page` query parameter is 1-based; page 1 is omitted from canonical URLs. Search and filters remain in the URL, filter changes reset to page 1, and browser history restores the selected page and controls. Catalog failures retain the last successful rows and show a retry notice; malformed catalog payloads are treated as failures.
+Catalog listings use server-rendered numbered pages of 40 products. The `page` query parameter is 1-based; page 1 is omitted from canonical URLs. Repeated `page` parameters are treated as invalid and resolve to page 1, even when their values match. Search and filters remain in the URL, filter changes reset to page 1, and browser history restores the selected page and controls. Catalog failures retain the last successful rows and show a retry notice; malformed catalog payloads are treated as failures.
 
 Products and community routines share pagination controls with 44px minimum touch targets. Phones show previous/next arrows and up to three nearby page numbers; larger screens include first/last pages and ellipses. Page changes show visible loading feedback and disable repeated pagination requests. After a successful user-initiated page change, focus and scroll move to the results heading with space for the fixed header. Initial loads, filter changes, and browser history navigation do not trigger this pagination scroll.
 
