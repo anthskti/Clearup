@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { Product, ProductCategory, type CatalogError } from "@/types/product";
 import { pickLowestPriceOffer } from "@/lib/products";
+import { useBuilderDraftPersistence } from "@/hooks/useBuilderDraftPersistence";
 import {
   getCachedCatalogMerchantOffers,
   getCatalogMerchantOffersByProductIds,
@@ -104,6 +105,12 @@ function readStoredRoutine(): RoutineSlot[] {
   }
 }
 
+function serializeRoutine(routine: RoutineSlot[]) {
+  return routine.some((slot) => slot.products.length > 0)
+    ? JSON.stringify(slimRoutineForStorage(routine))
+    : null;
+}
+
 export const useBuilderRoutine = () => {
   const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [routine, setRoutine] = useState<RoutineSlot[]>(createEmptyRoutine);
@@ -117,22 +124,7 @@ export const useBuilderRoutine = () => {
     setIsLoaded(true);
   }
 
-  useEffect(() => {
-    if (!isLoaded || typeof window === "undefined") return;
-    const hasProducts = routine.some((slot) => slot.products.length > 0);
-    try {
-      if (!hasProducts) {
-        localStorage.removeItem(STORAGE_KEY);
-        return;
-      }
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(slimRoutineForStorage(routine)),
-      );
-    } catch (e) {
-      console.error("Failed to persist builder routine", e);
-    }
-  }, [routine, isLoaded]);
+  const persistence = useBuilderDraftPersistence(STORAGE_KEY, routine, isLoaded, serializeRoutine);
 
   useEffect(() => {
     if (!offerRequestIds.length) return;
@@ -260,7 +252,11 @@ export const useBuilderRoutine = () => {
     const handleAddToRoutine = (event: CustomEvent) => {
       const { product, category } = event.detail;
       addProductToSlot(category, product);
-      localStorage.removeItem("pending-routine-add");
+      try {
+        localStorage.removeItem("pending-routine-add");
+      } catch {
+        // Draft persistence reports storage failures without breaking the add.
+      }
     };
 
     window.addEventListener(
@@ -270,19 +266,18 @@ export const useBuilderRoutine = () => {
 
     // Check for pending add in localStorage (from page navigation)
     const checkPendingAdd = () => {
-      const pendingAdd = localStorage.getItem("pending-routine-add");
-      if (pendingAdd) {
-        try {
+      try {
+        const pendingAdd = localStorage.getItem("pending-routine-add");
+        if (pendingAdd) {
           const data = JSON.parse(pendingAdd);
           // Only process if it's recent (within last 30 seconds)
           if (Date.now() - data.timestamp < 30000) {
             addProductToSlot(data.category, data.product);
           }
           localStorage.removeItem("pending-routine-add");
-        } catch (e) {
-          console.error("Failed to parse pending routine add", e);
-          localStorage.removeItem("pending-routine-add");
         }
+      } catch (e) {
+        console.error("Failed to read pending routine add", e);
       }
     };
 
@@ -306,6 +301,7 @@ export const useBuilderRoutine = () => {
   return {
     routine,
     isLoaded,
+    persistence,
     addProductToSlot,
     removeProductFromSlot,
     clearRoutine,

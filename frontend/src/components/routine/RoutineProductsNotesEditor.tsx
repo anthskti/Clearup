@@ -20,6 +20,7 @@ interface RoutineUsageNotesEditorProps {
   routineId: number;
   canEdit: boolean;
   initialProducts: RoutineProductWithDetails[];
+  onSaved?: () => void;
 }
 
 function reindexTimeBlock(
@@ -113,6 +114,7 @@ export default function RoutineUsageNotesEditor({
   routineId,
   canEdit,
   initialProducts,
+  onSaved,
 }: RoutineUsageNotesEditorProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
@@ -260,12 +262,13 @@ export default function RoutineUsageNotesEditor({
       if (updates.length === 0) return;
       await saveRoutineNotes(routineId, updates);
       router.refresh();
+      onSaved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update usage notes.");
     } finally {
       setIsSaving(false);
     }
-  }, [hasNoteChanges, initialProducts, notes, routineId, router]);
+  }, [hasNoteChanges, initialProducts, notes, routineId, router, onSaved]);
 
   if (!canEdit) return null;
 
@@ -274,7 +277,7 @@ export default function RoutineUsageNotesEditor({
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-bold text-zinc-900">
-            Routine Product notes update
+            Edit usage notes
           </h3>
           <p className="text-sm text-zinc-500">
             Add or edit usage notes for products in this routine. Use the buttons
@@ -285,6 +288,7 @@ export default function RoutineUsageNotesEditor({
           onClick={handleSaveNotes}
           disabled={isSaving || !hasNoteChanges}
           variant="secondary"
+          className="min-h-11"
         >
           <Save className="mr-2 h-4 w-4" />
           Save notes

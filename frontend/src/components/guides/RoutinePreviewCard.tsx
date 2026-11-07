@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight, FlaskConical, Star } from "lucide-react";
 import type { SkinType } from "@/types/product";
 import type { RoutineWithProducts } from "@/types/routine";
 import { skinTypeLabel } from "@/lib/routineSkinTypeTags";
-import { Button } from "@/components/ui/button";
 import ProductImage from "@/components/ui/ProductImage";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +33,7 @@ export function estimatedPriceFromRoutineProducts(
 }
 
 const cardShell =
-  "flex h-full flex-col rounded-xl border border-zinc-200 bg-white shadow-sm transition-shadow hover:border-zinc-300 hover:shadow-md";
+  "group/card flex h-full flex-col rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4a84] motion-reduce:transition-none";
 
 export type RoutinePreviewCardProps = {
   routineId: number;
@@ -56,7 +55,7 @@ export default function RoutinePreviewCard({
   previewImageUrls,
   estimatedTotalPrice,
   showFeaturedStar = false,
-  buttonLabel = "View Routine",
+  buttonLabel = "View routine",
   className,
 }: RoutinePreviewCardProps) {
   const href = `/routine/${routineId}`;
@@ -66,91 +65,48 @@ export default function RoutinePreviewCard({
   const authorText = authorLabel?.trim();
 
   return (
-    <article className={cn("group/card h-full", className)}>
-      <div className={cn(cardShell, "min-h-0 overflow-hidden")}>
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-col gap-3 p-5 min-h-48">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <h3
-                  className="line-clamp-2 font-bold leading-snug text-zinc-900 transition-colors group-hover/card:text-blue-600"
-                  title={name}
-                >
-                  {name}
-                </h3>
-                {authorText && (
-                  <p
-                    className="mt-1 line-clamp-1 text-xs text-zinc-500"
-                    title={`by ${authorText}`}
-                  >
-                    by {authorText}
-                  </p>
-                )}
-              </div>
-              {(showFeaturedStar || showPrice) && (
-                <div className="flex shrink-0 items-center gap-2">
-                  {showFeaturedStar && (
-                    <span
-                      className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-amber-300 bg-amber-50/90 shadow-sm"
-                      aria-hidden
-                    >
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                    </span>
-                  )}
-                  {showPrice && (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-900">
-                      Est. ${estimatedTotalPrice.toFixed(0)}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            {previewImageUrls.length > 0 && (
-              <div className="flex gap-1.5">
-                {previewImageUrls.slice(0, 4).map((url, i) => (
-                  <div
-                    key={`${routineId}-${i}-${url.slice(-24)}`}
-                    className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-zinc-100 bg-zinc-50"
-                  >
-                    <ProductImage
-                      src={url}
-                      alt=""
-                      width={48}
-                      height={48}
-                      sizes="48px"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-            {skinTypeTags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {skinTypeTags.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-700"
-                  >
-                    {skinTypeLabel(t)}
-                  </span>
-                ))}
-              </div>
-            )}
+    <article className={cn("h-full", className)}>
+      <Link href={href} className={cardShell}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3
+              className="line-clamp-2 break-words text-base font-semibold leading-snug text-zinc-900 group-hover/card:text-[#0e4a84]"
+              title={name}
+            >{name}</h3>
+            {authorText && <p className="mt-1 truncate text-xs text-zinc-500" title={`by ${authorText}`}>by {authorText}</p>}
           </div>
-          <div className="flex-1" aria-hidden />
+          {showFeaturedStar && <Star size={16} className="shrink-0 fill-amber-400 text-amber-500" aria-label="Featured routine" />}
         </div>
-        <div className="shrink-0 border-t border-zinc-100 bg-zinc-50/50 px-5 py-4">
-          <Link href={href} className="block w-full">
-            <Button
-              variant="outline"
-              className="group/btn w-full transition-colors group-hover/card:bg-zinc-50"
+        <div className="my-4 flex min-h-14 items-center gap-2" aria-label="Product preview">
+          {previewImageUrls.length > 0 ? previewImageUrls.slice(0, 4).map((url, i) => (
+            <div
+              key={`${routineId}-${i}`}
+              className="size-14 shrink-0 overflow-hidden rounded-lg bg-zinc-50 p-1"
             >
-              {buttonLabel}
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
-            </Button>
-          </Link>
+              <ProductImage
+                src={url}
+                alt=""
+                width={48}
+                height={48}
+                sizes="48px"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          )) : <div className="flex items-center gap-2 text-xs text-zinc-500"><FlaskConical size={24} className="text-zinc-400" aria-hidden="true" />Product preview unavailable</div>}
         </div>
-      </div>
+        <p
+          aria-hidden={skinTypeTags.length === 0}
+          className="mb-3 min-h-[1.625em] text-xs leading-relaxed text-zinc-600"
+        >
+          {skinTypeTags.map(skinTypeLabel).join(" · ")}
+        </p>
+        <div
+          className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3 text-xs"
+        >
+          {showPrice && <span className="text-zinc-500">Estimated <span className="font-semibold text-zinc-800">CA ${estimatedTotalPrice.toFixed(0)}</span></span>}
+          <span className="ml-auto inline-flex items-center gap-1 font-medium text-[#0e4a84]">{buttonLabel}<ArrowRight size={14} aria-hidden="true" /></span>
+        </div>
+      </Link>
     </article>
   );
 }

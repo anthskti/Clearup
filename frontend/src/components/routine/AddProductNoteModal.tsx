@@ -1,9 +1,9 @@
 // Modal for adding a product note to a routine
 "use client";
 
-import { memo, useMemo, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ProductCategory } from "@/types/product";
 import type { TimeOfDay } from "@/types/routine";
@@ -40,6 +40,25 @@ function AddProductNoteModalBody({
 }: Omit<AddProductNoteModalProps, "isOpen">) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [userNote, setUserNote] = useState("");
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const id = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    dialog?.showModal();
+    dialog?.querySelector<HTMLInputElement>('input[type="radio"]')?.focus();
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+        if (!previousFocus.matches(":disabled")) previousFocus.focus();
+        else previousFocus.closest("section")?.querySelector<HTMLElement>("h3")?.focus();
+      }
+    };
+  }, []);
 
   const excluded = useMemo(
     () => new Set(excludedProductIds),
@@ -62,33 +81,56 @@ function AddProductNoteModalBody({
   );
 
   const selected = available.find((p) => p.productId === selectedId);
-  const label = timeOfDay === "AM" ? "Morning" : "Night";
+  const label = timeOfDay === "AM" ? "morning" : "night";
 
-  const handleConfirm = () => {
+  const handleConfirm = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!selected) return;
     onConfirm(selected.productId, selected.category, userNote);
     onClose();
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={`${id}-title`}
+      aria-describedby={`${id}-description`}
+      className="fixed m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-md overflow-y-auto rounded-lg border-0 bg-white p-0 text-zinc-900 shadow-xl backdrop:bg-black/50"
+      onCancel={(event) => { event.preventDefault(); onClose(); }}
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      onKeyDown={(event) => {
+        if (event.key !== "Tab") return;
+        // Only the checked (or first) radio is a Tab stop within its group.
+        const radios = Array.from(event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+        const radioStop = radios.find((radio) => radio.checked) ?? radios[0];
+        const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), textarea:not(:disabled)',
+        )).filter((element) => element.getClientRects().length > 0 &&
+          (!(element instanceof HTMLInputElement) || element.type !== "radio" || element === radioStop));
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
       }}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+      <form onSubmit={handleConfirm} className="relative p-5 sm:p-6">
         <button
           type="button"
+          aria-label={`Close add ${label} note dialog`}
           onClick={onClose}
-          className="absolute top-4 right-4 text-zinc-400 hover:text-black"
+          className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-[#0E4B84]"
         >
-          <X className="w-5 h-5" />
+          <X size={20} aria-hidden="true" />
         </button>
 
-        <h2 className="text-xl font-bold mb-1">Add {label} product note</h2>
-        <p className="text-sm text-zinc-500 mb-4">
-          From your routine, pick a product and explain how you use it!
+        <h2 id={`${id}-title`} className="mb-2 pr-8 text-xl font-semibold">Add {label} note</h2>
+        <p id={`${id}-description`} className="mb-5 text-sm text-zinc-600">
+          Choose a product already in your routine.
         </p>
 
         {available.length === 0 ? (
@@ -98,52 +140,70 @@ function AddProductNoteModalBody({
               : "Every product in your routine already has a note for this time."}
           </p>
         ) : (
-          <div className="max-h-48 overflow-y-auto border border-zinc-200 rounded-md mb-4 divide-y divide-zinc-100">
+          <fieldset className="mb-5 min-w-0">
+            <legend className="mb-2 text-sm font-semibold">Product</legend>
+            <div className="max-h-48 overflow-y-auto rounded-md border border-zinc-300 divide-y divide-zinc-200">
             {available.map((product) => (
-              <button
+              <label
                 key={`${product.category}-${product.productId}`}
-                type="button"
-                onClick={() => setSelectedId(product.productId)}
-                className={`w-full text-left px-3 py-2.5 hover:bg-[#e9f6ff]/50 transition-colors ${
+                className={`flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 transition-colors focus-within:ring-2 focus-within:ring-inset focus-within:ring-[#0E4B84] hover:bg-[#e9f6ff]/50 ${
                   selectedId === product.productId
-                    ? "bg-[#e9f6ff] ring-1 ring-inset ring-zinc-300"
+                    ? "bg-[#e9f6ff]"
                     : ""
                 }`}
               >
-                <div className="text-xs font-bold text-zinc-400 uppercase">
-                  {product.category}
+                <span className="relative mt-0.5 size-5 shrink-0">
+                <input
+                  type="radio"
+                  name={`${id}-product`}
+                  value={product.productId}
+                  checked={selectedId === product.productId}
+                  onChange={() => setSelectedId(product.productId)}
+                  aria-label={`${product.brand} ${product.name}`}
+                  className="size-5 cursor-pointer appearance-none rounded-full border border-zinc-400 bg-white outline-none checked:border-[#0E4B84] checked:bg-[#0E4B84]"
+                />
+                  {selectedId === product.productId && <Check size={14} aria-hidden="true" className="pointer-events-none absolute left-0.5 top-0.5 text-white" />}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-sm leading-5">
+                    <span className="font-medium text-zinc-600">{product.brand}</span>
+                    <span aria-hidden="true" className="mx-1 mb-[0.12em] inline-block size-0.5 rounded-full bg-zinc-500 align-middle" />
+                    <span className="font-semibold text-zinc-900">{product.name}</span>
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-600">{product.category === "eyecare" ? "Eye care" : product.category.charAt(0).toUpperCase() + product.category.slice(1)}</div>
                 </div>
-                <div className="text-sm font-medium text-zinc-900">
-                  {product.brand} {product.name}
-                </div>
-              </button>
+              </label>
             ))}
-          </div>
+            </div>
+          </fieldset>
         )}
 
+        <label htmlFor={`${id}-note`} className="mb-2 block text-sm font-semibold">Usage note <span className="font-normal text-zinc-600">(optional)</span></label>
         <textarea
+          id={`${id}-note`}
           value={userNote}
           onChange={(e) => setUserNote(e.target.value)}
-          placeholder="How do you use this product in this step?"
+          placeholder="e.g. Apply two drops after toner."
           rows={3}
           disabled={!selected}
-          className="w-full text-sm p-2 border border-zinc-200 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50 resize-none"
+          className="mb-5 w-full resize-y rounded-md border border-zinc-300 p-2 text-base text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[#0E4B84] disabled:bg-zinc-50 disabled:opacity-50 md:text-sm"
         />
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" className="min-h-11" onClick={onClose}>
             Cancel
           </Button>
           <Button
             variant="secondary"
-            onClick={handleConfirm}
+            type="submit"
+            className="min-h-11"
             disabled={!selected}
           >
             Add note
           </Button>
         </div>
-      </div>
-    </div>
+      </form>
+    </dialog>
   );
 }
 

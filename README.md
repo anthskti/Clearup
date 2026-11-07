@@ -3,7 +3,7 @@
 Website Link: [clearup.skin](https://www.clearup.skin)!
 
 
-![ClearupHomePage](frontend/public/assets/clearuphomepage.png)
+![ClearupHomePage](frontend/public/assets/clearuphomepage.webp)
 
 
 Clearup is a skincare organizer platform. Users can browse skincare product catalogs, compare seller prices, build step by step routines in a visual builder, and share them to the their friends and family. 

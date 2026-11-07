@@ -6,7 +6,7 @@ import {
   Routine,
   RoutineWithProducts,
   RoutineProduct,
-  GuideRoutineView,
+  GuideRoutinePage,
   AddRoutineProductInput,
   CreateRoutineWithProductsInput,
   UpdateRoutineProductInput,
@@ -165,14 +165,14 @@ export class RoutineService {
       .filter(Boolean) as FeaturedRoutineView[];
   }
 
-  // GET Routines (randomly) from registered users
+  // GET public guides from registered users
   async getPublicGuides(options: {
     limit: number;
     offset: number;
     tags: SkinType[];
     minPrice?: number;
     maxPrice?: number;
-  }): Promise<GuideRoutineView[]> {
+  }): Promise<GuideRoutinePage> {
     return this.routineRepository.findGuidesPublic(options);
   }
 

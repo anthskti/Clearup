@@ -5,6 +5,9 @@ import Image from "next/image";
 import React from "react";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/constants/mail";
 
+const footerLinkClass =
+  "inline-flex min-h-11 items-center hover:underline focus-visible:outline-2 focus-visible:outline-white";
+
 export function InstagramIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -28,84 +31,81 @@ export function InstagramIcon({ className }: { className?: string }) {
 
 function Footer() {
   return (
-    // 1. Added overflow-hidden to prevent the blur from causing horizontal scrolling
-    <footer className="relative bg-[#0e4983] text-white pt-15 pb-8 overflow-hidden">
-      <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
-          {/* Column 1: Logo */}
-          <div className="md:col-span-5 lg:col-span-4">
-            <div className="flex justify-center md:justify-start -mt-8 shrink-0">
+    <footer className="overflow-hidden bg-brand py-10 text-white md:py-14">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid gap-10 border-b border-white/20 pb-10 md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-4">
+            <div className="flex justify-start">
               <Image
-                src="/assets/clearuplogo-white.png"
+                src="/assets/clearuplogo-white.webp"
                 alt="Clearup"
                 width={2048}
                 height={663}
-                priority
+                sizes="190px"
                 draggable={false}
                 onContextMenu={(e) => e.preventDefault()}
-                className="h-22px w-auto max-w-[220px] md:h-30px md:max-w-[250px]"
+                className="h-auto w-[190px]"
               />
             </div>
-            <p className="mt-4 text-sm text-slate-200 md:text-center">
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-blue-100">
               Questions? Email{" "}
               <a
                 href={SUPPORT_MAILTO}
-                className="text-white underline hover:text-slate-100"
+                className="inline-flex min-h-10 items-center text-white underline underline-offset-4 hover:text-blue-100 focus-visible:outline-2 focus-visible:outline-white"
               >
                 {SUPPORT_EMAIL}
               </a>
             </p>
           </div>
 
-          <div className="hidden md:block md:col-span-1" />
-
-          {/* Links Section */}
-          <div className="md:col-span-6 lg:col-span-7 grid grid-cols-2 md:grid-cols-3 gap-8">
-            {/* Group 1: Company */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 md:col-span-8 md:gap-8">
             <div>
-              <h4 className="font-bold text-sm uppercase tracking-wider mb-5 text-slate-100">
+              <h4 className="mb-3 text-sm font-semibold text-blue-100">
                 Company
               </h4>
-              <ul className="space-y-3 text-sm text-white">
+              <ul className="text-sm">
                 <li>
-                  <Link href="/about-clearup">About Clearup</Link>
+                  <Link href="/about-clearup" className={footerLinkClass}>
+                    About Clearup
+                  </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Group 2: Account */}
             <div>
-              <h4 className="font-bold text-sm uppercase tracking-wider mb-5 text-slate-100">
-                Account
+              <h4 className="mb-3 text-sm font-semibold text-blue-100">
+                Explore
               </h4>
-              <ul className="space-y-3 text-sm text-white">
-                {/* <li>
-                  <Link href="/contact">Contact Us</Link>
-                </li> */}
+              <ul className="text-sm">
                 <li>
-                  <Link href="/products/category/other">View Products</Link>
+                  <Link href="/products" className={footerLinkClass}>
+                    View products
+                  </Link>
                 </li>
                 <li>
-                  <Link href="/routines">View Routines</Link>
+                  <Link href="/routines" className={footerLinkClass}>
+                    View routines
+                  </Link>
                 </li>
                 <li>
-                  <Link href="/faq">FAQ</Link>
+                  <Link href="/faq" className={footerLinkClass}>
+                    FAQ
+                  </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Group 3: Community */}
             <div>
-              <h4 className="font-bold text-sm uppercase tracking-wider mb-5 text-slate-100">
+              <h4 className="mb-3 text-sm font-semibold text-blue-100">
                 Community
               </h4>
-              <ul className="space-y-3 text-sm text-white">
+              <ul className="text-sm">
                 <li>
                   <Link
                     href="https://www.instagram.com/clearup.skin/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2"
+                    className={`${footerLinkClass} gap-2`}
                   >
                     <InstagramIcon className="h-4 w-4 shrink-0" />
                     Instagram
@@ -116,16 +116,18 @@ function Footer() {
           </div>
         </div>
 
-        {/* Bottom Section: Divider & Legal */}
-        <div className="flex md:flex-row flex-col justify-between md:items-center items-start gap-2">
-          <p className="text-white text-xs">
+        <div className="flex flex-col items-start gap-2 pt-5 text-sm text-blue-100 md:flex-row md:items-center md:justify-between">
+          <p>
             &copy; Clearup {new Date().getFullYear()}
           </p>
 
-          <div className="flex gap-6 text-xs text-white">
-            <Link href="/privacy">Privacy Policy</Link>
-            <div className="hidden md:block w-px h-4 bg-white" />
-            <Link href="/tos">Terms of Service</Link>
+          <div className="flex flex-wrap gap-x-6 text-white">
+            <Link href="/privacy" className={footerLinkClass}>
+              Privacy policy
+            </Link>
+            <Link href="/tos" className={footerLinkClass}>
+              Terms of service
+            </Link>
           </div>
         </div>
       </div>

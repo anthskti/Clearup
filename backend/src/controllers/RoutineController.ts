@@ -138,18 +138,28 @@ export class RoutineController {
   // GET /api/routines/guides (public — community guides, server-filtered)
   async getPublicGuides(req: Request, res: Response): Promise<void> {
     try {
-      const limitParsed =
-        parseInt(req.query.limit as string) || PAGINATION.LIMIT;
-      const offsetParsed =
-        parseInt(req.query.offset as string) || PAGINATION.OFFSET;
-      const limit = Math.min(
-        Math.max(Number.isFinite(limitParsed) ? limitParsed : 24, 1),
-        50,
-      );
-      const offset = Math.max(
-        Number.isFinite(offsetParsed) ? offsetParsed : 0,
-        0,
-      );
+      const parseUnsignedInteger = (
+        value: unknown,
+        fallback: number,
+      ): number | null => {
+        if (value === undefined) return fallback;
+        if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
+        const parsed = Number(value);
+        return Number.isSafeInteger(parsed) ? parsed : null;
+      };
+      const limit = parseUnsignedInteger(req.query.limit, 24);
+      const offset = parseUnsignedInteger(req.query.offset, 0);
+      if (
+        limit === null ||
+        limit < 1 ||
+        limit > 50 ||
+        offset === null
+      ) {
+        res.status(400).json({
+          error: "limit must be an integer from 1 to 50; offset must be a nonnegative safe integer",
+        });
+        return;
+      }
 
       const tagsRaw = req.query.tags;
       const tagPieces =
@@ -176,14 +186,14 @@ export class RoutineController {
         }
       }
 
-      const guides = await this.routineService.getPublicGuides({
+      const result = await this.routineService.getPublicGuides({
         limit,
         offset,
         tags,
         minPrice,
         maxPrice,
       });
-      res.json(guides);
+      res.json(result);
     } catch (error: unknown) {
       handleInternalError(res, "RoutineController.getPublicGuides", error);
     }

@@ -65,6 +65,8 @@ export function useProductCatalog({
   const [error, setError] = useState<CatalogError | null>(catalogError);
   const [retryNow, setRetryNow] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const paginationTarget = useRef<number | null>(null);
+  const scrollToPage = useRef<number | null>(null);
 
   // Draft version guards: only overwrite search/price drafts from SSR when the
   // user has not edited them since navigation started.
@@ -80,6 +82,8 @@ export function useProductCatalog({
   }, []);
 
   const bumpDraftVersionsForHistory = useCallback(() => {
+    paginationTarget.current = null;
+    scrollToPage.current = null;
     inputDraftVersion.current += 1;
     priceDraftVersion.current += 1;
     snapshotDraftVersions();
@@ -115,11 +119,17 @@ export function useProductCatalog({
     // Accept only data for the committed URL. A failed result keeps the last
     // successful rows and total visible.
     if (!catalogError) {
+      const userPageCommit =
+        paginationTarget.current !== null && initialPage !== page;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setProducts(initialProducts);
       setTotalCount(initialTotal);
       setPage(initialPage);
+      if (userPageCommit) scrollToPage.current = initialPage;
+    } else {
+      scrollToPage.current = null;
     }
+    paginationTarget.current = null;
     setError(catalogError);
     setIsRetrying(false);
     markSettled();
@@ -138,12 +148,27 @@ export function useProductCatalog({
     initialProducts,
     initialTotal,
     initialPage,
+    page,
     catalogError,
     initialFilters,
     initialSearch,
     shouldAcceptServerResult,
     markSettled,
   ]);
+
+  useEffect(() => {
+    if (scrollToPage.current === null || page !== scrollToPage.current) return;
+    const heading = document.getElementById("product-results-heading");
+    if (!heading) return;
+
+    const top = Math.max(
+      0,
+      window.scrollY + heading.getBoundingClientRect().top - 72,
+    );
+    window.scrollTo({ top, behavior: "auto" });
+    heading.focus({ preventScroll: true });
+    scrollToPage.current = null;
+  }, [page, products]);
 
   useEffect(() => {
     if (!error?.retryAt) return;
@@ -158,7 +183,12 @@ export function useProductCatalog({
       search: string,
       nextPage = 1,
       replace = false,
+      isPageRequest = false,
     ) => {
+      if (!isPageRequest) {
+        paginationTarget.current = null;
+        scrollToPage.current = null;
+      }
       navigateNow(queryFor(nextFilters, search, nextPage), replace);
     },
     [navigateNow],
@@ -166,6 +196,8 @@ export function useProductCatalog({
 
   const updateFilters = useCallback(
     (next: ProductListFilters) => {
+      paginationTarget.current = null;
+      scrollToPage.current = null;
       setFilters(next);
       scheduleReplace(queryFor(next, searchQuery));
     },
@@ -206,13 +238,11 @@ export function useProductCatalog({
     [setInputValue],
   );
 
-  const clearAll = useCallback(() => {
+  const clearFilters = useCallback(() => {
     setFilters(EMPTY_PRODUCT_LIST_FILTERS);
     setDraftPriceRange([0, PRODUCT_PRICE_SLIDER_MAX]);
-    setSearchQuery("");
-    setInputValue("");
-    navigate(EMPTY_PRODUCT_LIST_FILTERS, "");
-  }, [navigate, setDraftPriceRange, setFilters, setInputValue, setSearchQuery]);
+    navigate(EMPTY_PRODUCT_LIST_FILTERS, searchQuery);
+  }, [navigate, searchQuery, setDraftPriceRange, setFilters]);
 
   const retry = useCallback(() => {
     if (isRetrying || (error?.retryAt && retryNow < error.retryAt)) return;
@@ -221,9 +251,13 @@ export function useProductCatalog({
   }, [error, isRetrying, retryNow, router, setIsRetrying]);
 
   const goToPage = useCallback(
-    (nextPage: number) =>
-      navigate(filters, searchQuery, Math.max(1, nextPage)),
-    [filters, navigate, searchQuery],
+    (nextPage: number) => {
+      if (isNavigating || nextPage === page) return;
+      const targetPage = Math.max(1, nextPage);
+      paginationTarget.current = targetPage;
+      navigate(filters, searchQuery, targetPage, false, true);
+    },
+    [filters, isNavigating, navigate, page, searchQuery],
   );
 
   const isFiltered = hasActiveProductListFilters(filters, searchQuery);
@@ -240,9 +274,10 @@ export function useProductCatalog({
     applyPriceFilter,
     hasPriceDraftChanges,
     inputValue,
+    searchQuery,
     setInputValue: onInputChange,
     commitSearch,
-    clearAll,
+    clearFilters,
     isFiltered,
     totalCount,
     isNavigating,

@@ -56,7 +56,7 @@ Displayed prices favor the **lowest merchant offer** per product (`pickLowestPri
 
 ## Community guides
 
-**Route:** `/guides`
+**Route:** `/routines`
 
 Public, read-only listing of routines from **registered** authors (server-filtered).
 
@@ -65,10 +65,16 @@ Public, read-only listing of routines from **registered** authors (server-filter
 Query params (see `GuidesFilters`):
 
 - `tags` — skin type filter (parsed via `routineSkinTypeTags`)
-- `maxPrice` — budget ceiling on routine total
+- `minPrice` / `maxPrice` — lower/upper bounds on routine total
 - `limit` / `offset` — pagination (24 per page in UI)
 
-Guides are ordered with intentional randomness on the backend so the grid does not feel static.
+The endpoint returns `{ routines, total }`, where `total` counts registered-author routines matching the same skin-type and price filters, independent of the requested offset. Results are ordered newest first, with routine ID as a tie-breaker so unchanged results stay consistent across pages. Limits and offsets must be safe integers; limits are bounded to 1–50 and offsets must be nonnegative.
+
+The response envelope replaces the previous bare array, so the API and frontend must be deployed together. No database migration is required.
+
+The listing uses numbered URL pages, omits `page=1`, preserves filters, and redirects requests beyond the last page to a valid page. Changing filters resets to page 1. Failed requests show an error and retry action rather than an empty-results message.
+
+Pagination shares the Products design: 44px minimum touch targets, up to three nearby page numbers and arrow controls on phones, and first/last pages with ellipses on larger screens. Navigation shows visible loading feedback and blocks duplicate page requests. Successful user-initiated page changes focus and scroll to the results heading below the fixed header; initial loads, filter edits, and browser history navigation keep their existing behavior.
 
 ## Featured routines (home)
 

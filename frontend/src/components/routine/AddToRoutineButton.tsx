@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Product, ProductCategory } from "@/types/product";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,14 @@ function AddToRoutineButton({
 }: AddToRoutineButtonProps) {
   const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const errorId = useId();
 
   const handleAddToRoutine = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsAdding(true);
+    setError(null);
 
     // Store product in localStorage for builder page to pick up
     const addToRoutineData = {
@@ -57,34 +60,35 @@ function AddToRoutineButton({
         router.push("/builder");
       } catch (error) {
         console.error("Failed to add product to routine:", error);
-        alert("Failed to add product to routine. Please try again.");
+        setError("Couldn't add this product. Allow site storage, then try again.");
         setIsAdding(false);
       }
     }
   };
 
   return (
+    <>
     <Button
       onClick={handleAddToRoutine}
       disabled={isAdding}
+      aria-busy={isAdding}
+      aria-describedby={error ? errorId : undefined}
       variant={variant}
       size={size}
       className={className}
     >
-      {
-        // isAdding ? (
-        //   "Adding..."
-        // ) :
-        compact ? (
+      {isAdding ? "Adding…" : compact ? (
           "Add"
         ) : (
           <>
             <Plus size={18} />
-            Add to Routine
+            Add to routine
           </>
         )
       }
     </Button>
+    {error && <span id={errorId} role="alert" className="mt-1 block max-w-56 whitespace-normal text-xs text-red-700">{error}</span>}
+    </>
   );
 }
 

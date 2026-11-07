@@ -25,9 +25,7 @@ const Home = () => {
       <ScrollReveal>
         <Matches />
       </ScrollReveal>
-      <ScrollReveal>
-        <TrustBanner />
-      </ScrollReveal>
+      <TrustBanner />
     </main>
   );
 };

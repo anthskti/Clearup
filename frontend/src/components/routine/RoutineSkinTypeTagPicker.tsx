@@ -27,9 +27,10 @@ export default function RoutineSkinTypeTagPicker({
           <button
             key={tag}
             type="button"
+            aria-pressed={selected}
             disabled={disabled}
             onClick={() => !disabled && onToggle?.(tag)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`min-h-11 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
               selected
                 ? "bg-blue-100 text-blue-900 ring-1 ring-blue-200"
                 : disabled

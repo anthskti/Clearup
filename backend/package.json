@@ -18,6 +18,7 @@
     "test:ses": "bun scripts/testSesEmail.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1163.0",
     "@aws-sdk/client-sesv2": "^3.1014.0",
     "better-auth": "^1.4.19",
     "compression": "^1.8.1",
@@ -31,6 +32,7 @@
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
     "sequelize": "^6.37.7",
+    "sharp": "^0.35.5",
     "umzug": "^3.8.3"
   },
   "devDependencies": {

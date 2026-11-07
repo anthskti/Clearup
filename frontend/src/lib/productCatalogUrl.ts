@@ -1,9 +1,10 @@
 import {
   parseGlobalProductListFiltersFromSearchParams,
   parseProductListFiltersFromSearchParams,
-  parseCatalogPage,
   productListFiltersToSearchParams,
+  PRODUCT_CATALOG_PAGE_SIZE,
 } from "@/lib/productListFilters";
+import { parsePageParam } from "@/lib/pagination";
 import type { ProductListFilters } from "@/types/product";
 
 export type CatalogScope =
@@ -38,11 +39,19 @@ export function normalizeQuery(
   scopeSlug: string,
 ): string {
   const values = Object.fromEntries(params.entries());
+  const pageValues = params.getAll("page");
   const filters =
     scopeType === "all"
       ? parseGlobalProductListFiltersFromSearchParams(values)
       : parseProductListFiltersFromSearchParams(values, scopeSlug);
-  return queryFor(filters, values.search ?? "", parseCatalogPage(values.page));
+  return queryFor(
+    filters,
+    values.search ?? "",
+    parsePageParam(
+      pageValues.length === 1 ? pageValues[0] : undefined,
+      PRODUCT_CATALOG_PAGE_SIZE,
+    ),
+  );
 }
 
 export function catalogIdentity(path: string, query: string): string {

@@ -73,6 +73,8 @@ Production may set cookie domain `.clearup.skin` in `auth.ts`. OAuth redirect UR
 
 Session checks treat rate limiting, server errors, and network failures as temporarily unavailable rather than evidence of a signed-out user. The UI can retain the last-known role for the same session during an outage; protected layouts still withhold their children until server-side verification succeeds, and the backend revalidates every protected request. The UI offers a user-driven retry after a cooldown informed by either retry header, avoiding false login redirects during API throttling or outages.
 
+Service notices use consistent spacing and 44px retry targets. Actions read “Retry”, “Retrying…” while a request is pending, or “Retry in Ns” during a server-provided cooldown. Countdown updates stay outside the notice’s live message so the full notice is not announced every second.
+
 ## Email webhooks
 
 `POST /api/webhooks/aws-ses` accepts SNS notifications for SES bounces and complaints and can update user email status—keep this URL registered in AWS when using SES in production.
