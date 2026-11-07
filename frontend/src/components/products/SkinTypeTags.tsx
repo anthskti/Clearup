@@ -6,35 +6,54 @@ import {
 } from "@/components/ui/tooltip";
 
 interface SkinTypeTagsProps {
-  skinTypes: string[]; // ex ["Dry", "Oily", "Combination"]
+  skinTypes: string[];
+  variant?: "desktop" | "mobile";
 }
 
-export const SkinTypeTags = ({ skinTypes }: SkinTypeTagsProps) => {
+const tagClassName =
+  "rounded-md border border-teal-100 bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700";
+
+export const SkinTypeTags = ({ skinTypes, variant = "desktop" }: SkinTypeTagsProps) => {
   if (!skinTypes || skinTypes.length === 0)
     return <span className="text-zinc-400 text-sm">-</span>;
+
+  if (variant === "mobile") {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {skinTypes.map((skinType) => (
+          <span key={skinType} className={tagClassName}>
+            {skinType}
+          </span>
+        ))}
+      </div>
+    );
+  }
 
   const firstType = skinTypes[0];
   const remainingCount = skinTypes.length - 1;
 
   return (
     <div className="flex flex-col items-start gap-1">
-      {/* Show the first skin type */}
-      <span className="px-2 py-0.5 bg-teal-50 text-teal-700 text-xs font-medium rounded-md border border-teal-100 whitespace-nowrap">
+      <span className={`${tagClassName} whitespace-nowrap`}>
         {firstType}
       </span>
 
-      {/* +N badge */}
       {remainingCount > 0 && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 text-xs font-semibold rounded-md border border-zinc-200 hover:bg-zinc-200 transition-colors">
+              <button
+                type="button"
+                aria-label={`${remainingCount} more skin types: ${skinTypes.slice(1).join(", ")}`}
+                className="rounded-md border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
+              >
                 +{remainingCount}
-              </span>
+              </button>
             </TooltipTrigger>
             <TooltipContent
               side="bottom"
-              className="bg-zinc-900 text-white border border-zinc-700 shadow-md"
+              className="border border-[#0e4a84] bg-[#0a345c] text-white shadow-md"
+              arrowClassName="!bg-[#0a345c] !fill-[#0a345c]"
             >
               <p className="text-xs">{skinTypes.slice(1).join(", ")}</p>
             </TooltipContent>

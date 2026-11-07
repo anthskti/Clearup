@@ -75,3 +75,8 @@ export type GuideRoutine = {
   previewImageUrls: string[];
   estimatedTotalPrice: number;
 };
+
+export type GuideRoutinePage = {
+  routines: GuideRoutine[];
+  total: number;
+};

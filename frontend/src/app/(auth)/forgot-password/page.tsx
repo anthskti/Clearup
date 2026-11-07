@@ -1,102 +1,119 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { authClient } from "@/lib/auth-client";
+import AuthPage, {
+  authInputClass,
+  authLabelClass,
+  authLinkClass,
+} from "@/components/auth/AuthPage";
 import { Button } from "@/components/ui/button";
-import ProceduralWave from "@/components/themes/ProceduralWave";
+import { authClient } from "@/lib/auth-client";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
-// Pipelined for "fogort-password", ui for changing the password
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<UiState>("idle");
-  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const submitting = useRef(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     setState("loading");
-    setMessage(null);
+    setError("");
+
     try {
       const { error } = await authClient.requestPasswordReset({
         email: email.trim(),
         redirectTo: `${window.location.origin}/reset-password`,
       });
-
       if (error) {
         setState("error");
-        setMessage(error.message || "Could not send reset email. Try again.");
+        setError(error.message || "We couldn’t send the reset link. Please try again.");
         return;
       }
-
-      // Same copy whether or not the email exists (Better Auth + good UX practice).
       setState("success");
-      setMessage(
-        "If an account exists for that email, check your inbox for a reset link (and spam).",
-      );
-    } catch (err: unknown) {
+    } catch {
       setState("error");
-      setMessage(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Try again later.",
-      );
+      setError("We couldn’t send the reset link. Check your connection and try again.");
+    } finally {
+      submitting.current = false;
     }
-  };
+  }
 
   if (state === "success") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <p className="text-sm text-zinc-500">{message}</p>
-        <Link
-          href="/login"
-          className="mt-4 inline-block text-sm underline hover:text-zinc-500 transition-all duration-300"
+      <AuthPage
+        title="Check your inbox"
+        description="If an account exists for that email, you’ll receive a password reset link."
+      >
+        <p role="status" className="text-sm leading-relaxed text-zinc-600">
+          Check your spam folder too. Open the link in the email to choose a new password.
+        </p>
+        <Button asChild variant="secondary" className="mt-6 min-h-11 w-full">
+          <Link href="/login">
+            Back to log in
+          </Link>
+        </Button>
+        <button
+          type="button"
+          onClick={() => setState("idle")}
+          className={`${authLinkClass} mt-3 text-sm`}
         >
-          Back to login
-        </Link>
-      </div>
+          Use a different email
+        </button>
+      </AuthPage>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <ProceduralWave 
-        seed={4}
-        frequency={2.5}
-        height={170} 
-        gradientFrom="#e9f6ff" 
-        gradientTo="#f0f8fc" 
-        flip={true} 
-      />
-      <div className="w-full max-w-lg px-4 md:w-3/5 lg:w-2/5">
-        <h1 className="text-2xl font-semibold mb-4">Forgot your password?</h1>
-        <p className="mb-6 text-sm text-zinc-500">
-          Enter your email and you will get a reset link!
-        </p>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <AuthPage
+      title="Forgot your password?"
+      description="Enter your email to request a password reset link."
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-5"
+        aria-busy={state === "loading"}
+      >
+        <div>
+          <label htmlFor="reset-email" className={authLabelClass}>
+            Email
+          </label>
           <input
+            id="reset-email"
+            name="email"
             type="email"
-            required
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border p-2 text-sm"
-            placeholder="your@email.com"
+            onChange={(event) => setEmail(event.target.value)}
+            className={authInputClass}
+            placeholder="you@example.com"
+            required
           />
-          {state === "error" && message && (
-            <p className="text-sm text-red-600">{message}</p>
-          )}
-          <Button type="submit" variant="secondary" className="w-full">
-            Send reset link
-          </Button>
-        </form>
-        <Link
-          href="/login"
-          className="mt-4 block text-center text-sm text-zinc-500 underline hover:text-zinc-700 transition-all duration-300"
+        </div>
+        {error && (
+          <p role="alert" className="text-sm leading-relaxed text-red-700">
+            {error}
+          </p>
+        )}
+        <Button
+          type="submit"
+          variant="secondary"
+          className="min-h-11 w-full"
+          disabled={state === "loading"}
         >
-          Back to login
-        </Link>
-      </div>
-    </div>
+          {state === "loading" ? "Sending link…" : "Send reset link"}
+        </Button>
+      </form>
+      <Link href="/login" className={`${authLinkClass} mt-4 text-sm`}>
+        Back to log in
+      </Link>
+    </AuthPage>
   );
 }

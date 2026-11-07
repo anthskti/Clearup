@@ -92,14 +92,38 @@ export function parseSkinTypes(raw: string | undefined): SkinType[] {
   return out;
 }
 
-export function parseScraperPrice(raw: string | undefined): number {
-  if (!raw?.trim()) return 0;
-  const cleaned = raw
-    .replace(/CA\$?/gi, "")
+function stripCurrencyPrefix(raw: string): string {
+  return raw
     .replace(/\u00a0/g, " ")
-    .trim();
-  const n = parseFloat(cleaned.replace(/[^0-9.]/g, ""));
-  return Number.isFinite(n) ? n : 0;
+    .trim()
+    .replace(/^(?:CAD|CA\$?|\$)\s*/i, "");
+}
+
+export function parseScraperPrice(raw: string | undefined): number | undefined {
+  if (!raw?.trim()) return 0;
+  const value = stripCurrencyPrefix(raw);
+  if (!/^-?\d+(?:\.\d+)?$/.test(value)) return undefined;
+  const price = Number(value);
+  return Number.isFinite(price) && (price >= 0 || price === -1)
+    ? price
+    : undefined;
+}
+
+/** Merchant offer CSV prices: undefined is invalid, null is the -1 sentinel. */
+export function parseOfferPrice(raw: string | undefined): number | null | undefined {
+  const value = raw ? stripCurrencyPrefix(raw) : "";
+  if (value === "-1") return null;
+  if (!value) return undefined;
+  if (!/^\d+(?:\.\d{1,2})?$/.test(value)) return undefined;
+  const price = Number(value);
+  return Number.isFinite(price) && price > 0 ? price : undefined;
+}
+
+export function parseOfferStock(raw: string | undefined): boolean | undefined {
+  const value = raw?.trim().toLowerCase();
+  if (value === "true" || value === "1") return true;
+  if (value === "false" || value === "0") return false;
+  return undefined;
 }
 
 // Periods in these tokens must not start a new instruction step (e.g. "Dr. Althea").

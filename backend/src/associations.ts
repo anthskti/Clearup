@@ -10,6 +10,7 @@ import User from "./models/User";
 import Session from "./models/Session";
 import Account from "./models/Account";
 import Verification from "./models/Verification";
+import logger from "./lib/logger";
 
 const defineAssociations = () => {
   User.hasMany(Session, {
@@ -88,7 +89,7 @@ const defineAssociations = () => {
   Verification.name;
 
   // For testing
-  console.log("Database associations defined.");
+  logger.info({ event: "database.associations.defined" }, "Database associations defined");
 };
 
 export default defineAssociations;

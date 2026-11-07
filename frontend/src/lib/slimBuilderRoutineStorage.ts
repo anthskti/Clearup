@@ -6,7 +6,7 @@ export type StoredBuilderProduct = {
   id: number;
   name: string;
   brand: string;
-  price?: number;
+  price?: number | null;
   imageUrls?: string[];
   merchant?: string;
   merchantLogo?: string;
@@ -67,7 +67,7 @@ export function expandStoredRoutine(slots: StoredBuilderSlot[]): RoutineSlot[] {
     ...slot,
     products: slot.products.map((p) => ({
       ...p,
-      price: p.price ?? 0,
+      price: p.price ?? null,
       imageUrls: p.imageUrls ?? [],
       category: slot.id,
       labels: [],

@@ -9,7 +9,6 @@ const STORAGE_KEY = "clearup:signout-at";
 
 // Skeleton: when another tab signs out, sync this tab.
 // Call `broadcastSignOut()` from the same place you call `authClient.signOut()`.
-// TODO: Tune behavior for sign out only.
 export function broadcastSignOut() {
   try {
     localStorage.setItem(STORAGE_KEY, String(Date.now()));

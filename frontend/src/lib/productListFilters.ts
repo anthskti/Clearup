@@ -19,6 +19,8 @@ export const EMPTY_PRODUCT_LIST_FILTERS: ProductListFilters = {
   maxPrice: PRODUCT_PRICE_SLIDER_MAX,
 };
 
+export const PRODUCT_CATALOG_PAGE_SIZE = 40;
+
 function parseCsvParam(raw: string | undefined): string[] {
   if (!raw?.trim()) return [];
   return [

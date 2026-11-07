@@ -1,20 +1,16 @@
 "use client";
 import Link from "next/link";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
-import { Copy, Plus, ExternalLink, X } from "lucide-react";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { Plus, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProceduralWave from "@/components/themes/ProceduralWave";
 import ProductImage from "@/components/ui/ProductImage";
 import { authClient } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { getSessionRetryAt, isTemporaryAuthError } from "@/lib/auth-retry";
+import { AuthSessionUnavailable } from "@/components/AuthSessionUnavailable";
 import { useBuilderRoutine } from "@/hooks/useBuilderRoutine";
 import { useBuilderProductNotes } from "@/hooks/useBuilderProductNotes";
+import { useBuilderSkinTypeTags } from "@/hooks/useBuilderSkinTypeTags";
 import {
   assertRoutineSaveItemsValid,
   buildRoutineSaveItems,
@@ -22,6 +18,7 @@ import {
 import type { SkinType } from "@/types/product";
 import RoutineSkinTypeTagPicker from "@/components/routine/RoutineSkinTypeTagPicker";
 import BuilderSkeleton from "@/components/routine/BuilderSkeleton";
+import MerchantOffersNotice from "@/components/products/MerchantOffersNotice";
 import BuilderProductNotesSection from "@/components/routine/BuilderProductNotesSection";
 import SaveRoutineModal from "@/components/routine/SaveRoutineModal";
 import { createRoutine } from "@/lib/routines";
@@ -39,10 +36,10 @@ function AddCategoryProductLink({
   return (
     <Link
       href={`/products/category/${categoryId}`}
-      className={`inline-flex items-center gap-1.5 pl-16 md:pl-20 text-sm text-zinc-500 hover:text-zinc-800 transition-colors ${className}`}
+      className={`inline-flex min-h-11 items-center gap-1.5 pl-16 md:pl-20 text-sm text-zinc-600 hover:text-zinc-800 transition-colors ${className}`}
     >
       <Plus size={14} strokeWidth={2.5} aria-hidden />
-      <span className="font-medium capitalize">Select {label}</span>
+      <span className="font-medium">Select {label.toLowerCase()}</span>
     </Link>
   );
 }
@@ -51,12 +48,17 @@ export default function Builder() {
   const {
     routine,
     isLoaded: routineLoaded,
+    persistence: routinePersistence,
     removeProductFromSlot,
     clearRoutine,
+    merchantOfferError,
+    isRetryingOffers,
+    retryMerchantOffers,
   } = useBuilderRoutine();
   const {
     entries: noteEntries,
     isLoaded: notesLoaded,
+    persistence: notesPersistence,
     morningNotes,
     eveningNotes,
     addProductNote,
@@ -122,9 +124,10 @@ export default function Builder() {
     [removeProductFromSlot, removeNotesForProduct],
   );
 
-  const [skinTypeTags, setSkinTypeTags] = useState<SkinType[]>([]);
-  const { data: session } = authClient.useSession(); // session data
-  const router = useRouter();
+  const { tags: skinTypeTags, setTags: setSkinTypeTags, isLoaded: tagsLoaded, persistence: tagsPersistence } = useBuilderSkinTypeTags();
+  const { data: session, isPending: sessionPending, error: sessionError, refetch: refetchSession } = authClient.useSession();
+  const sessionUnavailable = Boolean(sessionError && isTemporaryAuthError(sessionError));
+  const [saveFeedback, setSaveFeedback] = useState<{ message: string; needsLogin?: boolean } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, startSaveTransition] = useTransition(); // lowers priority update so UI is responsive (laggy since so much is being pushed.)
 
@@ -153,7 +156,7 @@ export default function Builder() {
       setSkinTypeTags([]);
       return response.id;
     },
-    [routine, noteEntries, clearRoutine, clearProductNotes],
+    [routine, noteEntries, clearRoutine, clearProductNotes, setSkinTypeTags],
   );
 
   const toggleSkinTypeTag = (tag: SkinType) => {
@@ -163,23 +166,28 @@ export default function Builder() {
   };
 
   const handleInitialSave = () => {
-    if (!session) {
-      alert("Please log in to save your routine."); // Update with Toaster
-      router.push("/login");
-      return;
-    }
+    setSaveFeedback(null);
+    if (sessionUnavailable) return;
     try {
       assertRoutineSaveItemsValid(saveItems);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Cannot save an empty routine.");
+      setSaveFeedback({ message: e instanceof Error ? e.message : "Add a product before saving your routine." });
+      return;
+    }
+    if (!session) {
+      setSaveFeedback({ message: "Log in to save your routine to your profile.", needsLogin: true });
       return;
     }
     startSaveTransition(() => setIsModalOpen(true));
   };
 
   const totalPrice = routine.reduce(
-    (acc, step) => acc + step.products.reduce((s, p) => s + (p.price || 0), 0),
+    (acc, step) =>
+      acc + step.products.reduce((s, p) => s + (p.price ?? 0), 0),
     0,
+  );
+  const hasPricedProduct = routine.some((step) =>
+    step.products.some((product) => product.price != null),
   );
   const totalItems = routine.reduce(
     (acc, step) => acc + step.products.length,
@@ -187,12 +195,12 @@ export default function Builder() {
   );
 
   // Don't render until hooks are loaded
-  if (!routineLoaded || !notesLoaded) {
+  if (!routineLoaded || !notesLoaded || !tagsLoaded) {
     return <BuilderSkeleton />;
   }
 
   return (
-    <div className="relative min-h-screen w-full bg-[#F8F8F8]">
+    <div className="relative mt-18 min-h-screen w-full bg-[#F8F8F8]">
       <ProceduralWave 
         seed={3}
         height={190} 
@@ -200,11 +208,21 @@ export default function Builder() {
         gradientTo="#f0f8fc" 
         flip={true} 
       />
-      <div className="relative z-1 max-w-6xl mx-auto px-6 pt-26 pb-20">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-[#2E2E2E] uppercase">
-            Build Your Routine
-          </h1>
+      <div className="relative z-1 max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-20">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+          <div>
+            <h1 tabIndex={-1} className="text-2xl md:text-4xl font-extrabold text-[#2E2E2E]">
+              Build your routine
+            </h1>
+            <p className="mt-2 text-sm text-zinc-600">Choose the products you use. You can skip categories.</p>
+          </div>
+          <p role="status" className="text-sm text-zinc-600">
+            {[routinePersistence, notesPersistence, tagsPersistence].includes("error")
+              ? "Draft couldn't be saved on this device. Keep this page open."
+              : [routinePersistence, notesPersistence, tagsPersistence].includes("pending")
+                ? "Saving draft…"
+                : "Draft saved on this device"}
+          </p>
 
           {/* External Link; removed */}
           {/* <div className="flex items-center bg-white border border-zinc-200 rounded-md overflow-hidden shadow-sm max-w-lg w-full md:w-auto">
@@ -230,10 +248,25 @@ export default function Builder() {
           </div> */}
         </div>
 
+        {sessionError && isTemporaryAuthError(sessionError) && (
+          <AuthSessionUnavailable
+            retryAt={getSessionRetryAt()}
+            onRetry={refetchSession}
+          />
+        )}
+
+        {merchantOfferError && (
+          <MerchantOffersNotice
+            error={merchantOfferError}
+            isRetrying={isRetryingOffers}
+            onRetry={retryMerchantOffers}
+          />
+        )}
+
         {/* Table header */}
-        <div className="hidden md:grid grid-cols-12 gap-4 text-zinc-500 font-bold uppercase text-xs border-b border-zinc-200 px-2 pb-2 mb-2">
+        <div className="hidden md:grid grid-cols-12 gap-4 text-zinc-600 font-semibold text-sm border-b border-zinc-200 px-2 pb-2 mb-2">
           <div className="col-span-2">Category</div>
-          <div className="col-span-7">Product Selection</div>
+          <div className="col-span-7">Product selection</div>
           <div className="col-span-1 text-center">Seller</div>
           <div className="col-span-2 text-right">Price</div>
         </div>
@@ -258,17 +291,18 @@ export default function Builder() {
                 }
               >
                 <Link href={`/products/category/${step.id}`}>
-                  <span className="font-bold text-zinc-900 uppercase text-sm md:text-xs tracking-wide hover:text-zinc-500 transition-colors">
-                    {step.label}
+                  <span className="font-semibold text-zinc-900 text-sm hover:text-zinc-600 transition-colors">
+                    {step.label === "Eye Care" ? "Eye care" : step.label}
                   </span>
                 </Link>
                 {/* Mobile Price Display */}
                 {step.products.length > 0 && (
                   <span className="md:hidden font-bold text-zinc-900">
-                    $
-                    {step.products
-                      .reduce((s, p) => s + (p.price || 0), 0)
-                      .toFixed(2)}
+                    {step.products.some((product) => product.price != null)
+                      ? `$${step.products
+                          .reduce((s, p) => s + (p.price ?? 0), 0)
+                          .toFixed(2)}`
+                      : "-"}
                   </span>
                 )}
               </div>
@@ -297,14 +331,14 @@ export default function Builder() {
                         </div>
 
                         <div className="grow min-w-0">
-                          <div className="text-xs font-bold text-zinc-400 uppercase mb-0.5">
-                            {prod.brand}
-                          </div>
                           <Link
                             href={`/product/id/${prod.id}`}
-                            className="font-medium text-black leading-tight hover:underline hover:text-blue-800 block transition-all duration-100"
+                            aria-label={`${prod.brand} ${prod.name}`}
+                            className="block text-sm leading-5 hover:underline hover:text-blue-800 transition-colors"
                           >
-                            {prod.name}
+                            <span className="font-medium text-zinc-600">{prod.brand}</span>
+                            <span aria-hidden="true" className="mx-1 mb-[0.12em] inline-block size-0.5 shrink-0 rounded-full bg-zinc-500 align-middle" />
+                            <span className="font-semibold text-zinc-900">{prod.name}</span>
                           </Link>
                           <div className="md:hidden text-xs text-zinc-500 mt-1 flex items-center gap-1">
                             via {prod.merchant || "Unknown"}{" "}
@@ -315,10 +349,11 @@ export default function Builder() {
                         <div className="shrink-0">
                           <button
                             type="button"
+                            aria-label={`Remove ${prod.brand} ${prod.name}`}
                             onClick={() =>
                               handleRemoveProduct(step.id, prod.id)
                             }
-                            className="top-2 right-2 group-hover:block p-2 text-zinc-300 hover:text-red-500 transition-colors md:relative md:top-auto md:right-auto"
+                            className="flex size-11 items-center justify-center rounded-md text-zinc-600 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4a84] transition-colors"
                           >
                             <X size={16} />
                           </button>
@@ -346,7 +381,7 @@ export default function Builder() {
                       </div>
 
                       <div className="hidden md:block md:col-span-2 text-right text-lg font-bold text-zinc-900">
-                        ${(prod.price || 0).toFixed(2)}
+                        {prod.price == null ? "-" : `$${prod.price.toFixed(2)}`}
                       </div>
                     </div>
                   ))}
@@ -362,18 +397,16 @@ export default function Builder() {
                 <>
                   <div className="col-span-1 md:col-span-7">
                     <Link href={`/products/category/${step.id}`}>
-                      <div className="w-full h-14 md:h-16 border-2 border-dashed border-zinc-300 rounded-lg flex items-center justify-center gap-2 text-zinc-400 hover:border-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 transition-all cursor-pointer">
+                      <div className="w-full h-14 md:h-16 border-2 border-dashed border-zinc-300 rounded-lg flex items-center justify-center gap-2 text-zinc-600 hover:border-zinc-400 hover:text-zinc-800 hover:bg-zinc-50 transition-all cursor-pointer">
                         <Plus size={18} />
                         <span className="font-medium text-sm">
-                          Select {step.label}
+                          Select {step.label.toLowerCase()}
                         </span>
                       </div>
                     </Link>
                   </div>
                   <div className="hidden md:block md:col-span-1" />
-                  <div className="hidden md:block md:col-span-2 text-right">
-                    <span className="text-zinc-200 font-medium">---</span>
-                  </div>
+                  <div className="hidden md:block md:col-span-2 text-right" />
                 </>
               )}
             </div>
@@ -389,39 +422,51 @@ export default function Builder() {
         />
         <div
           className={`
-          bottom-0 left-0 w-full bg-white border border-zinc-200 shadow-md rounded-lg mt-8 z-20 px-6 py-4
-          lg:top-20 lg:bottom-auto lg:shadow-sm 
+          w-full bg-white border border-zinc-200 shadow-md rounded-lg mt-8 px-4 sm:px-6 py-4
+          lg:shadow-sm
           `}
         >
           <div className="mb-4">
-            <div className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Skin Type for this Routine
+            <div className="mb-2 text-sm font-semibold text-zinc-600">
+              Skin types
             </div>
             <RoutineSkinTypeTagPicker
               value={skinTypeTags}
               onToggle={toggleSkinTypeTag}
             />
           </div>
-          <div className="max-w-6xl mx-auto flex justify-between items-center">
+          {!sessionPending && !sessionUnavailable && !session && (
+            <p id="builder-save-auth" className="mb-4 text-sm text-zinc-600">
+              Log in or create an account to save your routine to your profile.
+            </p>
+          )}
+          <div className="max-w-6xl mx-auto flex flex-wrap gap-4 justify-between items-center">
             <div>
-              <div className="text-xs uppercase font-bold text-zinc-400 tracking-wider">
-                Estimated Total
+              <div className="text-sm font-semibold text-zinc-600">
+                Estimated total
               </div>
               <div className="text-2xl font-extrabold text-black">
-                CA ${totalPrice.toFixed(2)}
+                {hasPricedProduct ? `CA $${totalPrice.toFixed(2)}` : "-"}
               </div>
             </div>
             <div className="flex gap-3">
               <span className="hidden sm:flex items-center text-sm font-medium text-zinc-500 mr-2">
                 {totalItems} items selected
               </span>
+              {!sessionPending && !sessionUnavailable && !session ? (
+                <Button asChild variant="secondary" className="min-h-11">
+                  <Link href="/login" aria-describedby="builder-save-auth">Log in to save</Link>
+                </Button>
+              ) : (
               <Button
                 variant="secondary"
                 onClick={handleInitialSave}
-                disabled={totalItems === 0}
+                disabled={totalItems === 0 || sessionPending || sessionUnavailable}
+                className="min-h-11"
               >
-                Save
+                {sessionPending ? "Checking account…" : "Save routine"}
               </Button>
+              )}
               {isModalOpen && (
                 <SaveRoutineModal
                   isOpen
@@ -432,6 +477,13 @@ export default function Builder() {
               )}
             </div>
           </div>
+          {totalItems === 0 && <p className="mt-3 text-sm text-zinc-600">Add a product to your routine before saving.</p>}
+          {saveFeedback && (
+            <div role="alert" className="mt-3 text-sm text-zinc-700">
+              <p>{saveFeedback.message}</p>
+              {saveFeedback.needsLogin && <Link href="/login" className="mt-1 inline-flex min-h-11 items-center font-semibold text-[#0e4a84] underline">Log in</Link>}
+            </div>
+          )}
         </div>
       </div>
     </div>

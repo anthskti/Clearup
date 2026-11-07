@@ -49,6 +49,7 @@ export type CsvImportResponse = {
   created: number;
   updated: number;
   skipped?: number;
+  updatedOffers?: number;
   message: string;
   totals?: {
     received: number;
@@ -64,6 +65,12 @@ export type CsvImportResponse = {
 export interface ProductCatalogPage {
   products: Product[];
   total: number;
+}
+
+export interface CatalogError {
+  status: number | null;
+  requestId: string | null;
+  retryAt: number | null;
 }
 
 export interface ProductCatalogFetchOptions {

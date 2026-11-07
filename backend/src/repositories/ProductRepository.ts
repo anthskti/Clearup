@@ -1,6 +1,6 @@
 // Translates storage format to application format
 
-import ProductModel from "../models/Product";
+import ProductModel, { type ProductSkinTypeSource } from "../models/Product";
 import type {
   CreateProductInput,
   Product,
@@ -67,7 +67,7 @@ export class ProductRepository {
         where,
         limit,
         offset,
-        order: [["createdAt", "ASC"]],
+        order: [["createdAt", "ASC"], ["id", "ASC"]],
       }),
       ProductModel.count({ where }),
     ]);
@@ -153,11 +153,15 @@ export class ProductRepository {
   async update(
     id: number,
     updates: UpdateProductInput,
+    options?: { skinTypeSource?: ProductSkinTypeSource },
   ): Promise<Product | null> {
-    const [rows, [updatedProduct]] = await ProductModel.update(updates, {
-      where: { id },
-      returning: true,
-    });
+    const [rows, [updatedProduct]] = await ProductModel.update(
+      { ...updates, ...options },
+      {
+        where: { id },
+        returning: true,
+      },
+    );
     return rows > 0 ? this.mapToProductType(updatedProduct) : null;
   }
 
@@ -194,7 +198,7 @@ export class ProductRepository {
       },
       limit: limit,
       offset: offset,
-      order: [["name", "ASC"]],
+      order: [["name", "ASC"], ["id", "ASC"]],
     });
 
     return products.map((product: any) => this.mapToProductType(product));
@@ -230,7 +234,7 @@ export class ProductRepository {
         where,
         limit,
         offset,
-        order: [["name", "ASC"]],
+        order: [["name", "ASC"], ["id", "ASC"]],
       }),
       ProductModel.count({ where }),
     ]);
@@ -293,7 +297,7 @@ export class ProductRepository {
         where,
         limit,
         offset,
-        order: [["name", "ASC"]],
+        order: [["name", "ASC"], ["id", "ASC"]],
       }),
       ProductModel.count({ where }),
     ]);
@@ -312,6 +316,10 @@ export class ProductRepository {
         brand: { [Op.iLike]: brand },
       },
     });
+  }
+
+  async findModelById(id: number): Promise<any | null> {
+    return ProductModel.findByPk(id);
   }
 
   private mapToProductType(dbProduct: any): Product {

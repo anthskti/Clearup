@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins";
 import { Pool } from "pg";
 import { sendSesEmail } from "../lib/sesEmail";
+import logger, { reportError } from "../lib/logger";
 import {
   getPgSslConfig,
   resolveDatabaseUrl,
@@ -22,15 +23,13 @@ const authBaseURL =
   normalizePublicOrigin(process.env.BETTER_AUTH_URL);
 
 // Always log once (Render may not set NODE_ENV=production; see deploy docs).
-console.info(
-  "[auth] bootstrap",
-  JSON.stringify({
+logger.info({
+    event: "auth.bootstrap",
     nodeEnv: process.env.NODE_ENV ?? "(unset)",
-    baseURL: authBaseURL ?? null,
+    baseUrlConfigured: Boolean(authBaseURL),
     crossSiteCookies: process.env.BETTER_AUTH_CROSS_SITE_COOKIES === "1",
     database: usesCloudDatabase() ? "cloud(DATABASE_URL)" : "local(DB_*)",
-  }),
-);
+  }, "Auth configured");
 
 const authDatabaseUrl = resolveDatabaseUrl();
 const authSsl = getPgSslConfig();
@@ -94,9 +93,7 @@ export const auth = betterAuth({
         subject: "Reset your ClearUp password",
         text: `You requested a password reset.\n\nOpen this link (valid for a limited time):\n${url}\n\nIf you did not request this, ignore this email.`,
         html: `<p>You requested a password reset.</p><p><a href="${url}">Reset your password</a></p><p>If you did not request this, ignore this email.</p>`,
-      }).catch((err) =>
-        console.error("[auth] sendResetPassword email failed:", err),
-      );
+      }).catch((err) => reportError(err, { scope: "auth.reset_email" }));
     },
   },
   emailVerification: {
@@ -106,9 +103,7 @@ export const auth = betterAuth({
         subject: "Verify your ClearUp email",
         text: `Verify your email address:\n${url}\n\nIf you did not create an account, ignore this email.`,
         html: `<p>Verify your email address:</p><p><a href="${url}">Confirm email</a></p><p>If you did not create an account, ignore this email.</p>`,
-      }).catch((err) =>
-        console.error("[auth] sendVerificationEmail failed:", err),
-      );
+      }).catch((err) => reportError(err, { scope: "auth.verification_email" }));
     },
   },
   user: {

@@ -1,10 +1,15 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
-const withBundleAnalyzer = require("@next/bundle-analyzer")({
+const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true", // Only runs if ANALYZE=true
 });
 
-const nextConfig = {
+const nextConfig: NextConfig = {
+  experimental: {
+    // Use page boundaries for navigation scroll instead of the first rendered node.
+    appNewScrollHandler: true,
+  },
   async redirects() {
     return [
       {

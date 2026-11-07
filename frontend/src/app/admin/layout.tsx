@@ -3,7 +3,12 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getEffectiveUser } from "@/lib/auth";
+import {
+  AuthForbiddenError,
+  AuthUnavailableError,
+  getEffectiveUser,
+} from "@/lib/auth";
+import { AuthUnavailable } from "@/components/AuthUnavailable";
 
 export default async function AdminLayout({
   children,
@@ -11,7 +16,16 @@ export default async function AdminLayout({
   children: ReactNode;
 }) {
   const cookieString = (await headers()).get("cookie") || "";
-  const effectiveUser = await getEffectiveUser(cookieString).catch(() => null);
+  let effectiveUser;
+  try {
+    effectiveUser = await getEffectiveUser(cookieString);
+  } catch (error) {
+    if (error instanceof AuthUnavailableError) {
+      return <AuthUnavailable retryAt={error.retryAt} />;
+    }
+    if (error instanceof AuthForbiddenError) redirect("/");
+    throw error;
+  }
 
   if (!effectiveUser) {
     redirect("/login");

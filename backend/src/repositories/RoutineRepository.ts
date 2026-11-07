@@ -10,6 +10,7 @@ import {
   RoutineWithProducts,
   RoutineProductWithDetails,
   GuideRoutineView,
+  GuideRoutinePage,
 } from "../types/routine";
 import {
   FeaturedRoutineEntryRow,
@@ -291,14 +292,14 @@ export class RoutineRepository {
 
 
   // Public guides: only routines whose owner exists in `user` (registered accounts).
-  // Random order, optional tag overlap + min/max total price filters (evaluated in SQL).
+  // Stable newest-first order with optional tag and total-price filters.
   async findGuidesPublic(options: {
     limit: number;
     offset: number;
     tags: SkinType[];
     minPrice?: number;
     maxPrice?: number;
-  }): Promise<GuideRoutineView[]> {
+  }): Promise<GuideRoutinePage> {
     const { limit, offset, tags, minPrice, maxPrice } = options;
 
     const tagsClause =
@@ -329,13 +330,31 @@ export class RoutineRepository {
         ? `AND ${routineTotalSql} <= :maxPrice`
         : "";
 
-    const replacements: Record<string, unknown> = { limit, offset };
+    const filterReplacements: Record<string, unknown> = {};
     if (minPriceClause) {
-      replacements.minPrice = minPrice;
+      filterReplacements.minPrice = minPrice;
     }
     if (maxPriceClause) {
-      replacements.maxPrice = maxPrice;
+      filterReplacements.maxPrice = maxPrice;
     }
+    const replacements = { ...filterReplacements, limit, offset };
+
+    const countRows = (await sequelize.query(
+      `
+      SELECT COUNT(*) AS total
+      FROM routines r
+      INNER JOIN "user" u ON u.id = r."userId"
+      WHERE 1 = 1
+      ${tagsClause}
+      ${minPriceClause}
+      ${maxPriceClause}
+      `,
+      {
+        replacements: filterReplacements,
+        type: QueryTypes.SELECT,
+      },
+    )) as { total: number | string }[];
+    const total = Number(countRows[0]?.total) || 0;
 
     const idRows = (await sequelize.query(
       `
@@ -346,7 +365,7 @@ export class RoutineRepository {
       ${tagsClause}
       ${minPriceClause}
       ${maxPriceClause}
-      ORDER BY RANDOM()
+      ORDER BY r."createdAt" DESC, r.id DESC
       LIMIT :limit OFFSET :offset
       `,
       {
@@ -357,7 +376,7 @@ export class RoutineRepository {
 
     const orderedIds = idRows.map((row) => row.id);
     if (!orderedIds.length) {
-      return [];
+      return { routines: [], total };
     }
 
     const routines = await this.findManyByIds(orderedIds);
@@ -371,7 +390,7 @@ export class RoutineRepository {
       this.findTotalPricesForRoutineIds(orderedIds),
     ]);
 
-    return sorted.map(
+    const guideRoutines = sorted.map(
       (r): GuideRoutineView => ({
         routineId: r.id,
         name: r.name,
@@ -383,6 +402,7 @@ export class RoutineRepository {
         estimatedTotalPrice: priceMap.get(r.id) ?? 0,
       }),
     );
+    return { routines: guideRoutines, total };
   }
 
   // POST a single routine

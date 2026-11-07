@@ -4,13 +4,13 @@ import { Button } from "../ui/button";
 import { ArrowRight } from "lucide-react";
 
 const Hero_Images = {
-  desktop: "/assets/landingpagedesktop.png",
-  mobile: "/assets/culandingmobile.png",
+  desktop: "/assets/landingpagedesktop.webp",
+  mobile: "/assets/culandingmobile.webp",
 }
 
 const HeroSection = () => {
   return (
-    <div className="relative flex items-center w-full h-[80vh] overflow-hidden bg-[#f9fcfb]/50">
+    <div className="relative mt-12 flex w-full items-start overflow-hidden bg-[#f9fcfb] md:mt-0 md:h-[80vh] md:items-center md:bg-[#f9fcfb]/50">
       <div className="absolute inset-0">
         <Image
           src={Hero_Images.desktop}
@@ -42,11 +42,11 @@ const HeroSection = () => {
       {/* Desktop Fade */}
       <div className="hidden md:block absolute top-0 left-0 w-full h-full bg-linear-to-r from-[#f8f8f8]/50 via-[#f8f8f8]/0 to-[#f8f8f8]/0" />
       {/* Mobile Fade */}
-      <div className="md:hidden absolute top-0 left-[-20%] w-full h-full bg-[#f8f8f8]/30 rounded-full blur-3xl" />
+      <div className="md:hidden absolute top-0 left-[-20%] w-full h-[70%] bg-[#f8f8f8]/30 rounded-full blur-3xl" />
 
-      <div className="container mx-auto relative grid grid-cols-1 lg:grid-cols-2 gap-12 items-center z-10 px-6 py-12">
+      <div className="container mx-auto relative grid grid-cols-1 lg:grid-cols-2 gap-12 items-center z-10 px-6 md:py-12">
         {/* Left Column */}
-        <div className="flex flex-col gap-6 max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <div className="flex min-h-[max(600px,80svh)] flex-col justify-between gap-6 max-w-2xl pt-24 pb-10 animate-in fade-in slide-in-from-bottom-8 duration-1000 md:min-h-0 md:justify-start md:py-0">
           <h1 className="font-edu text-4xl md:text-5xl font-bold text-stone-900 mb-6 max-w-3xl">
             {/* font-medium font-serif */}
             Pick <span className="">Products</span>
@@ -91,7 +91,7 @@ const HeroSection = () => {
           {/* With bg image, leaving right side avail is nice */}
           {/* <div className="absolute inset-0 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden transform -rotate-1 transition-transform duration-500">
             <Image
-              src="/assets/home.jpg"
+              src="/assets/home.webp"
               alt="ClearUp Interface"
               fill
               draggable={false}

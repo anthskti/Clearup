@@ -1,15 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type {
   BuilderProductNoteEntry,
   RoutineNoteDisplay,
 } from "@/types/builder";
 import type { Product, ProductCategory } from "@/types/product";
 import type { TimeOfDay } from "@/types/routine";
+import { useBuilderDraftPersistence } from "@/hooks/useBuilderDraftPersistence";
 
 const STORAGE_KEY = "builder-product-notes";
+const emptySubscribe = () => () => {};
 
 function emptyEntry(
-  product: Product,
+  product: Pick<Product, "id" | "name" | "brand">,
   category: ProductCategory,
 ): BuilderProductNoteEntry {
   return {
@@ -76,45 +83,41 @@ function toDisplayRow(
   };
 }
 
-function persistNotes(entries: BuilderProductNoteEntry[]) {
-  if (typeof window === "undefined") return;
+function serializeNotes(entries: BuilderProductNoteEntry[]) {
   const active = dropEmptyEntries(entries);
   if (active.length === 0) {
-    localStorage.removeItem(STORAGE_KEY);
-    return;
+    return null;
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(active));
+  return JSON.stringify(active);
+}
+
+function readStoredEntries(): BuilderProductNoteEntry[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as BuilderProductNoteEntry[]) : [];
+  } catch (e) {
+    console.error("Failed to parse product notes", e);
+    return [];
+  }
 }
 
 export function useBuilderProductNotes() {
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [entries, setEntries] = useState<BuilderProductNoteEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setEntries(parsed as BuilderProductNoteEntry[]);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to parse product notes", e);
-    }
+  if (isClient && !isLoaded) {
+    setEntries(readStoredEntries());
     setIsLoaded(true);
-  }, []);
+  }
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    const id = window.setTimeout(() => persistNotes(entries), 400);
-    return () => window.clearTimeout(id);
-  }, [entries, isLoaded]);
+  const persistence = useBuilderDraftPersistence(STORAGE_KEY, entries, isLoaded, serializeNotes);
 
   const addProductNote = useCallback(
     (
-      product: Product,
+      product: Pick<Product, "id" | "name" | "brand">,
       category: ProductCategory,
       timeOfDay: TimeOfDay,
       userNote: string,
@@ -192,9 +195,6 @@ export function useBuilderProductNotes() {
 
   const clearProductNotes = useCallback(() => {
     setEntries([]);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY);
-    }
   }, []);
 
   const morningNotes = useMemo(
@@ -218,6 +218,7 @@ export function useBuilderProductNotes() {
   return {
     entries,
     isLoaded,
+    persistence,
     morningNotes,
     eveningNotes,
     addProductNote,

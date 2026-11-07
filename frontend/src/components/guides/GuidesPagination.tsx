@@ -1,70 +1,49 @@
-import Link from "next/link";
+import PaginationControls from "@/components/pagination/PaginationControls";
 
-function buildGuidesHref(
+export function buildGuidesHref(
   page: number,
   tags: string,
   minPrice: string,
   maxPrice: string,
 ): string {
   const params = new URLSearchParams();
-  if (tags.trim()) {
-    params.set("tags", tags.trim());
-  }
-  if (minPrice.trim()) {
-    params.set("minPrice", minPrice.trim());
-  }
-  if (maxPrice.trim()) {
-    params.set("maxPrice", maxPrice.trim());
-  }
-  if (page > 1) {
-    params.set("page", String(page));
-  }
-  const qs = params.toString();
-  return qs ? `/routines?${qs}` : "/routines";
+  if (tags.trim()) params.set("tags", tags.trim());
+  if (minPrice.trim()) params.set("minPrice", minPrice.trim());
+  if (maxPrice.trim()) params.set("maxPrice", maxPrice.trim());
+  if (page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `/routines?${query}` : "/routines";
 }
 
 export default function GuidesPagination({
   page,
-  hasNext,
+  total,
   tags,
   minPrice,
   maxPrice,
+  pending,
+  onPage,
 }: {
   page: number;
-  hasNext: boolean;
+  total: number;
   tags: string;
   minPrice: string;
   maxPrice: string;
+  pending: boolean;
+  onPage: (page: number) => void;
 }) {
-  const prevHref = buildGuidesHref(page - 1, tags, minPrice, maxPrice);
-  const nextHref = buildGuidesHref(page + 1, tags, minPrice, maxPrice);
-  const linkClass =
-    "rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50";
+  const lastPage = Math.max(1, Math.ceil(total / 24));
 
   return (
-    <nav
-      className="mt-10 flex flex-wrap items-center justify-center gap-4"
-      aria-label="Guides pagination"
-    >
-      {page > 1 ? (
-        <Link href={prevHref} className={linkClass}>
-          Previous
-        </Link>
-      ) : (
-        <span className="rounded-lg border border-transparent px-4 py-2 text-sm text-zinc-300">
-          Previous
-        </span>
-      )}
-      <span className="text-sm text-zinc-500">Page {page}</span>
-      {hasNext ? (
-        <Link href={nextHref} className={linkClass}>
-          Next
-        </Link>
-      ) : (
-        <span className="rounded-lg border border-transparent px-4 py-2 text-sm text-zinc-300">
-          Next
-        </span>
-      )}
-    </nav>
+    <PaginationControls
+      page={page}
+      lastPage={lastPage}
+      pending={pending}
+      hrefForPage={(nextPage) =>
+        buildGuidesHref(nextPage, tags, minPrice, maxPrice)
+      }
+      onPage={onPage}
+      label="Guides pagination"
+    />
   );
 }

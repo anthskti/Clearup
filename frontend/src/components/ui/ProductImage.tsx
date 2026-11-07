@@ -9,7 +9,7 @@ function isLocalImageSrc(src: ImageProps["src"]): boolean {
 
 // If the image is a local image, use the default optimizer
 // If the image is a remote image, use the remote image optimizer
-export default function ProductImage(props: ImageProps) {
+export default function ProductImage({ alt, ...props }: ImageProps) {
   const unoptimized = !isLocalImageSrc(props.src);
-  return <Image {...props} unoptimized={unoptimized} />;
+  return <Image {...props} alt={alt} unoptimized={unoptimized} />;
 }
