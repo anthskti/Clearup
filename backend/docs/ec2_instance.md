@@ -54,4 +54,10 @@ sudo journalctl -u myapp.service -f -n 50
 sudo vim /etc/app.env
 ```
 
+To modify use either:
+```bash
+sudo vim /etc/app.env # vim
+sudo nano /etc/app.env # direct (recommended)
+```
+
 Note: its hidden with chmod 600
