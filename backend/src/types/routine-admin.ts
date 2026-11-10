@@ -42,6 +42,15 @@ export type FeaturedRoutineView = {
   estimatedTotalPrice: number;
 };
 
+export type FeaturedRoutineCandidate = {
+  routineId: number;
+  name: string;
+  authorLabel: string;
+  skinTypeTags: SkinType[];
+  previewImageUrls: string[];
+  estimatedTotalPrice: number;
+};
+
 export type RoutineDailyCountRow = {
   /** UTC calendar day formatted as YYYY-MM-DD by the repository query. */
   day: string;
@@ -56,5 +65,7 @@ export type TopAuthorCountRow = {
 export type FeaturedRoutineEntryRow = {
   routineId: number;
   pinnedBy: string;
+  position?: number;
+  isActive?: boolean;
   createdAt?: string | Date;
 };

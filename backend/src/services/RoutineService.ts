@@ -12,7 +12,7 @@ import {
   UpdateRoutineProductInput,
   CreateRoutineProductInput,
 } from "../types/routine";
-import { AdminStats, FeaturedRoutineView } from "../types/routine-admin";
+import { AdminStats, FeaturedRoutineCandidate, FeaturedRoutineView } from "../types/routine-admin";
 import { BasicUserRow, UserDailyCountRow } from "../types/user";
 import { SkinType } from "../types/product";
 import { sanitizeSkinTypeTags } from "../types/routineSkinTypeTags";
@@ -186,6 +186,30 @@ export class RoutineService {
         };
       })
       .filter(Boolean) as FeaturedRoutineView[];
+  }
+
+  async getFeaturedCandidate(routineId: number): Promise<FeaturedRoutineCandidate | null> {
+    const routine = await this.routineRepository.findById(String(routineId));
+    if (!routine) return null;
+    const [imageMap, priceMap] = await Promise.all([
+      this.routineRepository.findPreviewImageUrlsForRoutines([routineId], 4),
+      this.routineRepository.findTotalPricesForRoutineIds([routineId]),
+    ]);
+    return {
+      routineId,
+      name: routine.name,
+      authorLabel: routine.author?.name?.trim() ?? "",
+      skinTypeTags: routine.skinTypeTags ?? [],
+      previewImageUrls: imageMap.get(routineId) ?? [],
+      estimatedTotalPrice: priceMap.get(routineId) ?? 0,
+    };
+  }
+
+  async saveFeaturedRoutineOrder(routineIds: number[], userId: string): Promise<void> {
+    if (routineIds.length > 20 || new Set(routineIds).size !== routineIds.length) {
+      throw new Error("Featured routines must be unique and limited to 20");
+    }
+    await this.routineRepository.saveFeaturedRoutineOrder(routineIds, userId);
   }
 
   // GET public guides from registered users

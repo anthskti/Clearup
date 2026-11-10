@@ -134,6 +134,8 @@ erDiagram
         int     id          PK
         int     routineId   FK  UK
         string  pinnedBy    "admin userId"
+        int     position    "homepage display order"
+        boolean isActive    "inactive membership rows retained"
         date    createdAt
         date    updatedAt
     }

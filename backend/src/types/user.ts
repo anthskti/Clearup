@@ -17,4 +17,5 @@ export type AdminUserListRow = {
   emailVerified: boolean;
   role: string;
   createdAt: string;
+  routineCount: number;
 };

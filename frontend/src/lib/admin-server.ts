@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { mutationHeaders } from "@/lib/mutationHeaders";
 import type { RoutineWithProducts, FeaturedRoutine } from "@/types/routine";
 import type { AdminDashboardStats } from "@/types/routine-admin";
-import type { AdminUsersPagePayload } from "@/types/admin";
+import type { AdminUsersPagePayload, AdminUsersQuery } from "@/types/admin";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
 
@@ -61,14 +61,17 @@ export async function getFeaturedRoutinesServer(): Promise<FeaturedRoutine[]> {
   return res.json();
 }
 
-export async function getAdminUsersServer(params: {
-  limit?: number;
-  offset?: number;
-}): Promise<AdminUsersPagePayload> {
+export async function getAdminUsersServer(
+  params: AdminUsersQuery,
+): Promise<AdminUsersPagePayload> {
   const limit = params.limit ?? 25;
   const offset = params.offset ?? 0;
+  const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (params.search) query.set("search", params.search);
+  if (params.role) query.set("role", params.role);
+  if (params.verified !== undefined) query.set("verified", String(params.verified));
   const res = await fetchWithCookies(
-    `/api/users/admin?limit=${limit}&offset=${offset}`,
+    `/api/users/admin?${query.toString()}`,
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

@@ -1,3 +1,5 @@
+import type { SkinType } from "@/types/product";
+
 export type AdminDashboardStats = {
   totals: {
     users: number;
@@ -24,4 +26,13 @@ export type AdminDashboardStats = {
     email: string;
     count: number;
   }[];
+};
+
+export type FeaturedRoutineCandidate = {
+  routineId: number;
+  name: string;
+  authorLabel: string;
+  skinTypeTags: SkinType[];
+  previewImageUrls: string[];
+  estimatedTotalPrice: number;
 };

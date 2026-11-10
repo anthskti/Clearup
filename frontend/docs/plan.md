@@ -155,9 +155,11 @@ Removed the trust-banner copy and claims; restored its procedural wave and gradi
 **Review section:** [Admin screens](./apple-design.md#9-admin-screens).  
 **Likely files:** `src/app/admin/layout.tsx`, `src/app/admin/users/page.tsx`, and `src/components/admin/*`.
 
-**Approved direction:** Support phone admin. Work in small stages, reviewing each before moving on. Stages 1 and 2 were approved for implementation together; later stages remain separate.
+**Approved direction:** Support phone admin. Work in small stages, reviewing each before moving on. Stages 1–2 and then stages 3–4 were approved for implementation in parallel pairs. Imports and activity tracking remain separate work.
 
 **Stages 1–2 implemented, awaiting owner review.** Backend build and frontend lint/build passed (one existing catalog lint warning). Chrome DevTools checks covered phone/tablet/desktop, reduced motion, phone text enlargement, drawer focus/Escape/resize, chart inspection, range changes, and daily tables. Backend UTC aggregation and validation were checked using read-only requests and a stubbed service check. No dependencies or migrations were introduced. Real-phone touch review remains pending.
+
+**Stages 3–4 implemented, awaiting owner review.** Featured editing now uses ID/URL lookup, shared homepage cards, a local ordered draft, Move earlier/later controls, and Save/Discard. Migration 012 adds retained active/inactive membership and positions; mutations save atomically. Users now support server search/filter/pagination, mobile cards, desktop tables, and account details with routine links. No new dependencies. Browser checks covered draft lookup/add/reorder/discard, user filters/details/copy/focus, empty results, 320/1024/1440px and 200% phone text. Backend validation and stubbed migration/transaction recovery checks passed. A real featured save/public-cache refresh remains unexercised to preserve the live selection.
 
 1. **Responsive shell:** Compact phone/tablet header and navigation drawer, desktop sidebar, normal page scrolling, 16px phone gutters, and accessible touch controls.
 2. **Dashboard:** Separate user/routine line charts, a shared URL-based 7/30/90-day selector (default 30), exact values and a data table. Report completed UTC days and distinguish period counts from lifetime totals. Update backend analytics and matching types; no migration or dependency needed.

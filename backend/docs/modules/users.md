@@ -2,7 +2,7 @@
 
 The **user** module covers identity, sessions, and role handling. **Better Auth** drives sign-in, sign-up, OAuth, and session storage against the same **PostgreSQL** database the app uses (`DATABASE_URL`). Application code extends that with a **Sequelize `User` model** (including `role` for admin) and a small **UserRepository** for admin analytics.
 
-The module does not use a separate “user CRUD” controller; most HTTP surface is **Better Auth’s routes** plus a thin **“who am I”** endpoint wired in `index.ts`.
+Better Auth owns account mutations. The application has a read-only `UserController → UserService → UserRepository` path for the admin directory, plus the “who am I” endpoint wired in `index.ts`.
 
 ## Data Models
 
@@ -17,7 +17,7 @@ Better Auth and Sequelize share one database. Core tables exposed as Sequelize m
 
 The repository layer performs direct database reads for operational/analytics use cases.
 
-- UserRepository (`UserRepository.ts`): Read-only helpers used mainly by admin-facing flows (for example routine admin stats).
+- UserRepository (`UserRepository.ts`): Read-only admin search/filter/pagination with routine counts, plus analytics helpers. ID/name/email search treats SQL LIKE metacharacters literally and results sort by creation date and ID.
   Better Auth continues to own writes for authentication tables during normal sign-in and OAuth flows.
 
 ## Type Definitions
@@ -63,3 +63,4 @@ User-facing auth HTTP is not a dedicated `userRoutes` file:
 
 - `ALL /api/auth/*path` — delegated to Better Auth via `toNodeHandler(auth)` (sign-in, sign-up, sign-out, OAuth callbacks, etc.).
 - `GET /api/auth/me` — returns **{ id, email, role }** for the current session (uses `requireAuth`).
+- `GET /api/users/admin` — admin-only directory with `search`, `role`, `verified`, `limit`, and `offset`; includes creation timestamps and routine counts. See [admin operations](../../../docs/features/admin-operations.md#user-directory).

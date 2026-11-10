@@ -13,7 +13,7 @@ import {
 export const adminNavItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Users", href: "/admin/users", icon: Users },
-  { name: "Content", href: "/admin/content", icon: FileText },
+  { name: "Featured routines", href: "/admin/content", icon: FileText },
   { name: "Imports", href: "/admin/imports", icon: Database },
 ];
 

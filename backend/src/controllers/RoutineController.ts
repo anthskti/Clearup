@@ -123,6 +123,54 @@ export class RoutineController {
     }
   }
 
+  // GET /api/routines/admin/featured/candidate/:id
+  async getFeaturedCandidate(req: Request, res: Response): Promise<void> {
+    const routineId = Number(req.params.id);
+    if (!Number.isSafeInteger(routineId) || routineId <= 0) {
+      res.status(400).json({ error: "Invalid routine id" });
+      return;
+    }
+    try {
+      const candidate = await this.routineService.getFeaturedCandidate(routineId);
+      if (!candidate) {
+        res.status(404).json({ error: "Routine not found" });
+        return;
+      }
+      res.json(candidate);
+    } catch (error: unknown) {
+      handleInternalError(res, "RoutineController.getFeaturedCandidate", error);
+    }
+  }
+
+  // PUT /api/routines/admin/featured
+  async saveFeaturedRoutineOrder(req: Request, res: Response): Promise<void> {
+    const routineIds: unknown = req.body?.routineIds;
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (
+      !Array.isArray(routineIds) || routineIds.length > 20 ||
+      routineIds.some((id) => !Number.isSafeInteger(id) || id <= 0) ||
+      new Set(routineIds).size !== routineIds.length
+    ) {
+      res.status(400).json({ error: "routineIds must contain up to 20 unique positive integer ids" });
+      return;
+    }
+    try {
+      await this.routineService.saveFeaturedRoutineOrder(routineIds as number[], userId);
+      res.json({ ok: true });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "";
+      if (message === "One or more routines were not found") {
+        res.status(400).json({ error: message });
+        return;
+      }
+      handleInternalError(res, "RoutineController.saveFeaturedRoutineOrder", error);
+    }
+  }
+
   // GET /api/routines/featured (public — landing page)
   async getPublicFeaturedRoutines(req: Request, res: Response): Promise<void> {
     try {

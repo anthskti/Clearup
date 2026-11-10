@@ -1,14 +1,13 @@
 import UserModel from "../models/User";
-import { Op, literal } from "sequelize";
-import { BasicUserRow, UserDailyCountRow } from "../types/user";
+import { Op, literal, type WhereOptions } from "sequelize";
+import { AdminUserListRow, BasicUserRow, UserDailyCountRow } from "../types/user";
 
-export type AdminUserListRow = {
-  id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  role: string;
-  createdAt: string;
+export type AdminUserFilters = {
+  limit: number;
+  offset: number;
+  search?: string;
+  role?: string;
+  verified?: boolean;
 };
 
 export class UserRepository {
@@ -48,13 +47,31 @@ export class UserRepository {
   }
 
   async findAllPaginated(
-    limit: number,
-    offset: number,
+    filters: AdminUserFilters,
   ): Promise<{ rows: AdminUserListRow[]; total: number }> {
+    const { limit, offset, search, role, verified } = filters;
+    const where: WhereOptions = {};
+    if (search) {
+      // Treat SQL LIKE metacharacters in admin search as literal characters.
+      const escapedSearch = search.replace(/[\\%_]/g, "\\$&");
+      Object.assign(where, {
+        [Op.or]: [
+          { id: { [Op.iLike]: `%${escapedSearch}%` } },
+          { name: { [Op.iLike]: `%${escapedSearch}%` } },
+          { email: { [Op.iLike]: `%${escapedSearch}%` } },
+        ],
+      });
+    }
+    if (role) Object.assign(where, { role });
+    if (verified !== undefined) {
+      Object.assign(where, { emailVerified: verified });
+    }
+
     const { rows, count } = await UserModel.findAndCountAll({
+      where,
       limit,
       offset,
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "DESC"], ["id", "DESC"]],
       attributes: [
         "id",
         "name",
@@ -62,6 +79,12 @@ export class UserRepository {
         "emailVerified",
         "role",
         "createdAt",
+        [
+          literal(
+            '(SELECT COUNT(*)::int FROM "routines" AS "routine_count" WHERE "routine_count"."userId" = "User"."id")',
+          ),
+          "routineCount",
+        ],
       ],
       raw: true,
     });
@@ -70,7 +93,7 @@ export class UserRepository {
       const raw = u.createdAt as unknown;
       const createdAt =
         raw instanceof Date ? raw.toISOString() : String(raw ?? "");
-      return { ...u, createdAt };
+      return { ...u, createdAt, routineCount: Number(u.routineCount ?? 0) };
     });
 
     return { rows: mapped, total: count };
