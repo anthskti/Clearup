@@ -155,9 +155,19 @@ Removed the trust-banner copy and claims; restored its procedural wave and gradi
 **Review section:** [Admin screens](./apple-design.md#9-admin-screens).  
 **Likely files:** `src/app/admin/layout.tsx`, `src/app/admin/users/page.tsx`, and `src/components/admin/*`.
 
-**Work:** Decide the supported phone/tablet experience first. If phone admin is required, replace the fixed sidebar with compact navigation and prioritize table fields. Improve chart detail access, row-level feature feedback, and import preflight/result hierarchy.
+**Approved direction:** Support phone admin. Work in small stages, reviewing each before moving on. Stages 1 and 2 were approved for implementation together; later stages remain separate.
 
-**Approval point:** Confirm whether admins must complete imports and user/content tasks on a phone, or whether tablet is the minimum supported size.
+**Stages 1–2 implemented, awaiting owner review.** Backend build and frontend lint/build passed (one existing catalog lint warning). Chrome DevTools checks covered phone/tablet/desktop, reduced motion, phone text enlargement, drawer focus/Escape/resize, chart inspection, range changes, and daily tables. Backend UTC aggregation and validation were checked using read-only requests and a stubbed service check. No dependencies or migrations were introduced. Real-phone touch review remains pending.
+
+1. **Responsive shell:** Compact phone/tablet header and navigation drawer, desktop sidebar, normal page scrolling, 16px phone gutters, and accessible touch controls.
+2. **Dashboard:** Separate user/routine line charts, a shared URL-based 7/30/90-day selector (default 30), exact values and a data table. Report completed UTC days and distinguish period counts from lifetime totals. Update backend analytics and matching types; no migration or dependency needed.
+3. **Featured editor:** Replace the routine list with ID/URL lookup and homepage-card previews. Add/remove/reorder, then save together. Add persisted positions and an atomic admin save API.
+4. **Users:** Search ID/name/email, paginate on the server, and show account creation, role, verification, and routine counts in responsive results/details. Remove the analytics dependency.
+5. **Import reports:** Persist runs and all row issues; show brand/name, record/source line, reason, and partial success. Add import history/detail and downloadable reports. Correlate existing Pino logs by import ID; no general logging console or Sentry integration in this batch.
+6. **Background imports:** Use persisted jobs with a worker, progress, safe claiming, and interrupted-job recovery. Start sequentially with PostgreSQL; assess retry safety before automatic recovery. New dependencies require approval.
+7. **Last active (optional):** Track throttled authenticated activity in an app-owned record. Do not infer online presence from auth session timestamps.
+
+**Verification:** Frontend lint/build and backend build when affected; phone/tablet/desktop, keyboard, reduced-motion, enlarged-text and error-state checks. Import work also needs interruption, duplicate submission, partial-write and retry checks.
 
 ## Batch 10 — consistency and accessibility pass
 
@@ -168,6 +178,6 @@ Removed the trust-banner copy and claims; restored its procedural wave and gradi
 
 ## Technical boundaries
 
-- This is a frontend design plan. It does not call for schema changes, migrations, API payload changes, or new dependencies. If a later design decision requires one, plan and approve it separately.
+- Public-page batches are frontend-only unless explicitly documented. Admin Batch 9 now includes approved backend analytics work and separately staged API/schema work. No new dependencies are approved.
 - Existing auth behavior and access rules remain in force. Navigation changes must not expose admin routes to non-admin users or imply a saved feature works before it does.
 - Each batch should be independently reviewable. Do not bundle unrelated cleanup with the batch.

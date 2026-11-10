@@ -65,10 +65,17 @@ export class RoutineService {
 
   // GET Admin Statistics
   async getAdminStats(daysInput?: number): Promise<AdminStats> {
-    const days = Math.min(Math.max(daysInput || 14, 7), 60);
-    const since = new Date();
-    since.setDate(since.getDate() - (days - 1));
-    since.setHours(0, 0, 0, 0);
+    const days = daysInput ?? 30;
+    const now = new Date();
+    const dayMs = 24 * 60 * 60 * 1000;
+    // Exclude today's partial activity and use UTC for both query bounds and buckets.
+    const endExclusive = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const since = new Date(endExclusive.getTime() - days * dayMs);
+    const previousSince = new Date(since.getTime() - days * dayMs);
+    const startDate = since.toISOString().slice(0, 10);
+    const previousStartDate = previousSince.toISOString().slice(0, 10);
 
     const [totalUsers, totalRoutines, totalRoutineProductLinks, featuredCount] =
       await Promise.all([
@@ -79,8 +86,8 @@ export class RoutineService {
       ]);
 
     const [recentUsers, recentRoutines, topAuthorsRaw] = await Promise.all([
-      this.userRepository.getRecentUsers(since),
-      this.routineRepository.getRecentGuides(since),
+      this.userRepository.getDailyUserCounts(previousSince, endExclusive),
+      this.routineRepository.getDailyRoutineCounts(previousSince, endExclusive),
       this.routineRepository.getTopAuthors(5),
     ]);
     const topAuthorIds = topAuthorsRaw.map((row) => String(row.userId));
@@ -104,23 +111,31 @@ export class RoutineService {
       { date: string; users: number; routines: number }
     >();
     for (let i = 0; i < days; i += 1) {
-      const date = new Date(since);
-      date.setDate(since.getDate() + i);
+      const date = new Date(since.getTime() + i * dayMs);
       const key = date.toISOString().slice(0, 10);
       seriesByDate.set(key, { date: key, users: 0, routines: 0 });
     }
 
+    let previousUsers = 0;
+    let previousRoutines = 0;
     for (const row of recentUsers as UserDailyCountRow[]) {
-      const key = new Date(row.day).toISOString().slice(0, 10);
+      const key = row.day;
       const current = seriesByDate.get(key);
       if (current) current.users = Number(row.count) || 0;
+      else if (key >= previousStartDate && key < startDate) {
+        previousUsers += Number(row.count) || 0;
+      }
     }
     for (const row of recentRoutines) {
-      const key = new Date(row.day).toISOString().slice(0, 10);
+      const key = row.day;
       const current = seriesByDate.get(key);
       if (current) current.routines = Number(row.count) || 0;
+      else if (key >= previousStartDate && key < startDate) {
+        previousRoutines += Number(row.count) || 0;
+      }
     }
 
+    const series = Array.from(seriesByDate.values());
     return {
       totals: {
         users: totalUsers,
@@ -128,7 +143,15 @@ export class RoutineService {
         routineProductLinks: totalRoutineProductLinks,
         featuredRoutines: featuredCount,
       },
-      series: Array.from(seriesByDate.values()),
+      series,
+      period: {
+        startDate,
+        endDate: new Date(endExclusive.getTime() - dayMs).toISOString().slice(0, 10),
+        users: series.reduce((sum, row) => sum + row.users, 0),
+        routines: series.reduce((sum, row) => sum + row.routines, 0),
+        previousUsers,
+        previousRoutines,
+      },
       topAuthors,
     };
   }

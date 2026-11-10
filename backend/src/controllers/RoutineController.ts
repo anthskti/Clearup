@@ -100,10 +100,12 @@ export class RoutineController {
   // GET /api/routines/admin/stats
   async getAdminStats(req: Request, res: Response): Promise<void> {
     try {
-      const days = Math.min(
-        Math.max(parseInt((req.query.days as string) || "14", 10), 7),
-        60,
-      );
+      const rawDays = req.query.days;
+      const days = rawDays === undefined ? 30 : typeof rawDays === "string" ? Number(rawDays) : NaN;
+      if (!Number.isInteger(days) || days < 7 || days > 90) {
+        res.status(400).json({ error: "days must be an integer from 7 to 90" });
+        return;
+      }
       const stats = await this.routineService.getAdminStats(days);
       res.json(stats);
     } catch (error: unknown) {

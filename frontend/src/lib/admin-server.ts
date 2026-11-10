@@ -36,7 +36,7 @@ async function fetchWithCookies(
 }
 
 export async function getAdminDashboardStatsServer(
-  days = 14,
+  days = 30,
 ): Promise<AdminDashboardStats> {
   const res = await fetchWithCookies(
     `/api/routines/admin/stats?days=${encodeURIComponent(String(days))}`,

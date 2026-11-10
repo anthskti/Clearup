@@ -13,6 +13,14 @@ export type AdminStats = {
     users: number;
     routines: number;
   }[];
+  period: {
+    startDate: string;
+    endDate: string;
+    users: number;
+    routines: number;
+    previousUsers: number;
+    previousRoutines: number;
+  };
   topAuthors: {
     userId: string;
     name: string;
@@ -35,7 +43,8 @@ export type FeaturedRoutineView = {
 };
 
 export type RoutineDailyCountRow = {
-  day: string | Date;
+  /** UTC calendar day formatted as YYYY-MM-DD by the repository query. */
+  day: string;
   count: string | number;
 };
 

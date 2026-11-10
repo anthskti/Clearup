@@ -1,5 +1,5 @@
 import UserModel from "../models/User";
-import { Op, fn, col } from "sequelize";
+import { Op, literal } from "sequelize";
 import { BasicUserRow, UserDailyCountRow } from "../types/user";
 
 export type AdminUserListRow = {
@@ -18,18 +18,19 @@ export class UserRepository {
   }
 
   // GET Recent Users
-  async getRecentUsers(since: Date): Promise<UserDailyCountRow[]> {
+  async getDailyUserCounts(start: Date, endExclusive: Date): Promise<UserDailyCountRow[]> {
     return UserModel.findAll({
       where: {
         createdAt: {
-          [Op.gte]: since,
+          [Op.gte]: start,
+          [Op.lt]: endExclusive,
         },
       } as any,
       attributes: [
-        [fn("DATE_TRUNC", "day", col("createdAt")), "day"],
-        [fn("COUNT", col("*")), "count"],
+        [literal(`TO_CHAR("createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD')`), "day"],
+        [literal("COUNT(*)"), "count"],
       ],
-      group: [fn("DATE_TRUNC", "day", col("createdAt"))],
+      group: ["day"],
       raw: true,
     }) as unknown as UserDailyCountRow[];
   }

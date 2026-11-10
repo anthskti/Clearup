@@ -11,11 +11,13 @@ export function MetricCard({
 }) {
   return (
     <div className="bg-white border border-zinc-200 rounded-lg px-4 py-4 shadow-sm">
-      <div className="flex items-center gap-2 text-xs font-medium text-zinc-500 uppercase">
+      <div className="flex items-center gap-2 text-sm font-medium text-zinc-600">
         {icon}
         {label}
       </div>
-      <div className="mt-2 text-2xl font-bold text-zinc-900">{value}</div>
+      <div className="mt-2 text-2xl font-bold tabular-nums text-zinc-900">
+        {new Intl.NumberFormat("en").format(value)}
+      </div>
     </div>
   );
 }

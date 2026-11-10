@@ -134,18 +134,19 @@ export class RoutineRepository {
   }
 
   // GET recent guides with date and count
-  async getRecentGuides(since: Date): Promise<RoutineDailyCountRow[]> {
+  async getDailyRoutineCounts(start: Date, endExclusive: Date): Promise<RoutineDailyCountRow[]> {
     return RoutineModel.findAll({
       where: {
         createdAt: {
-          [Op.gte]: since,
+          [Op.gte]: start,
+          [Op.lt]: endExclusive,
         },
       } as any,
       attributes: [
-        [fn("DATE_TRUNC", "day", col("createdAt")), "day"],
-        [fn("COUNT", col("*")), "count"],
+        [literal(`TO_CHAR("createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD')`), "day"],
+        [literal("COUNT(*)"), "count"],
       ],
-      group: [fn("DATE_TRUNC", "day", col("createdAt"))],
+      group: ["day"],
       raw: true,
     }) as unknown as RoutineDailyCountRow[];
   }

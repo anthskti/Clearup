@@ -41,7 +41,7 @@ export const getAllRoutines = async (
 };
 
 export const getAdminDashboardStats = async (
-  days = 14,
+  days = 30,
 ): Promise<AdminDashboardStats> => {
   const res = await fetch(`${API_URL}/api/routines/admin/stats?days=${days}`, {
     cache: "no-store",

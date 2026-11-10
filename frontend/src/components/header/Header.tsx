@@ -167,74 +167,77 @@ function Header() {
   };
 
   return (
-    <header
-      ref={headerRef}
-      inert={isHeaderHidden}
-      aria-hidden={isHeaderHidden}
-      onFocusCapture={() => setIsHeaderHidden(false)}
-      className={`fixed inset-x-0 top-0 z-20 transition-transform duration-200 ease-out motion-reduce:transition-none ${
-        isHeaderHidden ? "-translate-y-full" : "translate-y-0"
-      }`}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-[1] border-b border-zinc-900/5 bg-white shadow-sm"
-      />
-      <nav
-        aria-label="Main navigation"
-        className="relative z-10 mx-auto flex h-18 max-w-7xl items-center justify-between gap-3 px-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-6"
+    <>
+      <header
+        ref={headerRef}
+        inert={isHeaderHidden}
+        aria-hidden={isHeaderHidden}
+        onFocusCapture={() => setIsHeaderHidden(false)}
+        className={`fixed inset-x-0 top-0 z-20 transition-transform duration-200 ease-out motion-reduce:transition-none ${
+          isHeaderHidden ? "-translate-y-full" : "translate-y-0"
+        }`}
       >
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            ref={mobileButtonRef}
-            type="button"
-            onClick={() => {
-              setMobileProductsOpen(path.startsWith("/products/category/"));
-              setMobileNavOpen(true);
-            }}
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-zinc-900 transition-colors hover:bg-white/60 active:bg-white/80 focus-visible:outline-2 focus-visible:outline-brand lg:hidden"
-            aria-label="Open navigation menu"
-            aria-expanded={mobileNavOpen}
-            aria-controls="mobile-navigation"
-          >
-            <Menu className="size-5" />
-          </button>
-          <ClearupLogoLink priority />
-        </div>
-
-        <DesktopNav
-          path={path}
-          isProductsMenuOpen={isProductsMenuOpen}
-          isProductsPinnedOpen={isProductsPinnedOpen}
-          productsDropdownRef={productsDropdownRef}
-          productsMenuRef={productsMenuRef}
-          productsButtonRef={productsButtonRef}
-          setIsProductsOpen={setIsProductsOpen}
-          setIsProductsPinnedOpen={setIsProductsPinnedOpen}
-          setIsProfileOpen={setIsProfileOpen}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-[1] border-b border-zinc-900/5 bg-white shadow-sm"
         />
+        <nav
+          aria-label="Main navigation"
+          className="relative z-10 mx-auto flex h-18 max-w-7xl items-center justify-between gap-3 px-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-6"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              ref={mobileButtonRef}
+              type="button"
+              onClick={() => {
+                setMobileProductsOpen(path.startsWith("/products/category/"));
+                setMobileNavOpen(true);
+              }}
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-zinc-900 transition-colors hover:bg-white/60 active:bg-white/80 focus-visible:outline-2 focus-visible:outline-brand lg:hidden"
+              aria-label="Open navigation menu"
+              aria-expanded={mobileNavOpen}
+              aria-controls="mobile-navigation"
+            >
+              <Menu className="size-5" />
+            </button>
+            <ClearupLogoLink priority />
+          </div>
 
-        <ProfileMenu
-          mounted={mounted}
-          isPending={isPending}
-          isAuthenticated={Boolean(session)}
-          isAdmin={isAdmin}
-          isProfileOpen={isProfileOpen}
-          userName={session?.user.name}
-          userEmail={session?.user.email}
-          userImage={session?.user.image}
-          profileDropdownRef={profileDropdownRef}
-          profileButtonRef={profileButtonRef}
-          setIsProfileOpen={setIsProfileOpen}
-          setIsProductsOpen={setIsProductsOpen}
-          setIsProductsPinnedOpen={setIsProductsPinnedOpen}
-          onSignOut={handleSignOut}
-          sessionUnavailable={Boolean(sessionError && isTemporaryAuthError(sessionError))}
-          retryAt={getSessionRetryAt()}
-          onRetrySession={refetchSession}
-        />
-      </nav>
+          <DesktopNav
+            path={path}
+            isProductsMenuOpen={isProductsMenuOpen}
+            isProductsPinnedOpen={isProductsPinnedOpen}
+            productsDropdownRef={productsDropdownRef}
+            productsMenuRef={productsMenuRef}
+            productsButtonRef={productsButtonRef}
+            setIsProductsOpen={setIsProductsOpen}
+            setIsProductsPinnedOpen={setIsProductsPinnedOpen}
+            setIsProfileOpen={setIsProfileOpen}
+          />
 
+          <ProfileMenu
+            mounted={mounted}
+            isPending={isPending}
+            isAuthenticated={Boolean(session)}
+            isAdmin={isAdmin}
+            isProfileOpen={isProfileOpen}
+            userName={session?.user.name}
+            userEmail={session?.user.email}
+            userImage={session?.user.image}
+            profileDropdownRef={profileDropdownRef}
+            profileButtonRef={profileButtonRef}
+            setIsProfileOpen={setIsProfileOpen}
+            setIsProductsOpen={setIsProductsOpen}
+            setIsProductsPinnedOpen={setIsProductsPinnedOpen}
+            onSignOut={handleSignOut}
+            sessionUnavailable={Boolean(sessionError && isTemporaryAuthError(sessionError))}
+            retryAt={getSessionRetryAt()}
+            onRetrySession={refetchSession}
+          />
+        </nav>
+      </header>
+
+      {/* Outside the transformed header so fixed inset-0 covers the viewport */}
       <MobileNavDrawer
         path={path}
         mobileNavOpen={mobileNavOpen}
@@ -244,7 +247,7 @@ function Header() {
         setMobileProductsOpen={setMobileProductsOpen}
         onClose={closeMobileNav}
       />
-    </header>
+    </>
   );
 }
 

@@ -1,5 +1,6 @@
 export type UserDailyCountRow = {
-  day: string | Date; // Written like this for sequelize unknown type just for safety.
+  /** UTC calendar day formatted as YYYY-MM-DD by the repository query. */
+  day: string;
   count: string | number;
 };
 
