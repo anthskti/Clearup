@@ -226,10 +226,10 @@ export function ImportsAdminClient() {
       </div>
 
       <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Import type">
+        <div className="grid grid-cols-1 gap-0.5 rounded-2xl bg-zinc-100 p-1 ring-1 ring-inset ring-zinc-900/5 contrast-more:ring-zinc-400 sm:grid-cols-3" aria-label="Import type">
           {(Object.keys(importLabels) as ImportTab[]).map((key) => (
             <button key={key} type="button" disabled={busy} aria-pressed={tab === key} onClick={() => selectTab(key)}
-              className={`min-h-11 rounded-lg px-3 text-sm font-medium ${tab === key ? "bg-[#0e4b84] text-white" : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"}`}>
+              className={`min-h-11 touch-manipulation select-none rounded-xl px-3 text-sm font-medium transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4a84] disabled:cursor-wait disabled:opacity-50 motion-reduce:transition-none ${tab === key ? "bg-white text-[#0e4a84] shadow-[0_1px_3px_rgb(0_0_0/0.08)] contrast-more:ring-1 contrast-more:ring-zinc-500" : "text-zinc-600 hover:bg-white/70 active:bg-zinc-200"}`}>
               {importLabels[key]}
             </button>
           ))}

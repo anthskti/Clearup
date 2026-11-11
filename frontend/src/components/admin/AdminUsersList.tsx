@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, Copy, LoaderCircle, X } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { getRoutinesByUserId } from "@/lib/routines";
+import { moderateUser } from "@/lib/admin-users";
 import type { AdminUserRow } from "@/types/admin";
 import type { RoutineWithProducts } from "@/types/routine";
 
@@ -14,6 +16,9 @@ function formatUtc(value: string, includeSeconds = false) {
 }
 
 function UserStatus({ user }: { user: AdminUserRow }) {
+  const accountLabel = user.accountStatus === "active"
+    ? "Active"
+    : user.accountStatus === "suspended" ? "Suspended" : "Banned";
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span
@@ -24,6 +29,11 @@ function UserStatus({ user }: { user: AdminUserRow }) {
         }`}
       >
         {user.role}
+      </span>
+      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+        user.accountStatus === "active" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"
+      }`}>
+        {accountLabel}
       </span>
       <span
         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -39,11 +49,16 @@ function UserStatus({ user }: { user: AdminUserRow }) {
 }
 
 export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
+  const router = useRouter();
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
   const [routines, setRoutines] = useState<RoutineWithProducts[] | null>(null);
   const [routineError, setRoutineError] = useState("");
   const [retry, setRetry] = useState(0);
   const [copyMessage, setCopyMessage] = useState("");
+  const [moderationReason, setModerationReason] = useState("");
+  const [durationDays, setDurationDays] = useState<1 | 7 | 30>(7);
+  const [moderationPending, setModerationPending] = useState(false);
+  const [moderationError, setModerationError] = useState("");
   const openerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -78,7 +93,41 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
     setRoutines(null);
     setRoutineError("");
     setCopyMessage("");
+    setModerationError("");
+    setModerationReason("");
     setSelectedUser(user);
+  }
+
+  async function applyModeration(action: "suspend" | "ban" | "restore") {
+    if (!selectedUser || moderationPending) return;
+    const targetId = selectedUser.id;
+    const reason = moderationReason.trim();
+    if (action !== "restore" && (!reason || reason.length > 255)) {
+      setModerationError("Enter a reason of 1 to 255 characters.");
+      return;
+    }
+    const prompt = action === "restore"
+      ? `Restore ${selectedUser.email}'s account?`
+      : action === "ban"
+        ? `Permanently ban ${selectedUser.email}?`
+        : `Suspend ${selectedUser.email} for ${durationDays} days?`;
+    if (!window.confirm(prompt)) return;
+    setModerationPending(true);
+    setModerationError("");
+    try {
+      const result = await moderateUser(targetId, action === "restore"
+        ? { action }
+        : action === "ban"
+          ? { action, reason }
+          : { action, durationDays, reason });
+      setSelectedUser((current) => current?.id === targetId ? { ...current, ...result } : current);
+      if (selectedUser.id === targetId) setModerationReason("");
+      router.refresh();
+    } catch (error) {
+      setModerationError(error instanceof Error ? error.message : "Could not update this account.");
+    } finally {
+      setModerationPending(false);
+    }
   }
 
   return (
@@ -110,6 +159,7 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                   <button
                     type="button"
                     onClick={(event) => openDetails(user, event.currentTarget)}
+                    disabled={moderationPending}
                     className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-zinc-200 px-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                   >
                     Details
@@ -139,6 +189,7 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                   <th scope="col" className="px-4 py-3">Name and email</th>
                   <th scope="col" className="px-4 py-3">Joined</th>
                   <th scope="col" className="px-4 py-3">Role</th>
+                  <th scope="col" className="px-4 py-3">Account</th>
                   <th scope="col" className="px-4 py-3">Verification</th>
                   <th scope="col" className="px-4 py-3 text-right">Routines</th>
                   <th scope="col" className="px-4 py-3 text-right">Details</th>
@@ -159,6 +210,13 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                         {user.role}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        user.accountStatus === "active" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"
+                      }`}>
+                        {user.accountStatus === "active" ? "Active" : user.accountStatus === "suspended" ? "Suspended" : "Banned"}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-zinc-700">
                       {user.emailVerified ? "Verified" : "Unverified"}
                     </td>
@@ -167,6 +225,7 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                       <button
                         type="button"
                         onClick={(event) => openDetails(user, event.currentTarget)}
+                        disabled={moderationPending}
                         className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-brand hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                       >
                         View details
@@ -183,7 +242,7 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
       <Dialog.Root
         open={selectedUser !== null}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !moderationPending) {
             setSelectedUser(null);
             setCopyMessage("");
           }
@@ -261,6 +320,76 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                     <dt className="text-zinc-500">Routines</dt>
                     <dd className="tabular-nums text-zinc-900">{selectedUser.routineCount}</dd>
                   </dl>
+                </section>
+
+                <section className="mt-6 border-t border-zinc-200 pt-5" aria-labelledby="user-moderation-heading">
+                  <h3 id="user-moderation-heading" className="font-semibold text-zinc-900">Account restriction</h3>
+                  <p className="mt-2 text-sm text-zinc-700">
+                    Status: <span className="font-medium capitalize">{selectedUser.accountStatus}</span>
+                  </p>
+                  {selectedUser.accountStatus !== "active" && (
+                    <dl className="mt-2 grid grid-cols-1 gap-y-1 text-sm sm:grid-cols-[7rem_1fr] sm:gap-x-3">
+                      <dt className="text-zinc-500">Reason</dt>
+                      <dd className="break-words text-zinc-800">{selectedUser.banReason || "No reason recorded"}</dd>
+                      {selectedUser.banExpires && <>
+                        <dt className="text-zinc-500">Expires</dt>
+                        <dd className="text-zinc-800"><time dateTime={selectedUser.banExpires}>{formatUtc(selectedUser.banExpires)}</time></dd>
+                      </>}
+                    </dl>
+                  )}
+                  {selectedUser.role === "admin" ? (
+                    <p className="mt-3 text-sm text-zinc-600">Administrator accounts cannot be moderated here.</p>
+                  ) : <div className="mt-3 space-y-3">
+                    <label className="block text-sm font-medium text-zinc-800">
+                      Reason
+                      <input
+                        value={moderationReason}
+                        onChange={(event) => setModerationReason(event.target.value)}
+                        maxLength={255}
+                        disabled={moderationPending}
+                        className="mt-1.5 min-h-11 w-full rounded-lg border border-zinc-300 px-3 text-base font-normal text-zinc-900 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+                        placeholder="Required for suspension or ban"
+                      />
+                    </label>
+                    <div className="flex flex-col items-start gap-3">
+                      <fieldset disabled={moderationPending} className="min-w-0 disabled:opacity-50">
+                        <legend className="mb-1.5 text-xs font-medium tracking-wide text-zinc-600">Suspension duration</legend>
+                        <div className="inline-flex rounded-2xl bg-zinc-100 p-0.5 ring-1 ring-inset ring-zinc-900/5 contrast-more:ring-zinc-400">
+                          {([1, 7, 30] as const).map((days) => (
+                            <label
+                              key={days}
+                              className="group relative flex min-h-11 min-w-11 cursor-pointer touch-manipulation select-none items-center justify-center rounded-xl px-0.5"
+                            >
+                              <input
+                                type="radio"
+                                name="suspension-duration"
+                                value={days}
+                                checked={durationDays === days}
+                                onChange={() => setDurationDays(days)}
+                                className="peer sr-only"
+                              />
+                              <span
+                                className={`flex min-h-8 items-center justify-center rounded-lg px-3 text-sm font-medium tabular-nums transition-colors duration-100 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#0e4a84] motion-reduce:transition-none ${
+                                  durationDays === days
+                                    ? "bg-white text-[#0e4a84] shadow-[0_1px_3px_rgb(0_0_0/0.08)] contrast-more:ring-1 contrast-more:ring-zinc-500"
+                                    : "text-zinc-600 group-hover:bg-white/70 group-active:bg-zinc-200"
+                                }`}
+                              >
+                                {days} {days === 1 ? "day" : "days"}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" disabled={moderationPending} onClick={() => applyModeration("suspend")} className="inline-flex min-h-11 touch-manipulation select-none items-center rounded-xl bg-amber-50 px-4 text-sm font-medium text-amber-900 ring-1 ring-inset ring-amber-900/10 transition-colors duration-100 hover:bg-amber-100 active:bg-amber-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:cursor-wait disabled:opacity-50 motion-reduce:transition-none">Suspend</button>
+                        <button type="button" disabled={moderationPending} onClick={() => applyModeration("ban")} className="inline-flex min-h-11 touch-manipulation select-none items-center rounded-xl bg-red-50 px-4 text-sm font-medium text-red-800 ring-1 ring-inset ring-red-900/10 transition-colors duration-100 hover:bg-red-100 active:bg-red-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:opacity-50 motion-reduce:transition-none">Ban permanently</button>
+                        {selectedUser.accountStatus !== "active" && <button type="button" disabled={moderationPending} onClick={() => applyModeration("restore")} className="inline-flex min-h-11 touch-manipulation select-none items-center rounded-xl bg-zinc-50 px-4 text-sm font-medium text-zinc-800 ring-1 ring-inset ring-zinc-900/10 transition-colors duration-100 hover:bg-zinc-100 active:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-700 disabled:cursor-wait disabled:opacity-50 motion-reduce:transition-none">Restore account</button>}
+                      </div>
+                    </div>
+                    {moderationPending && <p className="text-sm text-zinc-600" role="status">Updating account…</p>}
+                    {moderationError && <p className="text-sm text-red-700" role="alert">{moderationError}</p>}
+                  </div>}
                 </section>
 
                 <section className="mt-6 border-t border-zinc-200 pt-5" aria-labelledby="user-routines-heading">

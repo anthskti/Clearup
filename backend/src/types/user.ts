@@ -18,4 +18,8 @@ export type AdminUserListRow = {
   role: string;
   createdAt: string;
   routineCount: number;
+  banned: boolean;
+  banReason: string | null;
+  banExpires: string | null;
+  accountStatus: "active" | "suspended" | "banned";
 };

@@ -88,6 +88,26 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
     role: req.user.role ?? "user",
   });
 });
+// Keep Better Auth's admin plugin from bypassing the audited moderation API.
+app.all("/api/auth/*path", (req, res, next) => {
+  let authPath = req.path.replace(/^\/api\/auth\//, "");
+  try {
+    authPath = decodeURIComponent(authPath).replace(/\/+$/, "");
+  } catch {
+    return res.status(400).json({ error: "Invalid auth route." });
+  }
+  if (["admin/ban-user", "admin/unban-user"].includes(authPath)) {
+    return res.status(403).json({ error: "Use the audited user moderation endpoint." });
+  }
+  if (authPath === "admin/update-user") {
+    const body = req.body as { data?: Record<string, unknown> } | undefined;
+    const data = body?.data;
+    if (data && ["banned", "banReason", "banExpires"].some((field) => Object.prototype.hasOwnProperty.call(data, field))) {
+      return res.status(403).json({ error: "Use the audited user moderation endpoint." });
+    }
+  }
+  next();
+});
 // Handles all auth routes (sign-in, sign-up, sign-out, etc.)
 app.all("/api/auth/*path", toNodeHandler(auth));
 

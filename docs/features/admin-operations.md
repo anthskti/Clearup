@@ -20,7 +20,7 @@ Frontend gate: `frontend/src/app/admin/layout.tsx` redirects to `/login` or `/` 
 | `/admin/dashboard` | Separate user/routine line charts with 7/30/90-day ranges, period comparisons, and lifetime totals |
 | `/admin/content` | Find routines by ID/URL, preview homepage cards, and save the featured selection/order |
 | `/admin/imports` | Product initialization, merchant offer import, and price refresh CSV controls |
-| `/admin/users` | Searchable user directory, account details, and routine links |
+| `/admin/users` | Searchable user directory, account restrictions, and routine links |
 
 ## Admin API (summary)
 
@@ -32,7 +32,8 @@ Frontend gate: `frontend/src/app/admin/layout.tsx` redirects to `/login` or `/` 
 | `PUT /api/routines/admin/featured` | Atomically save `{ routineIds: number[] }` in display order (max 20, unique IDs) |
 | `POST /api/routines/admin/featured/:id` | Feature a guide |
 | `DELETE /api/routines/admin/featured/:id` | Unfeature |
-| `GET /api/users/admin` | Paginated users with `search`, `role`, and `verified` filters and routine counts |
+| `GET /api/users/admin` | Paginated users with `search`, `role`, `verified`, and account `status` filters and routine counts |
+| `PATCH /api/users/admin/:userId/moderation` | Suspend, permanently ban, or restore a non-admin account; requires a reason for restrictions |
 | `GET /api/products/admin/imports` | Paginated import history |
 | `GET /api/products/admin/imports/:id` | Persisted import summary |
 | `GET /api/products/admin/imports/:id/issues` | Paginated row issues |
@@ -53,7 +54,9 @@ Migration `012-featured-routine-order-active.ts` adds `position` and `isActive` 
 
 ## User directory
 
-`GET /api/users/admin` accepts `limit` (1–100), `offset` (0–10,000,000), `search` (up to 100 characters), `role` (`user`/`admin`), and `verified` (`true`/`false`). Search matches ID/name/email case-insensitively; SQL LIKE metacharacters are treated literally. Results sort by creation date and ID descending, and include a routine count without separate per-user requests. Invalid parameters return 400.
+`GET /api/users/admin` accepts `limit` (1–100), `offset` (0–10,000,000), `search` (up to 100 characters), `role` (`user`/`admin`), `verified` (`true`/`false`), and `status` (`active`, `suspended`, or `banned`). Search matches ID/name/email case-insensitively; SQL LIKE metacharacters are treated literally. Results include effective account status, restriction reason/expiry, and a routine count without separate per-user requests. Expired suspensions are treated as active without a cleanup job.
+
+The moderation endpoint accepts `{ action: "suspend", durationDays: 1 | 7 | 30, reason }`, `{ action: "ban", reason }`, or `{ action: "restore" }`. It updates the restriction and sets all target sessions to expire in one transaction. It rejects self-targeting, missing users, database admins, and `ADMIN_EMAILS` accounts. Restore clears all restriction fields. The endpoint records actor, target, action, and expiry in security audit logs. Better Auth's direct ban/unban endpoints and moderation-field writes through `admin/update-user` are blocked so restrictions use this audited path.
 
 The UI preserves filters in pagination URLs and opens account details without navigating away. Details include a copyable ID, full UTC creation timestamp, status, and lazily loaded routine links. Phone cards and desktop tables share the same data. The users page no longer fetches dashboard analytics. Last activity tracking remains deferred.
 

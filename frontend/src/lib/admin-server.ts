@@ -70,6 +70,7 @@ export async function getAdminUsersServer(
   if (params.search) query.set("search", params.search);
   if (params.role) query.set("role", params.role);
   if (params.verified !== undefined) query.set("verified", String(params.verified));
+  if (params.status) query.set("status", params.status);
   const res = await fetchWithCookies(
     `/api/users/admin?${query.toString()}`,
   );

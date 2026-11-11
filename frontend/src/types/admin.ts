@@ -6,6 +6,9 @@ export type AdminUserRow = {
   role: string;
   createdAt: string;
   routineCount: number;
+  accountStatus: "active" | "suspended" | "banned";
+  banReason: string | null;
+  banExpires: string | null;
 };
 
 export type AdminUsersPagePayload = {
@@ -21,4 +24,5 @@ export type AdminUsersQuery = {
   search?: string;
   role?: "user" | "admin";
   verified?: boolean;
+  status?: "active" | "suspended" | "banned";
 };
