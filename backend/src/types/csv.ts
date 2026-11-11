@@ -48,3 +48,17 @@ export type CsvImportResult = {
   updatedOffers?: number;
   importId?: number;
 };
+
+export type CsvImportProgress = {
+  record: number;
+  received: number;
+  processed: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  warnings: number;
+  partialSuccess: number;
+};
+
+export type CsvImportProgressWriter = (progress: CsvImportProgress) => Promise<void>;

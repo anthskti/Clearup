@@ -1,5 +1,6 @@
 import ImportIssue, { type ImportIssueCreationAttributes } from "../models/ImportIssue";
 import ImportRun, { type ImportRunCreationAttributes } from "../models/ImportRun";
+import { withFencedImportWrite } from "../lib/importAttempt";
 
 export class ImportReportRepository {
   createRun(input: ImportRunCreationAttributes) {
@@ -13,11 +14,11 @@ export class ImportReportRepository {
       "updated" | "skipped" | "failed" | "warnings" | "partialSuccess" | "reportComplete"
     >>,
   ): Promise<void> {
-    await ImportRun.update(update, { where: { id } });
+    await withFencedImportWrite((transaction) => ImportRun.update(update, { where: { id }, transaction }).then(() => undefined));
   }
 
   addIssue(input: ImportIssueCreationAttributes) {
-    return ImportIssue.create(input);
+    return withFencedImportWrite((transaction) => ImportIssue.create(input, { transaction }));
   }
 
   async findRuns(limit: number, offset: number) {

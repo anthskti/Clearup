@@ -9,6 +9,7 @@ import {
   RoutineProduct,
   UpdateRoutineProductInput,
 } from "../types/routine";
+import { withFencedImportWrite } from "../lib/importAttempt";
 
 export class RoutineProductRepository {
   // GET all products for a specific Routine
@@ -130,6 +131,7 @@ export class RoutineProductRepository {
     productId: number,
     category: ProductCategory,
   ): Promise<number> {
+    return withFencedImportWrite(async (transaction) => {
     const [count] = await RoutineProductModel.update(
       { category },
       {
@@ -137,9 +139,11 @@ export class RoutineProductRepository {
           productId,
           category: { [Op.ne]: category },
         },
+        transaction,
       },
     );
     return count;
+    });
   }
 
   private mapToRoutineProductType(dbRoutineProduct: any): RoutineProduct {

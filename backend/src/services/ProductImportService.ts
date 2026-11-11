@@ -25,7 +25,7 @@ import {
 } from "../lib/csvImportResults";
 import type { ProductSkinTypeSource } from "../models/Product";
 import type { ProductCategory } from "../types/product";
-import type { CsvImportResult, CsvRowError } from "../types/csv";
+import type { CsvImportProgressWriter, CsvImportResult, CsvRowError } from "../types/csv";
 
 export class ProductImportService {
   private productRepository: ProductRepository;
@@ -43,7 +43,7 @@ export class ProductImportService {
   // POST batch import from datascraper CSV:
   // name, brand, category, labels, skinType, country, capacity, price, instructions,
   // ingredients, imageUrls, averageRating, url, merchant, status
-  async importProductsCsv(csv: string, writeIssue?: ImportIssueWriter): Promise<CsvImportResult> {
+  async importProductsCsv(csv: string, writeIssue?: ImportIssueWriter, onRecord?: CsvImportProgressWriter): Promise<CsvImportResult> {
     const startedAt = Date.now();
     const document = parseCsvDocument(csv);
     const rows = document.records;
@@ -164,9 +164,6 @@ export class ProductImportService {
           let productId: number;
 
           if (existing) {
-            const previousCategory = existing.getDataValue(
-              "category",
-            ) as ProductCategory;
             await this.productRepository.updateImportedProduct(existing, {
               category,
               labels,
@@ -182,13 +179,9 @@ export class ProductImportService {
             rowWritten = true;
             productId = Number(existing.getDataValue("id"));
             updated += 1;
-            if (category !== previousCategory) {
-              rowStage = "routine_category_sync";
-              await this.routineProductRepository.updateCategoryForProduct(
-                productId,
-                category,
-              );
-            }
+            // Repair this dependent write even when replay sees the new category.
+            rowStage = "routine_category_sync";
+            await this.routineProductRepository.updateCategoryForProduct(productId, category);
           } else {
             const createdProduct = await this.productRepository.createImportedProduct({
               name,
@@ -248,6 +241,7 @@ export class ProductImportService {
         const persisted = await persistNewIssues(errors, issueStart, record, row, "products", writeIssue);
         warnings += persisted.warnings;
         partialSuccess += persisted.partialSuccess;
+        await onRecord?.({ record: i + 1, received: rows.length, processed, created, updated, skipped, failed, warnings, partialSuccess });
       }
     }
 
@@ -275,7 +269,7 @@ export class ProductImportService {
   }
 
   // Link reviewed merchant master rows to products already in the catalog.
-  async importMerchantOffersCsv(csv: string, writeIssue?: ImportIssueWriter): Promise<CsvImportResult> {
+  async importMerchantOffersCsv(csv: string, writeIssue?: ImportIssueWriter, onRecord?: CsvImportProgressWriter): Promise<CsvImportResult> {
     const startedAt = Date.now();
     const document = parseCsvDocument(csv);
     const rows = document.records;
@@ -402,6 +396,7 @@ export class ProductImportService {
         const persisted = await persistNewIssues(errors, issueStart, record, row, "offers", writeIssue);
         warnings += persisted.warnings;
         partialSuccess += persisted.partialSuccess;
+        await onRecord?.({ record: i + 1, received: rows.length, processed, created, updated, skipped, failed, warnings, partialSuccess });
       }
     }
 
@@ -430,7 +425,7 @@ export class ProductImportService {
   }
 
   // Refresh prices and stock for merchant offers that already have a link.
-  async importPriceUpdatesCsv(csv: string, writeIssue?: ImportIssueWriter): Promise<CsvImportResult> {
+  async importPriceUpdatesCsv(csv: string, writeIssue?: ImportIssueWriter, onRecord?: CsvImportProgressWriter): Promise<CsvImportResult> {
     const startedAt = Date.now();
     const document = parseCsvDocument(csv);
     const rows = document.records;
@@ -544,6 +539,7 @@ export class ProductImportService {
         const persisted = await persistNewIssues(errors, issueStart, record, row, "prices", writeIssue);
         warnings += persisted.warnings;
         partialSuccess += persisted.partialSuccess;
+        await onRecord?.({ record: i + 1, received: rows.length, processed, created: 0, updated, skipped, failed, warnings, partialSuccess });
       }
     }
 

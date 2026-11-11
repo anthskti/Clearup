@@ -3,7 +3,7 @@ import type { ImportIssueAttributes } from "../models/ImportIssue";
 import type { ImportRunAttributes, ImportType } from "../models/ImportRun";
 import { CsvParseError } from "../lib/csvProductImport";
 import logger, { reportError } from "../lib/logger";
-import type { CsvImportResult, CsvRowError } from "../types/csv";
+import type { CsvImportProgress, CsvImportResult, CsvRowError } from "../types/csv";
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
@@ -24,10 +24,12 @@ export class ImportReportService {
     actorId: string;
     requestId: string | null;
     csv: string;
-    process: (csv: string, onIssue: (issue: CsvRowError) => Promise<void>) => Promise<CsvImportResult>;
+    process: (csv: string, onIssue: (issue: CsvRowError) => Promise<void>, onProgress?: (progress: CsvImportProgress) => Promise<void>) => Promise<CsvImportResult>;
+    onProgress?: (progress: CsvImportProgress) => Promise<void>;
+    importId?: number;
   }): Promise<{ result: CsvImportResult; importId: number; status: string }> {
     const startedAt = Date.now();
-    const run = await this.startRun({
+    const run = input.importId ? { id: input.importId } : await this.startRun({
       importType: input.importType,
       sourceName: input.sourceName,
       actorId: input.actorId,
@@ -65,7 +67,7 @@ export class ImportReportService {
     };
 
     try {
-      const result = await input.process(input.csv, persistIssue);
+      const result = await input.process(input.csv, persistIssue, input.onProgress);
       const totals = result.totals;
       const status = result.ok ? "completed" : totals.processed > 0 || totals.created > 0 || totals.updated > 0 ? "partial" : "failed";
       await this.finishRun(importId, {

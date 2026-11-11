@@ -10,6 +10,7 @@
     "dev:pretty": "NODE_ENV=development bun --watch src/index.ts | pino-pretty",
     "build": "tsc",
     "start": "bun dist/index.js",
+    "worker:imports": "bun src/importWorker.ts",
     "watch": "tsc --watch",
     "migrate:up": "bun scripts/migrateUp.ts",
     "migrate:down": "bun scripts/migrateDown.ts",

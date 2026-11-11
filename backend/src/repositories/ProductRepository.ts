@@ -17,6 +17,7 @@ import {
   hasProductListFilters,
 } from "../lib/productFilterQuery";
 import { normalizeImageUrls } from "../lib/csvProductImport";
+import { withFencedImportWrite } from "../lib/importAttempt";
 
 type ImportedProductFields = Omit<CreateProductInput, "ingredients"> & {
   ingredients: string | null;
@@ -142,14 +143,14 @@ export class ProductRepository {
 
   async createImportedProduct(fields: ImportedProductFields): Promise<ProductModel> {
     // The legacy model type omits nullable ingredients, which CSV imports can clear.
-    return ProductModel.create(fields as CreationAttributes<ProductModel>);
+    return withFencedImportWrite((transaction) => ProductModel.create(fields as CreationAttributes<ProductModel>, { transaction }));
   }
 
   async updateImportedProduct(
     product: ProductModel,
     fields: Partial<ImportedProductFields>,
   ): Promise<void> {
-    await product.update(fields as Partial<CreationAttributes<ProductModel>>);
+    await withFencedImportWrite((transaction) => product.update(fields as Partial<CreationAttributes<ProductModel>>, { transaction }));
   }
 
   // POST a single product
@@ -183,13 +184,15 @@ export class ProductRepository {
   }
 
   async updatePrice(id: number, price: number): Promise<boolean> {
+    return withFencedImportWrite(async (transaction) => {
     const [rows] = await ProductModel.update(
       { price },
       {
-        where: { id },
+        where: { id }, transaction,
       },
     );
     return rows > 0;
+    });
   }
 
   // DELETE product by ID

@@ -40,6 +40,17 @@ The service layer contains the core business logic, acting as the bridge between
 - `ProductService.ts`: Product and merchant-offer CRUD, plus paginated catalog search.
 - `ProductImportService.ts`: Admin CSV imports (products, merchant offers, price refresh). Result helpers live in `lib/csvImportResults.ts`; field/document parsing stays in `lib/csvProductImport.ts`.
 - `ImportReportService.ts`: Persists import runs and row-level issues around those import flows.
+- `ImportJobService.ts` and `ImportJobRepository.ts`: Admin-only queued CSV submissions, source payload persistence, idempotency, progress status, and single-worker claims.
+
+### Queued CSV imports
+
+CSV endpoints enqueue the exact decoded UTF-8 source text and retained report row in one database transaction. Submission keys are scoped to the submitting account; reusing a key with a different import type or content returns HTTP 409. History/detail reads expose job status and provisional counters but never return the stored CSV payload.
+
+Run imports in a separate process with `cd backend && bun run worker:imports`. Apply migrations 014 and 015 through the normal deployment migration step before starting this worker; migration 015 repairs installations where the first 014 draft was already marked applied. The worker does not run migrations. PostgreSQL advisory locking allows only one active import across worker processes. SIGINT/SIGTERM lets the current job finish before the worker exits.
+
+Each imported catalog mutation locks and validates the owning attempt before committing, and renews its heartbeat. Progress checkpoints advance after a source record's issues have been persisted. A stale heartbeat is fenced and moved to `needs_review`; jobs are never automatically replayed. Since domain mutations, issue persistence, and progress are separately committed, interruption can leave partial changes for the last uncheckpointed row. Review the incomplete report and catalog state before taking any manual action. Do not requeue or resubmit interrupted payloads: replay safety for partial writes and newer catalog edits has not been proven.
+
+Queued CSV source text is retained in PostgreSQL with its report. No payload cleanup policy is implemented. Restrict database access and keep all job/report endpoints behind the admin guard.
 
 ## Product Controller (`productController.ts`)
 

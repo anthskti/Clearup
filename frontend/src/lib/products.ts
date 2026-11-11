@@ -1,10 +1,10 @@
-import type { Product, ProductListFilters, ProductCatalogFetchOptions, ProductCatalogPage, CsvImportResponse, CatalogError } from "@/types/product";
+import type { Product, ProductListFilters, ProductCatalogFetchOptions, ProductCatalogPage, CatalogError } from "@/types/product";
 import { ProductMerchantWithDetails } from "@/types/merchant";
 import { appendProductListFiltersToQuery, productListFiltersNeedDynamicFetch } from "@/lib/productListFilters";
 import { PRODUCT_PRICE_SLIDER_MAX } from "@/constants/productFilters";
 import { parseSkinTypeTagsFromParam } from "@/lib/routineSkinTypeTags";
 import { mutationHeaders } from "@/lib/mutationHeaders";
-import type { ImportIssue, ImportPage, ImportRun } from "@/types/import";
+import type { ImportAccepted, ImportIssue, ImportPage, ImportRun } from "@/types/import";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
 
@@ -371,6 +371,7 @@ async function readImportError(res: Response): Promise<CsvImportError> {
 async function postCsvImport(
   path: string,
   csvOrFile: string | File,
+  submissionKey = crypto.randomUUID(),
 ): Promise<Response> {
   const init: RequestInit = {
     method: "POST",
@@ -380,6 +381,7 @@ async function postCsvImport(
     headers: mutationHeaders({
       "Content-Type": "text/csv; charset=utf-8",
       "x-import-filename": encodeURIComponent(typeof csvOrFile === "string" ? "pasted.csv" : csvOrFile.name),
+      "x-import-submission-key": submissionKey,
     }),
   };
   return fetch(`${API_URL}${path}`, init);
@@ -388,8 +390,9 @@ async function postCsvImport(
 /** Import via raw CSV body (paste or File) — avoids JSON size overhead/limit. */
 export const importProductsCsv = async (
   csvOrFile: string | File,
-): Promise<CsvImportResponse> => {
-  const res = await postCsvImport("/api/products/admin/import/csv", csvOrFile);
+  submissionKey?: string,
+): Promise<ImportAccepted> => {
+  const res = await postCsvImport("/api/products/admin/import/csv", csvOrFile, submissionKey);
   if (!res.ok) {
     throw await readImportError(res);
   }
@@ -398,8 +401,9 @@ export const importProductsCsv = async (
 
 export const importMerchantOffersCsv = async (
   csvOrFile: string | File,
-): Promise<CsvImportResponse> => {
-  const res = await postCsvImport("/api/products/admin/import/offers", csvOrFile);
+  submissionKey?: string,
+): Promise<ImportAccepted> => {
+  const res = await postCsvImport("/api/products/admin/import/offers", csvOrFile, submissionKey);
   if (!res.ok) {
     throw await readImportError(res);
   }
@@ -408,10 +412,12 @@ export const importMerchantOffersCsv = async (
 
 export const importPriceUpdatesCsv = async (
   csvOrFile: string | File,
-): Promise<CsvImportResponse> => {
+  submissionKey?: string,
+): Promise<ImportAccepted> => {
   const res = await postCsvImport(
     "/api/products/admin/import/prices",
     csvOrFile,
+    submissionKey,
   );
   if (!res.ok) {
     throw await readImportError(res);

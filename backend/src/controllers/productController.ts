@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
 import { ProductService } from "../services/ProductService";
-import { ProductImportService } from "../services/ProductImportService";
 import { MAX_PRODUCT_PAGE_SIZE, parseProductPagination } from "../lib/productPagination";
 import { handleInternalError } from "../lib/httpError";
 import { csvFromRequestBody } from "../middleware/parseCsvBody";
-import { ImportReportFailure, ImportReportService } from "../services/ImportReportService";
-import type { CsvImportResult, CsvRowError } from "../types/csv";
+import { ImportReportService } from "../services/ImportReportService";
 import type { ImportType } from "../models/ImportRun";
+import { ImportJobService } from "../services/ImportJobService";
+import { ImportSubmissionConflict } from "../repositories/ImportJobRepository";
 import {
   parseProductListQuery,
   hasProductListFilters,
@@ -15,12 +15,11 @@ import type { ProductCategory } from "../types/product";
 
 export class ProductController {
   private productService: ProductService;
-  private productImportService: ProductImportService;
   private importReportService: ImportReportService;
+  private importJobService = new ImportJobService();
 
   constructor() {
     this.productService = new ProductService();
-    this.productImportService = new ProductImportService();
     this.importReportService = new ImportReportService();
   }
 
@@ -287,24 +286,23 @@ export class ProductController {
   }
   // POST /api/products/admin/import/csv
   async importProductsCsv(req: Request, res: Response): Promise<void> {
-    await this.runCsvImport(req, res, "products", (csv, onIssue) => this.productImportService.importProductsCsv(csv, onIssue));
+    await this.runCsvImport(req, res, "products");
   }
 
   // POST /api/products/admin/import/offers
   async importMerchantOffersCsv(req: Request, res: Response): Promise<void> {
-    await this.runCsvImport(req, res, "offers", (csv, onIssue) => this.productImportService.importMerchantOffersCsv(csv, onIssue));
+    await this.runCsvImport(req, res, "offers");
   }
 
   // POST /api/products/admin/import/prices
   async importPriceUpdatesCsv(req: Request, res: Response): Promise<void> {
-    await this.runCsvImport(req, res, "prices", (csv, onIssue) => this.productImportService.importPriceUpdatesCsv(csv, onIssue));
+    await this.runCsvImport(req, res, "prices");
   }
 
   private async runCsvImport(
     req: Request,
     res: Response,
     importType: ImportType,
-    process: (csv: string, onIssue: (issue: CsvRowError) => Promise<void>) => Promise<CsvImportResult>,
   ): Promise<void> {
     const csv = csvFromRequestBody(req.body);
     if (!csv.trim()) {
@@ -323,20 +321,12 @@ export class ProductController {
     const sourceName = requestedName.replace(/\\/g, "/").split("/").pop()?.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 180) || "pasted.csv";
     const requestId = typeof req.id === "string" ? req.id : null;
     try {
-      const completed = await this.importReportService.runImport({
-        importType,
-        sourceName,
-        actorId,
-        requestId,
-        csv,
-        process,
-      });
-      res.status(200).json({ ...completed.result, importId: completed.importId, status: completed.status });
+      const submissionKey = req.get("x-import-submission-key");
+      if (!submissionKey || submissionKey.length > 80) { res.status(400).json({ error: "A valid x-import-submission-key is required." }); return; }
+      const accepted = await this.importJobService.enqueue({ importType, sourceName, actorId, requestId: requestId ?? "", submissionKey, csv });
+      res.status(202).json({ ok: true, importId: accepted.importId, status: accepted.status, message: accepted.duplicate ? "This import was already submitted." : "Import queued.", processed: 0, created: 0, updated: 0, totals: { received: 0, processed: 0, created: 0, updated: 0, skipped: 0, failed: 0 } });
     } catch (error: unknown) {
-      if (error instanceof ImportReportFailure) {
-        res.status(500).json({ error: error.message, importId: error.importId });
-        return;
-      }
+      if (error instanceof ImportSubmissionConflict) { res.status(409).json({ error: error.message }); return; }
       handleInternalError(res, "ProductController.runCsvImport", error);
     }
   }
@@ -359,7 +349,7 @@ export class ProductController {
     try {
       const page = await this.parseReportPage(req);
       if (!page) { res.status(400).json({ error: "limit must be 1–100 and offset must be a nonnegative integer" }); return; }
-      res.json(await this.importReportService.listRuns(page.limit, page.offset));
+      res.json(await this.importJobService.listRuns(page.limit, page.offset));
     } catch (error: unknown) { handleInternalError(res, "ProductController.getImportHistory", error); }
   }
 
@@ -367,7 +357,7 @@ export class ProductController {
     const id = parsePositiveId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid import ID" }); return; }
     try {
-      const run = await this.importReportService.getRun(id);
+      const run = await this.importJobService.getRun(id);
       if (!run) { res.status(404).json({ error: "Import not found" }); return; }
       res.json(run);
     } catch (error: unknown) { handleInternalError(res, "ProductController.getImportRun", error); }
