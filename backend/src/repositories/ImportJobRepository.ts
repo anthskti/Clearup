@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { QueryTypes } from "sequelize";
+import { QueryTypes, type Transaction } from "sequelize";
+import { getCurrentImportAttempt } from "../lib/importAttempt";
 import sequelize from "../db";
 
 const STALE_AFTER_SECONDS = 45;
@@ -66,13 +67,13 @@ export class ImportJobRepository {
     });
   }
 
-  async claim() {
+  async claim(importId: number) {
     const attemptId = randomUUID();
     return sequelize.transaction(async (transaction) => {
-      // This lock enforces one active import across all worker processes.
+      // This lock enforces one active import across import processors.
       await sequelize.query("SELECT pg_advisory_xact_lock(74218032)", { transaction });
       await sequelize.query(
-        `UPDATE import_jobs SET status='needs_review', error='Worker heartbeat expired; automatic replay is disabled.', "updatedAt"=NOW()
+        `UPDATE import_jobs SET status='needs_review', error='Import heartbeat expired; automatic replay is disabled.', "updatedAt"=NOW()
          WHERE status='processing' AND "heartbeatAt" < NOW() - (:seconds * INTERVAL '1 second')`,
         { replacements: { seconds: STALE_AFTER_SECONDS }, transaction },
       );
@@ -84,13 +85,34 @@ export class ImportJobRepository {
 
       const rows = await sequelize.query<any>(
         `WITH picked AS (
-           SELECT id FROM import_jobs WHERE status='queued' ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1
+           SELECT id FROM import_jobs WHERE status='queued' AND "importId"=:importId FOR UPDATE SKIP LOCKED LIMIT 1
          )
          UPDATE import_jobs j SET status='processing', "attemptId"=:attempt, "heartbeatAt"=NOW(), "updatedAt"=NOW()
          FROM picked WHERE j.id=picked.id RETURNING j.*`,
-        { replacements: { attempt: attemptId }, type: QueryTypes.SELECT, transaction },
+        { replacements: { attempt: attemptId, importId }, type: QueryTypes.SELECT, transaction },
       );
       return rows[0] ? { ...rows[0], attemptId } : null;
+    });
+  }
+
+  /** Single-server lifecycle cleanup: retain source text, issues, and checkpoint counters. */
+  async interruptUnfinished(message: string, importId?: number): Promise<void> {
+    await sequelize.transaction(async (transaction) => {
+      await sequelize.query(
+        `UPDATE import_jobs SET status='needs_review', error=:message, "updatedAt"=NOW()
+         WHERE status IN ('queued','processing') ${importId === undefined ? "" : 'AND "importId"=:importId'}`,
+        { replacements: { message, importId }, transaction },
+      );
+      await sequelize.query(
+        `UPDATE import_runs r SET status='failed', "reportComplete"=false,
+         "finishedAt"=COALESCE(r."finishedAt",NOW()), "updatedAt"=NOW(),
+         received=j."progressReceived", processed=j."progressProcessed", created=j."progressCreated",
+         updated=j."progressUpdated", skipped=j."progressSkipped", failed=j."progressFailed",
+         warnings=j."progressWarnings", "partialSuccess"=j."progressPartialSuccess"
+         FROM import_jobs j WHERE r.id=j."importId" AND j.status='needs_review'
+         AND r."reportComplete"=false ${importId === undefined ? "" : 'AND r.id=:importId'}`,
+        { replacements: { importId }, transaction },
+      );
     });
   }
 
@@ -162,7 +184,7 @@ export class ImportJobRepository {
 
   private async markStaleAttempts() {
     await sequelize.query(
-      `UPDATE import_jobs SET status='needs_review', error='Worker heartbeat expired; automatic replay is disabled.', "updatedAt"=NOW()
+      `UPDATE import_jobs SET status='needs_review', error='Import heartbeat expired; automatic replay is disabled.', "updatedAt"=NOW()
        WHERE status='processing' AND "heartbeatAt" < NOW() - (:seconds * INTERVAL '1 second')`,
       { replacements: { seconds: STALE_AFTER_SECONDS } },
     );
@@ -175,4 +197,24 @@ export class ImportJobRepository {
     );
     return rows[0] ?? null;
   }
+}
+
+/** Every import mutation locks and renews the owning job before writing. */
+export async function withFencedImportWrite<T>(
+  write: (transaction?: Transaction) => Promise<T>,
+): Promise<T> {
+  const attempt = getCurrentImportAttempt();
+  if (!attempt) return write();
+  return sequelize.transaction(async (transaction) => {
+    const rows = await sequelize.query<{ id: number }>(
+      `SELECT id FROM import_jobs WHERE id=:jobId AND status='processing' AND "attemptId"=:attemptId FOR UPDATE`,
+      { replacements: { jobId: attempt.jobId, attemptId: attempt.attemptId }, transaction, type: QueryTypes.SELECT },
+    );
+    if (!rows.length) throw new Error("Import attempt lost ownership; writes were stopped.");
+    await sequelize.query(
+      `UPDATE import_jobs SET "heartbeatAt"=NOW(),"updatedAt"=NOW() WHERE id=:jobId AND "attemptId"=:attemptId`,
+      { replacements: { jobId: attempt.jobId, attemptId: attempt.attemptId }, transaction },
+    );
+    return write(transaction);
+  });
 }

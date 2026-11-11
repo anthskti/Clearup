@@ -91,8 +91,8 @@ The admin imports page has three CSV flows:
 
 Offer prices may be positive plain numbers or values prefixed with `$`, `CA`, `CA$`, or `CAD`, such as `$30.23`, `CA 30.23`, `CA$ 30.23`, and `CAD 30.23`. Only a recognized leading prefix is removed; the remaining value must be numeric. The exact sentinel `-1` is stored as `NULL`. Blank, zero, and malformed prices are rejected. Refresh stock accepts `true`/`false` or `1`/`0`. A new master offer without stock defaults to false when its price is null and true when priced; existing stock is preserved when the master has no stock column.
 
-- Backend parses CSV in `ProductService` (admin endpoints + `parseCsvBody` middleware).
-- UI: `/admin/imports` (`ImportsAdminClient`) — file-first imports, pasted CSV, structured results, and persisted import history with row diagnostics. Imports remain synchronous. See [import reports](./admin-operations.md#import-reports) for retention, source line numbers, and downloadable JSON reports.
+- Backend processes CSV in `ProductImportService`, triggered asynchronously inside the API after the admin endpoint accepts the upload.
+- UI: `/admin/imports` (`ImportsAdminClient`) — file-first imports, pasted CSV, structured results, and persisted import history with row diagnostics. Imports run sequentially in the API background; the UI polls progress until the report is finalized. See [the data import pipeline](../dataimport.md). See [import reports](./admin-operations.md#import-reports) for retention, source line numbers, and downloadable JSON reports.
 
 A separate datascraper produces CSV aligned with `backend/src/types/csv.ts`. Merchant seed data also ships as `backend/src/data/merchant_table.csv` (`bun run seed:merchants`).
 

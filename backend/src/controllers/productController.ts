@@ -5,6 +5,7 @@ import { handleInternalError } from "../lib/httpError";
 import { csvFromRequestBody } from "../middleware/parseCsvBody";
 import { ImportReportService } from "../services/ImportReportService";
 import type { ImportType } from "../models/ImportRun";
+import { importProcessor } from "../services/ImportProcessorService";
 import { ImportJobService } from "../services/ImportJobService";
 import { ImportSubmissionConflict } from "../repositories/ImportJobRepository";
 import {
@@ -325,6 +326,7 @@ export class ProductController {
       if (!submissionKey || submissionKey.length > 80) { res.status(400).json({ error: "A valid x-import-submission-key is required." }); return; }
       const accepted = await this.importJobService.enqueue({ importType, sourceName, actorId, requestId: requestId ?? "", submissionKey, csv });
       res.status(202).json({ ok: true, importId: accepted.importId, status: accepted.status, message: accepted.duplicate ? "This import was already submitted." : "Import queued.", processed: 0, created: 0, updated: 0, totals: { received: 0, processed: 0, created: 0, updated: 0, skipped: 0, failed: 0 } });
+      if (!accepted.duplicate) importProcessor.submit(accepted.importId);
     } catch (error: unknown) {
       if (error instanceof ImportSubmissionConflict) { res.status(409).json({ error: error.message }); return; }
       handleInternalError(res, "ProductController.runCsvImport", error);

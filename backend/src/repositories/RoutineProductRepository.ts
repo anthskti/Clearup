@@ -9,7 +9,7 @@ import {
   RoutineProduct,
   UpdateRoutineProductInput,
 } from "../types/routine";
-import { withFencedImportWrite } from "../lib/importAttempt";
+import { withFencedImportWrite } from "./ImportJobRepository";
 
 export class RoutineProductRepository {
   // GET all products for a specific Routine

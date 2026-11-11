@@ -1,3 +1,5 @@
+import type { Server } from "node:http";
+import { importProcessor } from "./services/ImportProcessorService";
 import express from "express";
 import productRoutes from "./routes/productRoutes";
 import routineRoutes from "./routes/routineRoutes";
@@ -159,6 +161,29 @@ app.get("/health", async (req, res) => {
 
 app.use(handleExpressError);
 
+let server: Server | undefined;
+let shuttingDown = false;
+
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ event: "shutdown.started", signal }, "Stopping HTTP requests and finishing the active import");
+  try {
+    // Keep the database available for in-flight HTTP requests and the active import.
+    const requestsFinished = new Promise<void>((resolve, reject) => {
+      if (!server) return resolve();
+      server.close((error) => error ? reject(error) : resolve());
+    });
+    await Promise.all([requestsFinished, importProcessor.stop()]);
+    await importProcessor.markStoppedImports();
+    await sequelize.close();
+    logger.info({ event: "shutdown.finished" }, "API stopped");
+  } catch (error: unknown) {
+    reportError(error, { scope: "shutdown" });
+    process.exitCode = 1;
+  }
+}
+
 // Initialize database and start server
 const startServer = async () => {
   try {
@@ -180,10 +205,14 @@ const startServer = async () => {
     await runMigrations();
     logger.info({ event: "startup.database.migrations_complete" }, "Database migrations complete");
 
+    await importProcessor.initialize();
+
     // Start the server
-    app.listen(port, () => {
+    server = app.listen(port, () => {
       logger.info({ event: "startup.server.listening", port: Number(port) }, "Server listening");
     });
+    process.on("SIGTERM", () => { void shutdown("SIGTERM"); });
+    process.on("SIGINT", () => { void shutdown("SIGINT"); });
   } catch (error: unknown) {
     reportError(error, { scope: "startup" });
     logger.flush(() => process.exit(1));

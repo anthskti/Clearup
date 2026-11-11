@@ -7,7 +7,7 @@ import {
   ProductMerchantWithDetails,
   UpdateProductMerchantInput,
 } from "../types/merchant";
-import { withFencedImportWrite } from "../lib/importAttempt";
+import { withFencedImportWrite } from "./ImportJobRepository";
 
 export class ProductMerchantRepository {
   // GET all merchants for a product

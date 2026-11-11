@@ -38,7 +38,7 @@ function isActive(run: ImportRun | null | undefined): boolean {
 }
 
 function progressLabel(run: ImportRun): string {
-  if (run.jobStatus === "queued") return "Waiting for a worker";
+  if (run.jobStatus === "queued") return "Waiting to start";
   if (!run.progress) return "Waiting for progress";
   return `${run.progress.record.toLocaleString()} of ${run.progress.received.toLocaleString()} rows completed`;
 }

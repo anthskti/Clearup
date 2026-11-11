@@ -81,9 +81,9 @@ Created/updated counts describe writes; a row can also have partial success when
 
 `reportComplete` distinguishes a finished report from an interrupted one. Incomplete reports do not present default-zero counters as final totals: some catalog writes may already have succeeded. The UI provides retry for failed report reads and a separate JSON download containing all issues. Admin reads accept `limit` (1–100) and a nonnegative integer `offset`; missing reports return 404.
 
-Raw CSV uploads and paste requests use `text/csv`, the mutation header, and an encoded filename header (`x-import-filename`). The raw-body size limit is 15 MB. Legacy JSON wrappers still pass through the global JSON parser's smaller limit. Blank uploads fail input validation; header-only and malformed CSV attempts produce reports. No original source file is retained in this stage.
+Raw CSV uploads and paste requests use `text/csv`, the mutation header, and an encoded filename header (`x-import-filename`). The raw-body size limit is 15 MB. Legacy JSON wrappers still pass through the global JSON parser's smaller limit. Blank uploads fail input validation; header-only and malformed CSV attempts produce reports. The decoded CSV source text is retained in PostgreSQL with its import job; it is not exposed by report endpoints.
 
-Imports still run synchronously in the request. Background execution and interrupted-job recovery belong to the next stage. This page is an import history/report surface; application-wide exception monitoring remains separate.
+Imports return HTTP 202 after saving the upload, then run asynchronously inside the API process. The UI polls for provisional progress and the final report. Unfinished jobs are marked `needs_review` after a server restart and are not automatically replayed. See [the data import pipeline](../dataimport.md) for execution, shutdown, and manual reimport behavior.
 
 `bun run seed` in development uses `sequelize.sync({ force: true })` and is **destructive**—never run against production.
 

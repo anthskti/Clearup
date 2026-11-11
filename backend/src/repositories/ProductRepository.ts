@@ -17,7 +17,7 @@ import {
   hasProductListFilters,
 } from "../lib/productFilterQuery";
 import { normalizeImageUrls } from "../lib/csvProductImport";
-import { withFencedImportWrite } from "../lib/importAttempt";
+import { withFencedImportWrite } from "./ImportJobRepository";
 
 type ImportedProductFields = Omit<CreateProductInput, "ingredients"> & {
   ingredients: string | null;

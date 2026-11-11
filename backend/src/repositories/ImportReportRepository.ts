@@ -1,6 +1,6 @@
 import ImportIssue, { type ImportIssueCreationAttributes } from "../models/ImportIssue";
 import ImportRun, { type ImportRunCreationAttributes } from "../models/ImportRun";
-import { withFencedImportWrite } from "../lib/importAttempt";
+import { withFencedImportWrite } from "./ImportJobRepository";
 
 export class ImportReportRepository {
   createRun(input: ImportRunCreationAttributes) {
