@@ -244,11 +244,12 @@ export class RoutineRepository {
       for (const [position, routineId] of routineIds.entries()) {
         const entry = previousByRoutine.get(routineId);
         if (entry) {
-          await entry.update({
+          // Bulk deactivation leaves loaded instances stale; explicitly write the active state.
+          await FeaturedRoutineModel.update({
             isActive: true,
             position,
             ...(!entry.isActive && pinnedBy ? { pinnedBy } : {}),
-          }, { transaction });
+          }, { where: { id: entry.id }, transaction });
         } else {
           await FeaturedRoutineModel.create({ routineId, pinnedBy, position, isActive: true }, { transaction });
         }

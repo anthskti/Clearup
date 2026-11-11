@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import RoutinePreviewCard from "@/components/guides/RoutinePreviewCard";
 import { getFeaturedRoutineCandidate } from "@/lib/routines";
 import type { FeaturedRoutine } from "@/types/routine";
@@ -52,14 +52,25 @@ export function ContentGuidesClient({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const lookupRequest = useRef(0);
   const isDirty = draft.map((item) => item.routineId).join(",") !== saved.map((item) => item.routineId).join(",");
+
+  useEffect(() => () => { lookupRequest.current += 1; }, []);
+
+  const invalidateLookup = () => {
+    // An old response must not restore a preview after the admin changes or clears the search.
+    lookupRequest.current += 1;
+    setCandidate(null);
+    setLookupError(null);
+    setSearching(false);
+  };
 
   const findRoutine = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setLookupError(null);
+    invalidateLookup();
+    const requestId = lookupRequest.current;
     setError(null);
     setMessage(null);
-    setCandidate(null);
     const routineId = parseRoutineId(search);
     if (!routineId) {
       setLookupError("Enter a routine ID or a URL like /routine/123.");
@@ -71,11 +82,14 @@ export function ContentGuidesClient({
     }
     setSearching(true);
     try {
-      setCandidate(await getFeaturedRoutineCandidate(routineId));
+      const result = await getFeaturedRoutineCandidate(routineId);
+      if (requestId === lookupRequest.current) setCandidate(result);
     } catch (cause: unknown) {
-      setLookupError(cause instanceof Error ? cause.message : "Could not find that routine.");
+      if (requestId === lookupRequest.current) {
+        setLookupError(cause instanceof Error ? cause.message : "Could not find that routine.");
+      }
     } finally {
-      setSearching(false);
+      if (requestId === lookupRequest.current) setSearching(false);
     }
   };
 
@@ -101,11 +115,10 @@ export function ContentGuidesClient({
   };
 
   const discard = () => {
+    invalidateLookup();
     setDraft(saved);
-    setCandidate(null);
     setSearch("");
     setError(null);
-    setLookupError(null);
     setMessage(null);
   };
 
@@ -134,7 +147,7 @@ export function ContentGuidesClient({
         <h2 className="text-sm font-semibold text-zinc-900">Find a routine</h2>
         <form onSubmit={findRoutine} className="mt-3 flex flex-col gap-2 sm:flex-row">
           <label htmlFor="routine-search" className="sr-only">Routine ID or URL</label>
-          <input id="routine-search" value={search} onChange={(event) => { setSearch(event.target.value); setCandidate(null); setLookupError(null); }}
+          <input id="routine-search" value={search} onChange={(event) => { invalidateLookup(); setSearch(event.target.value); }}
             placeholder="Routine ID or URL (for example /routine/123)" autoComplete="off"
             className="min-h-11 min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 text-base text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4b84] sm:text-sm" />
           <button type="submit" disabled={searching} className="min-h-11 rounded-lg bg-[#0e4b84] px-4 text-sm font-medium text-white hover:bg-[#0b3c6a] disabled:opacity-60">{searching ? "Looking up…" : "Preview routine"}</button>
