@@ -61,6 +61,9 @@ Locations are normalized relative to the API's runtime root, supporting both a l
 | `rate_limit.exceeded` | warn | Request blocked by an app limiter. `limiter`/`policy` identifies the policy (such as `global`, `catalog`, `sessionReads`, `login`, `recovery`, or `otherAuth`); token buckets may include `identity` and `reason`. |
 | `application.error` | error | A reported application failure. `scope` describes the reporting boundary, such as `express`, `health.database`, `startup`, `auth.reset_email`, `auth.verification_email`, `auth.admin_role_persist`, or `webhook.aws_ses`. |
 | `ses.email.skipped` | info | An email was skipped because the user's email status is not active. |
+| `catalog_import.started`, `catalog_import.finished` | info | Import lifecycle records with `importId`, `requestId`, type and final status/counts. |
+| `catalog_import.row_issue` | warn | Skipped, failed, warning or partially saved rows. Includes record/source lines, stage, code, safe reason, and bounded brand/name context. Emitted before issue persistence so a reporting write failure still leaves diagnostics. |
+| `catalog_import.failed` | error | Processing stopped before the report completed; includes the import ID and sanitized exception metadata. |
 | `webhook.sns.subscription.rejected`, `webhook.sns.subscription.confirmed`, `webhook.ses.bounce.processed`, `webhook.ses.complaint.processed` | warn / info | SNS subscription rejection is warn; confirmation and processed bounce/complaint notifications are info. |
 
 HTTP completion severity is independent of application event severity: successful requests are `info`, 4xx are `warn`, and 5xx or request errors are `error`. A handled internal error normally produces an `application.error` record plus the request completion record. A 4xx auth audit stays at `info` while its separate request completion is `warn`.
@@ -68,6 +71,8 @@ HTTP completion severity is independent of application event severity: successfu
 Auth audit middleware runs before the app auth policy guards, so every auth HTTP request—including rejected attempts—has a sanitized audit record. A rate-limited auth request also has the rate-limit warning and completion record. Global and classified app limiters emit a warning when they reject a request; fixed routine creation and mutation limiters currently produce only the request completion record when they reject a request.
 
 ## Expected record volume
+
+An import normally adds a start record, one warning per row issue, and a finish record to the HTTP completion record. These logs support diagnosis; the retained admin import report stores the full issue list independently of log level or stdout retention. Raw CSV, SQL and exception messages are not included in import events.
 
 Think in HTTP requests and additional events, not browser page views. The request logger emits one completion record per request, except successful `/health` checks, which are intentionally silent. These counts assume the default `info`/`debug` threshold and no additional business events. Logs do not consume API rate-limit budget: rate limits count HTTP requests, not records. Browser screens can make several API calls; catalog list and offer lookups are separate requests, and Next.js caching can reduce the number that reach the API.
 

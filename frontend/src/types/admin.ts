@@ -5,6 +5,10 @@ export type AdminUserRow = {
   emailVerified: boolean;
   role: string;
   createdAt: string;
+  routineCount: number;
+  accountStatus: "active" | "suspended" | "banned";
+  banReason: string | null;
+  banExpires: string | null;
 };
 
 export type AdminUsersPagePayload = {
@@ -12,4 +16,13 @@ export type AdminUsersPagePayload = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type AdminUsersQuery = {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  role?: "user" | "admin";
+  verified?: boolean;
+  status?: "active" | "suspended" | "banned";
 };

@@ -10,6 +10,18 @@ const productController = new ProductController();
 // PRODUCT
 
 // ADMIN endpoints
+router.get("/admin/imports", requireAdmin, (req, res) =>
+  productController.getImportHistory(req, res),
+);
+router.get("/admin/imports/:id", requireAdmin, (req, res) =>
+  productController.getImportRun(req, res),
+);
+router.get("/admin/imports/:id/issues", requireAdmin, (req, res) =>
+  productController.getImportIssues(req, res),
+);
+router.get("/admin/imports/:id/report", requireAdmin, (req, res) =>
+  productController.downloadImportReport(req, res),
+);
 router.post(
   "/admin/import/csv",
   requireAdmin,

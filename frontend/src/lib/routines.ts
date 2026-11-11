@@ -7,7 +7,10 @@ import {
   GuideRoutinePage,
   RoutineNoteUpdate,
 } from "@/types/routine";
-import type { AdminDashboardStats } from "@/types/routine-admin";
+import type {
+  AdminDashboardStats,
+  FeaturedRoutineCandidate,
+} from "@/types/routine-admin";
 import { SkinType } from "@/types/product";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
@@ -41,7 +44,7 @@ export const getAllRoutines = async (
 };
 
 export const getAdminDashboardStats = async (
-  days = 14,
+  days = 30,
 ): Promise<AdminDashboardStats> => {
   const res = await fetch(`${API_URL}/api/routines/admin/stats?days=${days}`, {
     cache: "no-store",
@@ -72,10 +75,24 @@ export const getFeaturedRoutines = async (): Promise<FeaturedRoutine[]> => {
   return res.json();
 };
 
+export async function getFeaturedRoutineCandidate(
+  routineId: number,
+): Promise<FeaturedRoutineCandidate> {
+  const res = await fetch(`${API_URL}/api/routines/admin/featured/candidate/${routineId}`, {
+    cache: "no-store",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ error: "Could not find that routine" }));
+    throw new Error(errorData.error || "Could not find that routine");
+  }
+  return res.json();
+}
+
 // Public endpoint for landing page (no auth).
 export async function getPublicFeaturedRoutines(): Promise<FeaturedRoutine[]> {
   const res = await fetch(`${API_URL}/api/routines/featured`, {
-    next: { revalidate: 120 },
+    next: { revalidate: 120, tags: ["featured-routines"] },
   });
   if (!res.ok) {
     const errorData = await res
@@ -139,6 +156,7 @@ export const featureRoutine = async (routineId: number): Promise<void> => {
     `${API_URL}/api/routines/admin/featured/${routineId}`,
     {
       method: "POST",
+      cache: "no-store",
       headers: mutationHeaders(),
       credentials: "include",
     },
@@ -156,6 +174,7 @@ export const unfeatureRoutine = async (routineId: number): Promise<void> => {
     `${API_URL}/api/routines/admin/featured/${routineId}`,
     {
       method: "DELETE",
+      cache: "no-store",
       headers: mutationHeaders(),
       credentials: "include",
     },

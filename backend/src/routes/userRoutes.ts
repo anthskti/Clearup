@@ -44,4 +44,8 @@ router.get("/admin", requireAdmin, (req, res) =>
   userController.listAdminUsers(req, res),
 );
 
+router.patch("/admin/:userId/moderation", requireAdmin, requireMutationHeader, (req, res) =>
+  userController.moderateUser(req, res),
+);
+
 export default router;

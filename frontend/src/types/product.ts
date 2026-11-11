@@ -45,6 +45,8 @@ export type SkinType =
 
 export type CsvImportResponse = {
   ok: boolean;
+  importId?: number;
+  status?: "processing" | "completed" | "partial" | "failed";
   processed: number;
   created: number;
   updated: number;
@@ -58,8 +60,10 @@ export type CsvImportResponse = {
     updated: number;
     skipped: number;
     failed: number;
+    warnings?: number;
+    partialSuccess?: number;
   };
-  errors?: { row: number; code: string; message: string }[];
+  errors?: { row: number; recordNumber?: number; sourceLineStart?: number; sourceLineEnd?: number; code: string; message: string; outcome?: string; stage?: string }[];
 };
 
 export interface ProductCatalogPage {

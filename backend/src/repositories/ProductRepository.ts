@@ -9,7 +9,7 @@ import type {
   UpdateProductInput,
 } from "../types/product";
 import PAGINATION from "../config/pagination";
-import { Op } from "sequelize";
+import { Op, type CreationAttributes } from "sequelize";
 import {
   ProductSearchFilters,
   buildProductFilterWhere,
@@ -17,6 +17,12 @@ import {
   hasProductListFilters,
 } from "../lib/productFilterQuery";
 import { normalizeImageUrls } from "../lib/csvProductImport";
+import { withFencedImportWrite } from "./ImportJobRepository";
+
+type ImportedProductFields = Omit<CreateProductInput, "ingredients"> & {
+  ingredients: string | null;
+  skinTypeSource: ProductSkinTypeSource;
+};
 
 export class ProductRepository {
   // Get all products with pagination, infinite scroll
@@ -135,6 +141,18 @@ export class ProductRepository {
     return map;
   }
 
+  async createImportedProduct(fields: ImportedProductFields): Promise<ProductModel> {
+    // The legacy model type omits nullable ingredients, which CSV imports can clear.
+    return withFencedImportWrite((transaction) => ProductModel.create(fields as CreationAttributes<ProductModel>, { transaction }));
+  }
+
+  async updateImportedProduct(
+    product: ProductModel,
+    fields: Partial<ImportedProductFields>,
+  ): Promise<void> {
+    await withFencedImportWrite((transaction) => product.update(fields as Partial<CreationAttributes<ProductModel>>, { transaction }));
+  }
+
   // POST a single product
   async create(productData: CreateProductInput): Promise<Product> {
     try {
@@ -166,13 +184,15 @@ export class ProductRepository {
   }
 
   async updatePrice(id: number, price: number): Promise<boolean> {
+    return withFencedImportWrite(async (transaction) => {
     const [rows] = await ProductModel.update(
       { price },
       {
-        where: { id },
+        where: { id }, transaction,
       },
     );
     return rows > 0;
+    });
   }
 
   // DELETE product by ID

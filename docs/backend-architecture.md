@@ -134,8 +134,45 @@ erDiagram
         int     id          PK
         int     routineId   FK  UK
         string  pinnedBy    "admin userId"
+        int     position    "homepage display order"
+        boolean isActive    "inactive membership rows retained"
         date    createdAt
         date    updatedAt
+    }
+
+    IMPORT_RUN {
+        int     id          PK
+        string  importType  "products | offers | prices"
+        string  sourceName
+        string  actorId     "retained string; no user FK"
+        string  requestId
+        string  status      "processing | completed | partial | failed"
+        date    startedAt
+        date    finishedAt
+        int     durationMs
+        int     received
+        int     processed
+        int     created
+        int     updated
+        int     skipped
+        int     failed
+        int     warnings
+        int     partialSuccess
+        boolean reportComplete "false when final totals are unavailable"
+    }
+
+    IMPORT_ISSUE {
+        int     id          PK
+        int     importId    FK
+        int     recordNumber
+        int     sourceLineStart
+        int     sourceLineEnd
+        text    brand
+        text    name
+        string  code
+        string  outcome
+        string  stage
+        text    reason
     }
 
     COMMENT {
@@ -168,6 +205,7 @@ erDiagram
 
     %% Admin curation
     ROUTINE      ||--o|  FEATURED_ROUTINE : "featured by admin"
+    IMPORT_RUN   ||--o{  IMPORT_ISSUE     : "retained diagnostics (RESTRICT)"
 
     %% Future — product reviews
     PRODUCT      ||--o{  COMMENT          : "receives (planned)"
@@ -231,6 +269,8 @@ flowchart TD
             S_PRODUCT["ProductService\nfilter · import CSV · merchant mgmt"]
             S_ROUTINE["RoutineService\nbulk ops · notes · ordering"]
             S_MERCHANT["MerchantService"]
+            S_USER["UserService"]
+            S_IMPORT["ImportReportService"]
         end
 
         subgraph REPOS ["Repository Layer"]
@@ -240,6 +280,7 @@ flowchart TD
             RP_PRODMERCH["ProductMerchantRepository"]
             RP_MERCHANT["MerchantRepository"]
             RP_USER["UserRepository"]
+            RP_IMPORT["ImportReportRepository"]
             RP_COMMENT["CommentRepository planned"]
         end
     end
@@ -294,13 +335,16 @@ flowchart TD
     C_PRODUCT  --> S_PRODUCT
     C_ROUTINE  --> S_ROUTINE
     C_MERCHANT --> S_MERCHANT
+    C_USER    --> S_USER
+    C_PRODUCT --> S_IMPORT
 
     S_PRODUCT  --> RP_PRODUCT
     S_PRODUCT  --> RP_PRODMERCH
     S_ROUTINE  --> RP_ROUTINE
     S_ROUTINE  --> RP_ROUTPROD
     S_MERCHANT --> RP_MERCHANT
-    C_USER     --> RP_USER
+    S_USER     --> RP_USER
+    S_IMPORT   --> RP_IMPORT
 
     RP_PRODUCT   --> ORM
     RP_ROUTINE   --> ORM
@@ -308,6 +352,7 @@ flowchart TD
     RP_PRODMERCH --> ORM
     RP_MERCHANT  --> ORM
     RP_USER      --> ORM
+    RP_IMPORT    --> ORM
     RP_COMMENT   -.->|"planned"| ORM
 
     ORM <--> PG

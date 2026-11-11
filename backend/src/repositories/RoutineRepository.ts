@@ -18,7 +18,7 @@ import {
   TopAuthorCountRow,
 } from "../types/routine-admin";
 import PAGINATION from "../config/pagination";
-import { Op, QueryTypes, fn, col, literal } from "sequelize";
+import { Op, QueryTypes, fn, col, literal, type Transaction } from "sequelize";
 import { sanitizeSkinTypeTags } from "../types/routineSkinTypeTags";
 import { normalizeImageUrls } from "../lib/csvProductImport";
 import type { SkinType } from "../types/product";
@@ -134,18 +134,19 @@ export class RoutineRepository {
   }
 
   // GET recent guides with date and count
-  async getRecentGuides(since: Date): Promise<RoutineDailyCountRow[]> {
+  async getDailyRoutineCounts(start: Date, endExclusive: Date): Promise<RoutineDailyCountRow[]> {
     return RoutineModel.findAll({
       where: {
         createdAt: {
-          [Op.gte]: since,
+          [Op.gte]: start,
+          [Op.lt]: endExclusive,
         },
       } as any,
       attributes: [
-        [fn("DATE_TRUNC", "day", col("createdAt")), "day"],
-        [fn("COUNT", col("*")), "count"],
+        [literal(`TO_CHAR("createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD')`), "day"],
+        [literal("COUNT(*)"), "count"],
       ],
-      group: [fn("DATE_TRUNC", "day", col("createdAt"))],
+      group: ["day"],
       raw: true,
     }) as unknown as RoutineDailyCountRow[];
   }
@@ -163,13 +164,14 @@ export class RoutineRepository {
 
   // GET featured count
   async getFeaturedCount(): Promise<number> {
-    return FeaturedRoutineModel.count();
+    return FeaturedRoutineModel.count({ where: { isActive: true } });
   }
 
   // GET featured routines entries (limit 20)
   async getFeaturedEntries(limit = 20): Promise<FeaturedRoutineEntryRow[]> {
     return FeaturedRoutineModel.findAll({
-      order: [["createdAt", "DESC"]],
+      where: { isActive: true },
+      order: [["position", "ASC"], ["createdAt", "DESC"], ["id", "ASC"]],
       limit,
       raw: true,
     }) as unknown as FeaturedRoutineEntryRow[];
@@ -177,20 +179,87 @@ export class RoutineRepository {
 
   // GET featured routine by routineId
   async findFeaturedByRoutineId(routineId: number): Promise<any | null> {
-    return FeaturedRoutineModel.findOne({ where: { routineId } });
+    return FeaturedRoutineModel.findOne({ where: { routineId, isActive: true } });
   }
 
   // POST create a featured routine
   async createFeaturedRoutine(routineId: number, pinnedBy: string): Promise<void> {
-    await FeaturedRoutineModel.create({ routineId, pinnedBy });
+    await sequelize.transaction(async (transaction) => {
+      await this.lockFeaturedOrder(transaction);
+      const active = await FeaturedRoutineModel.findAll({
+        where: { isActive: true },
+        order: [["position", "ASC"], ["id", "ASC"]],
+        transaction,
+      });
+      if (active.some((entry) => entry.routineId === routineId)) return;
+      if (active.length >= 20) throw new Error("Featured guide limit reached (20)");
+      const existing = await FeaturedRoutineModel.findOne({
+        where: { routineId },
+        transaction,
+      });
+      if (existing) {
+        await existing.update({ isActive: true, position: active.length, pinnedBy }, { transaction });
+      } else {
+        await FeaturedRoutineModel.create({ routineId, pinnedBy, position: active.length, isActive: true }, { transaction });
+      }
+    });
   }
 
   // DELETE featured routine by routineId
   async removeFeaturedRoutine(routineId: number): Promise<boolean> {
-    const deleted = await FeaturedRoutineModel.destroy({
-      where: { routineId },
+    return sequelize.transaction(async (transaction) => {
+      await this.lockFeaturedOrder(transaction);
+      const active = await FeaturedRoutineModel.findAll({
+        where: { isActive: true },
+        order: [["position", "ASC"], ["id", "ASC"]],
+        transaction,
+      });
+      const removed = active.find((entry) => entry.routineId === routineId);
+      if (!removed) return false;
+      await removed.update({ isActive: false }, { transaction });
+      for (const [position, entry] of active.filter((item) => item !== removed).entries()) {
+        if (entry.position !== position) await entry.update({ position }, { transaction });
+      }
+      return true;
     });
-    return deleted > 0;
+  }
+
+  async saveFeaturedRoutineOrder(routineIds: number[], pinnedBy: string): Promise<void> {
+    await sequelize.transaction(async (transaction) => {
+      await this.lockFeaturedOrder(transaction);
+      const existingRoutines = routineIds.length
+        ? await RoutineModel.count({ where: { id: routineIds }, transaction })
+        : 0;
+      if (existingRoutines !== routineIds.length) throw new Error("One or more routines were not found");
+
+      const previous = routineIds.length
+        ? await FeaturedRoutineModel.findAll({ where: { routineId: routineIds }, transaction })
+        : [];
+      const previousByRoutine = new Map(previous.map((entry) => [entry.routineId, entry]));
+      await FeaturedRoutineModel.update({ isActive: false }, {
+        where: { isActive: true },
+        transaction,
+      });
+
+      for (const [position, routineId] of routineIds.entries()) {
+        const entry = previousByRoutine.get(routineId);
+        if (entry) {
+          // Bulk deactivation leaves loaded instances stale; explicitly write the active state.
+          await FeaturedRoutineModel.update({
+            isActive: true,
+            position,
+            ...(!entry.isActive && pinnedBy ? { pinnedBy } : {}),
+          }, { where: { id: entry.id }, transaction });
+        } else {
+          await FeaturedRoutineModel.create({ routineId, pinnedBy, position, isActive: true }, { transaction });
+        }
+      }
+    });
+  }
+
+  private async lockFeaturedOrder(transaction: Transaction): Promise<void> {
+    // Serialize competing admin saves and legacy add/remove calls.
+    await sequelize.query("SELECT pg_advisory_xact_lock(74218031)", { transaction });
   }
 
   // GET routines by ids

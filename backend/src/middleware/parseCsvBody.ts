@@ -33,10 +33,10 @@ export const parseImportCsvBody: RequestHandler = (req, res, next) => {
 
 export function csvFromRequestBody(body: unknown): string {
   if (typeof body === "string") {
-    return body.trim();
+    return body;
   }
   if (body && typeof body === "object" && "csv" in body) {
-    return String((body as { csv?: unknown }).csv ?? "").trim();
+    return String((body as { csv?: unknown }).csv ?? "");
   }
   return "";
 }

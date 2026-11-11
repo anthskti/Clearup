@@ -2,7 +2,7 @@
 
 The **user** module covers identity, sessions, and role handling. **Better Auth** drives sign-in, sign-up, OAuth, and session storage against the same **PostgreSQL** database the app uses (`DATABASE_URL`). Application code extends that with a **Sequelize `User` model** (including `role` for admin) and a small **UserRepository** for admin analytics.
 
-The module does not use a separate “user CRUD” controller; most HTTP surface is **Better Auth’s routes** plus a thin **“who am I”** endpoint wired in `index.ts`.
+Better Auth owns sign-in and session creation. The application has `UserController → UserService → UserRepository` paths for the admin directory and audited account moderation, plus the “who am I” endpoint wired in `index.ts`.
 
 ## Data Models
 
@@ -17,8 +17,8 @@ Better Auth and Sequelize share one database. Core tables exposed as Sequelize m
 
 The repository layer performs direct database reads for operational/analytics use cases.
 
-- UserRepository (`UserRepository.ts`): Read-only helpers used mainly by admin-facing flows (for example routine admin stats).
-  Better Auth continues to own writes for authentication tables during normal sign-in and OAuth flows.
+- UserRepository (`UserRepository.ts`): Admin search/filter/pagination with routine counts, analytics helpers, restriction lookup, and transactional moderation updates. ID/name/email search treats SQL LIKE metacharacters literally and results sort by creation date and ID.
+- Moderation expires all target sessions in the same transaction as restriction updates; session rows are retained. Better Auth direct ban/unban routes and moderation-field writes through `admin/update-user` are blocked.
 
 ## Type Definitions
 
@@ -44,6 +44,7 @@ Central Better Auth setup:
   - Otherwise hydrates **email / role from the DB** when the session omits them.
   - `ADMIN_EMAILS` (comma-separated env list): matching verified emails are treated as admins; the middleware attempts to User.update`({ role: "admin" })` so the role persists (authorization does not wait on write success).
 - `requireAdmin`: Same session + whitelist logic, then responds **403** unless **role === "admin"**.
+- Both guards read live restrictions before admin-role resolution and return `ACCOUNT_SUSPENDED` / `ACCOUNT_BANNED`; expired suspensions are allowed through.
 
 ### `middleware/security.ts` (auth route helpers)
 
@@ -63,3 +64,5 @@ User-facing auth HTTP is not a dedicated `userRoutes` file:
 
 - `ALL /api/auth/*path` — delegated to Better Auth via `toNodeHandler(auth)` (sign-in, sign-up, sign-out, OAuth callbacks, etc.).
 - `GET /api/auth/me` — returns **{ id, email, role }** for the current session (uses `requireAuth`).
+- `GET /api/users/admin` — admin-only directory with `search`, `role`, `verified`, `limit`, and `offset`; includes creation timestamps and routine counts. See [admin operations](../../../docs/features/admin-operations.md#user-directory).
+- `PATCH /api/users/admin/:userId/moderation` — admin-only suspend (1, 7, or 30 days), permanent ban, or restore; validates reasons and protects self, admins, and `ADMIN_EMAILS` accounts.
