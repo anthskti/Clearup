@@ -9,7 +9,7 @@ import type {
   UpdateProductInput,
 } from "../types/product";
 import PAGINATION from "../config/pagination";
-import { Op } from "sequelize";
+import { Op, type CreationAttributes } from "sequelize";
 import {
   ProductSearchFilters,
   buildProductFilterWhere,
@@ -17,6 +17,11 @@ import {
   hasProductListFilters,
 } from "../lib/productFilterQuery";
 import { normalizeImageUrls } from "../lib/csvProductImport";
+
+type ImportedProductFields = Omit<CreateProductInput, "ingredients"> & {
+  ingredients: string | null;
+  skinTypeSource: ProductSkinTypeSource;
+};
 
 export class ProductRepository {
   // Get all products with pagination, infinite scroll
@@ -133,6 +138,18 @@ export class ProductRepository {
       );
     }
     return map;
+  }
+
+  async createImportedProduct(fields: ImportedProductFields): Promise<ProductModel> {
+    // The legacy model type omits nullable ingredients, which CSV imports can clear.
+    return ProductModel.create(fields as CreationAttributes<ProductModel>);
+  }
+
+  async updateImportedProduct(
+    product: ProductModel,
+    fields: Partial<ImportedProductFields>,
+  ): Promise<void> {
+    await product.update(fields as Partial<CreationAttributes<ProductModel>>);
   }
 
   // POST a single product

@@ -33,6 +33,10 @@ Frontend gate: `frontend/src/app/admin/layout.tsx` redirects to `/login` or `/` 
 | `POST /api/routines/admin/featured/:id` | Feature a guide |
 | `DELETE /api/routines/admin/featured/:id` | Unfeature |
 | `GET /api/users/admin` | Paginated users with `search`, `role`, and `verified` filters and routine counts |
+| `GET /api/products/admin/imports` | Paginated import history |
+| `GET /api/products/admin/imports/:id` | Persisted import summary |
+| `GET /api/products/admin/imports/:id/issues` | Paginated row issues |
+| `GET /api/products/admin/imports/:id/report` | Full JSON report download |
 | Product POST/PUT/DELETE, `/api/products/admin/import/csv`, `/offers`, `/prices` | Catalog management and imports |
 | `/api/merchant` POST/PUT/DELETE | Merchant master data |
 
@@ -62,7 +66,21 @@ Typical flow:
 1. Initialize catalog products with the product CSV, including its initial merchant link when `url`, `merchant`, and a positive price are supplied; or create products in the client. A blank merchant defaults to YesStyle.
 2. Import matched rows from a reviewed merchant master to add offers to existing products.
 3. Refresh prices and stock from `brand,name,price,merchant,stock` CSVs. Refreshes require an existing offer and preserve its link.
-4. Review skipped and failed row counts in `ImportsAdminClient`; correct rows and re-run as needed.
+4. Review the persisted summary and row issues in **Imports**; correct the source CSV and re-run as needed.
+
+### Import reports
+
+Migration `013-persist-import-reports.ts` adds `import_runs` and `import_issues`. A run is created before catalog writes. Row issues are saved during processing, with the brand/name, logical record number, physical source line range, processing stage, outcome, code, and reason. Reports retain every issue; pagination limits the display, and the JSON download contains the complete issue list. Report tables are retained on migration rollback and are not tied to account deletion.
+
+Record numbers start at 1 after the header. Physical line numbers include the header, blank lines and newlines inside quoted fields. Invalid quoting, duplicate/empty headers and mismatched field counts are reported explicitly. Upload and paste handling preserve those line offsets.
+
+Created/updated counts describe writes; a row can also have partial success when a later offer or price-sync step fails. Such a row must not be interpreted as wholly unwritten. Report-storage failure stops processing, and Pino diagnostics correlate the run and request IDs. See [backend logging](../backend-logging.md).
+
+`reportComplete` distinguishes a finished report from an interrupted one. Incomplete reports do not present default-zero counters as final totals: some catalog writes may already have succeeded. The UI provides retry for failed report reads and a separate JSON download containing all issues. Admin reads accept `limit` (1–100) and a nonnegative integer `offset`; missing reports return 404.
+
+Raw CSV uploads and paste requests use `text/csv`, the mutation header, and an encoded filename header (`x-import-filename`). The raw-body size limit is 15 MB. Legacy JSON wrappers still pass through the global JSON parser's smaller limit. Blank uploads fail input validation; header-only and malformed CSV attempts produce reports. No original source file is retained in this stage.
+
+Imports still run synchronously in the request. Background execution and interrupted-job recovery belong to the next stage. This page is an import history/report surface; application-wide exception monitoring remains separate.
 
 `bun run seed` in development uses `sequelize.sync({ force: true })` and is **destructive**—never run against production.
 

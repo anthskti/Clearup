@@ -33,12 +33,13 @@ To enforce strict type safety and prevent repetitive inline object declarations,
   - Same with **tags**.
 - CSV Analyzer (`csv.ts`): defines a data transfer object from CSV into the system.
 
-## Product Services (`ProductService.ts`)
+## Product Services
 
 The service layer contains the core business logic, acting as the bridge between the controllers and the database repositories.
 
-- Standard Operations: Organize product and merchant CRUD actions, alongside paginated search logic.
-- Admin Operations: Includes a dedicated method for parsing and pushing CSV data directly into the database via an admin endpoint. Given my current implementation of my datascraper, it follows that.
+- `ProductService.ts`: Product and merchant-offer CRUD, plus paginated catalog search.
+- `ProductImportService.ts`: Admin CSV imports (products, merchant offers, price refresh). Result helpers live in `lib/csvImportResults.ts`; field/document parsing stays in `lib/csvProductImport.ts`.
+- `ImportReportService.ts`: Persists import runs and row-level issues around those import flows.
 
 ## Product Controller (`productController.ts`)
 
