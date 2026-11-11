@@ -30,23 +30,17 @@ export class UserService {
       return "protected";
     }
 
-    const target = await this.userRepository.findModerationTarget(targetId);
-    if (!target) {
-      return "missing";
-    }
-
     const adminEmails = new Set(
       (process.env.ADMIN_EMAILS || "")
         .split(",")
         .map((email) => email.trim().toLowerCase())
         .filter(Boolean),
     );
-    const targetEmail = target.email.trim().toLowerCase();
-    if (target.role === "admin" || adminEmails.has(targetEmail)) {
-      return "protected";
-    }
-
-    const result = await this.userRepository.moderateUser(targetId, moderation);
+    const result = await this.userRepository.moderateUser(
+      targetId,
+      moderation,
+      (target) => target.role === "admin" || adminEmails.has(target.email.trim().toLowerCase()),
+    );
     return result ?? "missing";
   }
 }

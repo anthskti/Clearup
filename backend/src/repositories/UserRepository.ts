@@ -161,34 +161,33 @@ export class UserRepository {
     return { banned: user.banned, banReason: user.banReason, banExpires: user.banExpires };
   }
 
-  async findModerationTarget(userId: string): Promise<{
-    id: string;
-    email: string;
-    role: string;
-  } | null> {
-    const user = await UserModel.findByPk(userId, {
-      attributes: ["id", "email", "role"],
-    });
-    return user ? { id: user.id, email: user.email, role: user.role } : null;
-  }
-
   async moderateUser(
     userId: string,
     moderation: ModerationAction,
-  ): Promise<ModerationResult | null> {
-    const now = new Date();
-    const fields = moderation.action === "restore"
-      ? { banned: false, banReason: null, banExpires: null }
-      : moderation.action === "suspend"
-        ? {
-            banned: true,
-            banReason: moderation.reason,
-            banExpires: new Date(
-              now.getTime() + moderation.durationDays * 86_400_000,
-            ),
-          }
-        : { banned: true, banReason: moderation.reason, banExpires: null };
+    isProtected: (target: { email: string; role: string }) => boolean,
+  ): Promise<ModerationResult | "protected" | null> {
     return sequelize.transaction(async (transaction) => {
+      // Keep protection checks and moderation atomic with concurrent role changes.
+      const target = await UserModel.findByPk(userId, {
+        attributes: ["id", "email", "role"],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!target) return null;
+      if (isProtected(target)) return "protected";
+
+      const now = new Date();
+      const fields = moderation.action === "restore"
+        ? { banned: false, banReason: null, banExpires: null }
+        : moderation.action === "suspend"
+          ? {
+              banned: true,
+              banReason: moderation.reason,
+              banExpires: new Date(
+                now.getTime() + moderation.durationDays * 86_400_000,
+              ),
+            }
+          : { banned: true, banReason: moderation.reason, banExpires: null };
       const [count] = await UserModel.update(fields, { where: { id: userId }, transaction });
       if (!count) return null;
       await SessionModel.update({ expiresAt: now }, { where: { userId }, transaction });
