@@ -91,7 +91,7 @@ Imports return HTTP 202 after saving the upload, then run asynchronously inside 
 
 `GET /api/routines/admin/stats` returns lifetime totals, a zero-filled daily series, selected-period and preceding-period counts, and top contributors. The selected window covers completed UTC days, excluding today; repository grouping and query boundaries use UTC. Invalid day counts return 400. The API retains support for integer ranges such as 14 days for compatibility.
 
-The dashboard defaults to 30 days and stores its 7/30/90-day selection in `?days=`. Line charts support pointer selection, arrow/Home/End keyboard inspection, and expandable daily-value tables. Phone/tablet navigation uses a drawer; desktop keeps the sidebar. Types live in `routine-admin.ts` on both frontend and backend.
+The dashboard defaults to 30 days and stores its 7/30/90-day selection in `?days=`. A shared Daily/Cumulative control uses `mode=daily` (default) or `mode=cumulative` in the URL and preserves the selected date range. Cumulative values are running sums within that range, starting from zero before its first day; they exclude earlier activity and today’s partial UTC day. Lifetime cards and period comparisons do not change with chart mode. Line charts support pointer selection, arrow/Home/End keyboard inspection, and expandable tables showing values for the selected mode. Phone/tablet navigation uses a drawer; desktop keeps the sidebar. Types live in `routine-admin.ts` on both frontend and backend.
 
 ## Security considerations
 

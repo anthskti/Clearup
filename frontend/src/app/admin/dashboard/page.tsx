@@ -7,11 +7,12 @@ import { getAdminDashboardStatsServer } from "@/lib/admin-server";
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ days?: string }>;
+  searchParams: Promise<{ days?: string; mode?: string }>;
 }) {
   const params = await searchParams;
   const requestedDays = Number(params.days);
   const days = [7, 30, 90].includes(requestedDays) ? requestedDays : 30;
+  const mode = params.mode === "cumulative" ? "cumulative" : "daily";
   let stats;
   try {
     stats = await getAdminDashboardStatsServer(days);
@@ -35,19 +36,29 @@ export default async function AdminDashboardPage({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <p className="text-sm font-medium text-zinc-700">{startLabel} – {endLabel}</p>
           <p className="mt-1 text-sm text-zinc-500">Activity counts use complete UTC days.</p>
         </div>
-        <nav aria-label="Trend date range" className="grid grid-cols-3 rounded-lg border border-zinc-200 bg-white p-1 sm:w-80">
-          {[7, 30, 90].map((range) => (
-            <Link key={range} href={`/admin/dashboard?days=${range}`} aria-current={days === range ? "page" : undefined}
-              className={`flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4b84] ${days === range ? "bg-[#0e4b84] text-white" : "text-zinc-600 hover:bg-zinc-100"}`}>
-              {range} days
-            </Link>
-          ))}
-        </nav>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <nav aria-label="Trend date range" className="grid grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 sm:w-64">
+            {[7, 30, 90].map((range) => (
+              <Link key={range} href={`/admin/dashboard?days=${range}&mode=${mode}`} aria-current={days === range ? "page" : undefined}
+                className={`flex min-h-11 select-none touch-manipulation items-center justify-center rounded-lg whitespace-nowrap px-3 text-sm font-medium tracking-[-0.01em] transition-[background-color,color,box-shadow] duration-150 active:duration-0 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4b84] ${days === range ? "bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-950/5 active:bg-zinc-50" : "text-zinc-500 hover:bg-white/60 hover:text-zinc-900 active:bg-zinc-200/80 active:text-zinc-950"}`}>
+                {range} days
+              </Link>
+            ))}
+          </nav>
+          <nav aria-label="Trend display mode" className="grid grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 sm:w-64">
+            {(["daily", "cumulative"] as const).map((displayMode) => (
+              <Link key={displayMode} href={`/admin/dashboard?days=${days}&mode=${displayMode}`} aria-current={mode === displayMode ? "page" : undefined}
+                className={`flex min-h-11 select-none touch-manipulation items-center justify-center rounded-lg whitespace-nowrap px-3 text-sm font-medium tracking-[-0.01em] transition-[background-color,color,box-shadow] duration-150 active:duration-0 motion-reduce:transition-none capitalize focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4b84] ${mode === displayMode ? "bg-white text-zinc-950 shadow-sm ring-1 ring-zinc-950/5 active:bg-zinc-50" : "text-zinc-500 hover:bg-white/60 hover:text-zinc-900 active:bg-zinc-200/80 active:text-zinc-950"}`}>
+                {displayMode}
+              </Link>
+            ))}
+          </nav>
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <MetricCard
@@ -78,7 +89,7 @@ export default async function AdminDashboardPage({
         ))}
       </section>
 
-      <AdminTrendChart key={days} series={series} />
+      <AdminTrendChart key={`${days}-${mode}`} series={series} mode={mode} />
 
       <section className="rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div className="border-b border-zinc-200 px-6 py-4">

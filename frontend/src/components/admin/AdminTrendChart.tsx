@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import type { AdminDashboardStats } from "@/types/routine-admin";
 
-type Props = { series: AdminDashboardStats["series"] };
+type Props = { series: AdminDashboardStats["series"]; mode: "daily" | "cumulative" };
 
 function formatDate(date: string, options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("en", { timeZone: "UTC", ...options }).format(
@@ -11,20 +11,36 @@ function formatDate(date: string, options: Intl.DateTimeFormatOptions) {
   );
 }
 
-function DailyChart({
+function getDisplayedSeries(
+  series: Props["series"],
+  valueKey: "users" | "routines",
+  mode: "daily" | "cumulative",
+) {
+  let total = 0;
+  return series.map((point) => {
+    total += point[valueKey];
+    return { ...point, displayedValue: mode === "cumulative" ? total : point[valueKey] };
+  });
+}
+
+function TrendChart({
   title,
   description,
   series,
   valueKey,
   color,
+  mode,
 }: {
   title: string;
   description: string;
   series: Props["series"];
   valueKey: "users" | "routines";
   color: string;
+  mode: "daily" | "cumulative";
 }) {
-  const max = Math.max(1, ...series.map((point) => point[valueKey]));
+  const displayedSeries = getDisplayedSeries(series, valueKey, mode);
+  const valueLabel = mode === "cumulative" ? "Cumulative total" : "Daily count";
+  const max = Math.max(1, ...displayedSeries.map((point) => point.displayedValue));
   const step = max <= 5 ? 1 : Math.ceil(max / 4);
   const top = Math.ceil(max / step) * step;
   const ticks = Array.from({ length: top / step + 1 }, (_, index) => index * step);
@@ -36,10 +52,10 @@ function DailyChart({
   const bottom = 184;
   const plotWidth = width - left - right;
   const plotHeight = bottom - topPad;
-  const points = series.map((point, index) => ({
+  const points = displayedSeries.map((point, index) => ({
     ...point,
     x: left + (series.length <= 1 ? plotWidth / 2 : (index / (series.length - 1)) * plotWidth),
-    y: bottom - (point[valueKey] / top) * plotHeight,
+    y: bottom - (point.displayedValue / top) * plotHeight,
   }));
   const dateTickIndexes = Array.from(new Set([0, Math.floor((series.length - 1) / 2), series.length - 1]));
   const number = new Intl.NumberFormat("en");
@@ -100,7 +116,7 @@ function DailyChart({
               onPointerMove={selectAtPointer}
               onPointerDown={selectAtPointer}
               className="h-auto w-full touch-pan-y overflow-visible focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4b84]"
-              aria-label={`${title} chart. Use arrow keys to inspect daily values.`}
+              aria-label={`${title} chart. Use arrow keys to inspect ${valueLabel.toLowerCase()}.`}
             >
               {ticks.map((tick) => {
                 const y = bottom - (tick / top) * plotHeight;
@@ -143,22 +159,22 @@ function DailyChart({
           </div>
           <p aria-live="polite" className="mt-1 min-h-11 rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-800">
             <span className="font-medium">{formatDate(series[selectedIndex]?.date ?? series[0].date, { dateStyle: "long" })}</span>{" "}
-            <span className="ml-2 tabular-nums">{number.format(series[selectedIndex]?.[valueKey] ?? 0)} {title.toLowerCase()}</span>
+          <span className="ml-2 tabular-nums">{number.format(displayedSeries[selectedIndex]?.displayedValue ?? 0)} {title.toLowerCase()}</span>
           </p>
           <details className="mt-3 border-t border-zinc-100 pt-3 text-sm">
             <summary className="min-h-11 cursor-pointer py-3 font-medium text-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e4b84]">
-              View exact daily values
+              View exact {mode === "cumulative" ? "cumulative totals" : "daily values"}
             </summary>
             <div className="mt-3 max-h-56 overflow-auto">
               <table className="w-full text-left text-xs">
                 <thead className="sticky top-0 bg-white text-zinc-500">
-                  <tr><th className="py-2 font-medium">UTC date</th><th className="py-2 text-right font-medium">{title}</th></tr>
+                  <tr><th className="py-2 font-medium">UTC date</th><th className="py-2 text-right font-medium">{valueLabel}</th></tr>
                 </thead>
                 <tbody>
-                  {series.map((point) => (
+                  {displayedSeries.map((point) => (
                     <tr key={point.date} className="border-t border-zinc-100">
                       <th scope="row" className="py-2 font-normal text-zinc-700">{formatDate(point.date, { dateStyle: "medium" })}</th>
-                      <td className="py-2 text-right tabular-nums text-zinc-900">{number.format(point[valueKey])}</td>
+                      <td className="py-2 text-right tabular-nums text-zinc-900">{number.format(point.displayedValue)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -171,11 +187,12 @@ function DailyChart({
   );
 }
 
-export function AdminTrendChart({ series }: Props) {
+export function AdminTrendChart({ series, mode }: Props) {
+  const cumulative = mode === "cumulative";
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-      <DailyChart title="New users" description="Accounts created per UTC day" series={series} valueKey="users" color="#0e4b84" />
-      <DailyChart title="Routines created" description="Routines created per UTC day" series={series} valueKey="routines" color="#059669" />
+      <TrendChart title={cumulative ? "Cumulative new users" : "New users"} description={cumulative ? "Running total of accounts created during this period" : "Accounts created per UTC day"} series={series} valueKey="users" color="#0e4b84" mode={mode} />
+      <TrendChart title={cumulative ? "Cumulative routines created" : "Routines created"} description={cumulative ? "Running total of routines created during this period" : "Routines created per UTC day"} series={series} valueKey="routines" color="#059669" mode={mode} />
     </div>
   );
 }
