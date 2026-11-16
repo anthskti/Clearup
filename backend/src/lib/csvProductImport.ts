@@ -1,4 +1,5 @@
 import type { ProductCategory, SkinType } from "../types/product";
+import type { ParsedCsvDocument, ParsedCsvRecord } from "../types/csv";
 
 const VALID_CATEGORIES = new Set<ProductCategory>([
   "cleanser",
@@ -22,50 +23,126 @@ const VALID_SKIN_TYPES = new Set<SkinType>([
 
 /** RFC 4180-style parser for pasted scraper CSV (quoted fields, commas inside quotes). */
 export function parseCsvText(csvText: string): Record<string, string>[] {
-  const text = csvText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return parseCsvTextWithMetadata(csvText).map((record) => record.values);
+}
+
+export class CsvParseError extends Error {
+  constructor(
+    message: string,
+    readonly sourceLineStart: number,
+    readonly sourceLineEnd: number,
+    readonly recordNumber = 0,
+  ) {
+    super(message);
+    this.name = "CsvParseError";
+  }
+}
+
+export function parseCsvTextWithMetadata(csvText: string): ParsedCsvRecord[] {
+  return parseCsvDocument(csvText).records;
+}
+
+export function parseCsvDocument(csvText: string): ParsedCsvDocument {
+  const text = csvText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const table: string[][] = [];
+  const locations: Array<{ start: number; end: number }> = [];
   let row: string[] = [];
   let field = "";
   let inQuotes = false;
+  let afterQuote = false;
+  let rowHadContent = false;
+  let physicalLine = 1;
+  let rowStart = 1;
 
   for (let i = 0; i < text.length; i += 1) {
     const c = text[i];
+    if (afterQuote && c !== "," && c !== "\n") {
+      throw new CsvParseError("Malformed CSV: unexpected text after a quoted field.", rowStart, physicalLine, Math.max(0, table.length));
+    }
     if (c === '"') {
       if (inQuotes && text[i + 1] === '"') {
         field += '"';
         i += 1;
+      } else if (inQuotes) {
+        inQuotes = false;
+        afterQuote = true;
+      } else if (field.length === 0 && !afterQuote) {
+        inQuotes = true;
+        rowHadContent = true;
       } else {
-        inQuotes = !inQuotes;
+        throw new CsvParseError("Malformed CSV: quote inside an unquoted field.", rowStart, physicalLine, Math.max(0, table.length));
       }
     } else if (c === "," && !inQuotes) {
       row.push(field);
       field = "";
+      afterQuote = false;
+      rowHadContent = true;
     } else if (c === "\n" && !inQuotes) {
       row.push(field);
       field = "";
-      if (row.some((cell) => cell.length > 0)) {
+      if (rowHadContent) {
         table.push(row);
+        locations.push({ start: rowStart, end: physicalLine });
       }
       row = [];
+      rowHadContent = false;
+      afterQuote = false;
+      physicalLine += 1;
+      rowStart = physicalLine;
+    } else if (c === "\n") {
+      field += c;
+      physicalLine += 1;
     } else {
       field += c;
+      rowHadContent = true;
     }
   }
+  if (inQuotes) {
+    throw new CsvParseError("Malformed CSV: a quoted field was not closed.", rowStart, physicalLine, Math.max(0, table.length));
+  }
   row.push(field);
-  if (row.some((cell) => cell.length > 0)) {
+  if (rowHadContent) {
     table.push(row);
+    locations.push({ start: rowStart, end: physicalLine });
   }
 
-  if (table.length < 2) return [];
+  if (table.length === 0) {
+    return { headers: [], headerLineStart: 1, headerLineEnd: 1, records: [] };
+  }
 
-  const headers = table[0].map((h) => h.trim().toLowerCase());
-  return table.slice(1).map((values) => {
+  const headers = table[0].map((h, index) => (index === 0 ? h.replace(/^\uFEFF/, "") : h).trim().toLowerCase());
+  const headerLocation = locations[0] ?? { start: 1, end: 1 };
+  const invalidHeader = headers.findIndex((header) => !header);
+  if (invalidHeader !== -1) {
+    throw new CsvParseError("Malformed CSV: a header name is empty.", headerLocation.start, headerLocation.end);
+  }
+  if (new Set(headers).size !== headers.length) {
+    throw new CsvParseError("Malformed CSV: header names must be unique.", headerLocation.start, headerLocation.end);
+  }
+
+  const records = table.slice(1).map((values, index) => {
+    if (values.length !== headers.length) {
+      const location = locations[index + 1] ?? { start: index + 2, end: index + 2 };
+      throw new CsvParseError("Malformed CSV: a record has a different number of fields than the header.", location.start, location.end, index + 1);
+    }
     const record: Record<string, string> = {};
     headers.forEach((header, idx) => {
       record[header] = (values[idx] ?? "").trim();
     });
-    return record;
+    const location = locations[index + 1];
+    return {
+      values: record,
+      recordNumber: index + 1,
+      sourceLineStart: location?.start ?? index + 2,
+      sourceLineEnd: location?.end ?? index + 2,
+    };
   });
+  return {
+    headers,
+    headerLineStart: headerLocation.start,
+    headerLineEnd: headerLocation.end,
+    records,
+  };
 }
 
 export function parseLabels(raw: string | undefined): string[] {

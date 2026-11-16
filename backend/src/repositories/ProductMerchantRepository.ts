@@ -7,6 +7,7 @@ import {
   ProductMerchantWithDetails,
   UpdateProductMerchantInput,
 } from "../types/merchant";
+import { withFencedImportWrite } from "./ImportJobRepository";
 
 export class ProductMerchantRepository {
   // GET all merchants for a product
@@ -70,6 +71,7 @@ export class ProductMerchantRepository {
     stock?: boolean;
     preserveExistingPrice?: boolean;
   }): Promise<boolean> {
+    return withFencedImportWrite(async (transaction) => {
     const [offer, created] = await ProductMerchantModel.findOrCreate({
       where: { productId: data.productId, merchantId: data.merchantId },
       defaults: {
@@ -81,6 +83,7 @@ export class ProductMerchantRepository {
         shipping: "",
         lastUpdated: new Date(),
       },
+      transaction,
     });
     if (!created) {
       await offer.update({
@@ -88,9 +91,10 @@ export class ProductMerchantRepository {
         ...(data.preserveExistingPrice ? {} : { price: data.price }),
         ...(data.stock === undefined ? {} : { stock: data.stock }),
         lastUpdated: new Date(),
-      });
+      }, { transaction });
     }
     return created;
+    });
   }
 
   async refreshImportedPrice(data: {
@@ -99,16 +103,19 @@ export class ProductMerchantRepository {
     price: number | null;
     stock: boolean;
   }): Promise<boolean> {
+    return withFencedImportWrite(async (transaction) => {
     const offer = await ProductMerchantModel.findOne({
       where: { productId: data.productId, merchantId: data.merchantId },
+      transaction,
     });
     if (!offer) return false;
     await offer.update({
       price: data.price,
       stock: data.stock,
       lastUpdated: new Date(),
-    });
+    }, { transaction });
     return true;
+    });
   }
 
   // POST new merchant on product list

@@ -117,7 +117,7 @@ export default function PrivacyPage() {
             host the profile photo associated with your Google account.
           </li>
           <li>
-            <strong>Vercel Web Analytics and Speed Insights</strong> help us
+            <strong>Vercel Web Analytics and Speed Insights</strong> {""}help us
             understand page usage, browser and device characteristics, and site
             performance. Read the provider&apos;s{" "}
             <a href="https://vercel.com/docs/analytics/privacy-policy">Web Analytics privacy information</a>{" "}

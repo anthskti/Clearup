@@ -63,7 +63,7 @@ export default function TermsOfServicePage() {
         </p>
         <ul>
           <li>
-            <strong>Accuracy:</strong> Product details, formulations, prices,
+            <strong>Accuracy:</strong>{" "}Product details, formulations, prices,
             and availability may change. The retailer&apos;s current price and
             availability apply to your purchase. Check the manufacturer&apos;s
             current ingredient list before buying or using a product.

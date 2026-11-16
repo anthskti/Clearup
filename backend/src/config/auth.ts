@@ -13,6 +13,22 @@ const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(",")
   .map((s) => s.trim())
   .filter(Boolean) ?? ["http://localhost:3000"];
 
+const frontendLoginErrorUrl = (() => {
+  const frontendOrigin = trustedOrigins
+    .map((origin) => {
+      try {
+        const url = new URL(origin);
+        return url.protocol === "http:" || url.protocol === "https:"
+          ? url.origin
+          : null;
+      } catch {
+        return null;
+      }
+    })
+    .find(Boolean) ?? "http://localhost:3000";
+  return `${frontendOrigin}/login`;
+})();
+
 /** Public origin where `/api/auth/*` is served (required for OAuth redirect + state cookies in production). */
 function normalizePublicOrigin(raw: string | undefined): string | undefined {
   const s = raw?.trim().replace(/\/$/, "");
@@ -49,6 +65,11 @@ const skipStateCookieCheck = process.env.BETTER_AUTH_SKIP_STATE_COOKIE_CHECK ===
 const cookieDomain = process.env.NODE_ENV === "production" ? ".clearup.skin" : undefined; // Set cookie domain for production
 
 export const auth = betterAuth({
+  onAPIError: {
+    // The admin plugin sends banned OAuth sign-ins here. Derive this from the
+    // configured trusted frontend origins rather than a request-provided URL.
+    errorURL: frontendLoginErrorUrl,
+  },
   ...(authBaseURL ? { baseURL: authBaseURL } : {}),
   ...(crossSiteCookies
     ? {
@@ -119,6 +140,9 @@ export const auth = betterAuth({
   },
   trustedOrigins,
   plugins: [
-    admin()
+    admin({
+      bannedUserMessage:
+        "This account is restricted. Please contact support if you need help.",
+    }),
   ],
 });

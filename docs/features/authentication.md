@@ -49,6 +49,8 @@ Browser → Next.js page
 
 Protected API routes use `requireAuth` or `requireAdmin` after Better Auth validates the session cookie.
 
+Both guards re-read the account restriction from the database before allowing access. Active suspensions and permanent bans return 403 with `ACCOUNT_SUSPENDED` or `ACCOUNT_BANNED`; an expired suspension is treated as active. Restricting or restoring an account expires existing sessions transactionally. Moderation uses the audited `/api/users/admin/:userId/moderation` endpoint; direct Better Auth ban/unban and moderation-field updates are blocked. Better Auth's OAuth error URL is configured from the first valid trusted frontend origin and points to `/login`, so banned OAuth sign-ins show the same neutral restriction message as email sign-ins.
+
 ## Security middleware
 
 On `/api/auth`, the API records sanitized auth audit data before app rate guards, then applies route-classified IP token buckets. Email/password login uses burst 5/refill 1 per 100 seconds; registration, reset, and verification share burst 5/refill 1 per 60 seconds; session reads use burst 30/refill 1 per second; other enabled auth actions use burst 20/refill 1 per second. Unknown auth actions retain the global limiter and use the other-auth fallback. Better Auth also enforces its own production limits, which can be stricter; see [rate limiting](../backend-architecture.md#5-rate-limiting-summary).

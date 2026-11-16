@@ -5,6 +5,8 @@ interface FeaturedRoutineAttributes {
   id: number;
   routineId: number;
   pinnedBy: string;
+  position: number;
+  isActive: boolean;
 }
 
 interface FeaturedRoutineCreationAttributes
@@ -17,6 +19,8 @@ class FeaturedRoutine
   declare id: number;
   declare routineId: number;
   declare pinnedBy: string;
+  declare position: number;
+  declare isActive: boolean;
 }
 
 FeaturedRoutine.init(
@@ -34,6 +38,16 @@ FeaturedRoutine.init(
     pinnedBy: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    position: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
   },
   {

@@ -3,6 +3,11 @@ import { ProductService } from "../services/ProductService";
 import { MAX_PRODUCT_PAGE_SIZE, parseProductPagination } from "../lib/productPagination";
 import { handleInternalError } from "../lib/httpError";
 import { csvFromRequestBody } from "../middleware/parseCsvBody";
+import { ImportReportService } from "../services/ImportReportService";
+import type { ImportType } from "../models/ImportRun";
+import { importProcessor } from "../services/ImportProcessorService";
+import { ImportJobService } from "../services/ImportJobService";
+import { ImportSubmissionConflict } from "../repositories/ImportJobRepository";
 import {
   parseProductListQuery,
   hasProductListFilters,
@@ -11,9 +16,12 @@ import type { ProductCategory } from "../types/product";
 
 export class ProductController {
   private productService: ProductService;
+  private importReportService: ImportReportService;
+  private importJobService = new ImportJobService();
 
   constructor() {
     this.productService = new ProductService();
+    this.importReportService = new ImportReportService();
   }
 
   // GET /api/products/brands
@@ -279,58 +287,111 @@ export class ProductController {
   }
   // POST /api/products/admin/import/csv
   async importProductsCsv(req: Request, res: Response): Promise<void> {
-    try {
-      const csv = csvFromRequestBody(req.body);
-      if (!csv) {
-        res.status(400).json({
-          error:
-            "Missing CSV body. Send raw text/csv or application/json { csv }.",
-        });
-        return;
-      }
-      const result = await this.productService.importProductsCsv(csv);
-      res.status(200).json(result);
-    } catch (error: unknown) {
-      handleInternalError(res, "ProductController.importProductsCsv", error);
-    }
+    await this.runCsvImport(req, res, "products");
   }
 
   // POST /api/products/admin/import/offers
   async importMerchantOffersCsv(req: Request, res: Response): Promise<void> {
-    try {
-      const csv = csvFromRequestBody(req.body);
-      if (!csv) {
-        res.status(400).json({
-          error: "Missing CSV body. Send raw text/csv or application/json { csv }.",
-        });
-        return;
-      }
-      const result = await this.productService.importMerchantOffersCsv(csv);
-      res.status(200).json(result);
-    } catch (error: unknown) {
-      handleInternalError(res, "ProductController.importMerchantOffersCsv", error);
-    }
+    await this.runCsvImport(req, res, "offers");
   }
 
   // POST /api/products/admin/import/prices
   async importPriceUpdatesCsv(req: Request, res: Response): Promise<void> {
+    await this.runCsvImport(req, res, "prices");
+  }
+
+  private async runCsvImport(
+    req: Request,
+    res: Response,
+    importType: ImportType,
+  ): Promise<void> {
+    const csv = csvFromRequestBody(req.body);
+    if (!csv.trim()) {
+      res.status(400).json({ error: "CSV content is required." });
+      return;
+    }
+    const actorId = req.user?.id;
+    if (!actorId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const sourceHeader = req.headers["x-import-filename"];
+    let requestedName = typeof sourceHeader === "string" ? sourceHeader : "pasted.csv";
+    try { requestedName = decodeURIComponent(requestedName); } catch { /* Keep the original safe header text. */ }
+    const sourceName = requestedName.replace(/\\/g, "/").split("/").pop()?.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 180) || "pasted.csv";
+    const requestId = typeof req.id === "string" ? req.id : null;
     try {
-      const csv = csvFromRequestBody(req.body);
-      if (!csv) {
-        res.status(400).json({
-          error:
-            "Missing CSV body. Send raw text/csv or application/json { csv }.",
-        });
-        return;
-      }
-      const result = await this.productService.importPriceUpdatesCsv(csv);
-      res.status(200).json(result);
+      const submissionKey = req.get("x-import-submission-key");
+      if (!submissionKey || submissionKey.length > 80) { res.status(400).json({ error: "A valid x-import-submission-key is required." }); return; }
+      const accepted = await this.importJobService.enqueue({ importType, sourceName, actorId, requestId: requestId ?? "", submissionKey, csv });
+      res.status(202).json({ ok: true, importId: accepted.importId, status: accepted.status, message: accepted.duplicate ? "This import was already submitted." : "Import queued.", processed: 0, created: 0, updated: 0, totals: { received: 0, processed: 0, created: 0, updated: 0, skipped: 0, failed: 0 } });
+      if (!accepted.duplicate) importProcessor.submit(accepted.importId);
     } catch (error: unknown) {
-      handleInternalError(
-        res,
-        "ProductController.importPriceUpdatesCsv",
-        error,
-      );
+      if (error instanceof ImportSubmissionConflict) { res.status(409).json({ error: error.message }); return; }
+      handleInternalError(res, "ProductController.runCsvImport", error);
     }
   }
+
+  private parseReportPage(req: Request): { limit: number; offset: number } | null {
+    const parseQueryInt = (value: unknown, fallback: number): number | null => {
+      if (value === undefined) return fallback;
+      if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
+      const parsed = Number(value);
+      return Number.isSafeInteger(parsed) ? parsed : null;
+    };
+    const limit = parseQueryInt(req.query.limit, 25);
+    const offset = parseQueryInt(req.query.offset, 0);
+    if (limit === null || offset === null) return null;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) return null;
+    return { limit, offset };
+  }
+
+  async getImportHistory(req: Request, res: Response): Promise<void> {
+    try {
+      const page = await this.parseReportPage(req);
+      if (!page) { res.status(400).json({ error: "limit must be 1–100 and offset must be a nonnegative integer" }); return; }
+      res.json(await this.importJobService.listRuns(page.limit, page.offset));
+    } catch (error: unknown) { handleInternalError(res, "ProductController.getImportHistory", error); }
+  }
+
+  async getImportRun(req: Request, res: Response): Promise<void> {
+    const id = parsePositiveId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid import ID" }); return; }
+    try {
+      const run = await this.importJobService.getRun(id);
+      if (!run) { res.status(404).json({ error: "Import not found" }); return; }
+      res.json(run);
+    } catch (error: unknown) { handleInternalError(res, "ProductController.getImportRun", error); }
+  }
+
+  async getImportIssues(req: Request, res: Response): Promise<void> {
+    const id = parsePositiveId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid import ID" }); return; }
+    try {
+      const run = await this.importReportService.getRun(id);
+      if (!run) { res.status(404).json({ error: "Import not found" }); return; }
+      const page = await this.parseReportPage(req);
+      if (!page) { res.status(400).json({ error: "limit must be 1–100 and offset must be a nonnegative integer" }); return; }
+      res.json(await this.importReportService.listIssues(id, page.limit, page.offset));
+    } catch (error: unknown) { handleInternalError(res, "ProductController.getImportIssues", error); }
+  }
+
+  async downloadImportReport(req: Request, res: Response): Promise<void> {
+    const id = parsePositiveId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid import ID" }); return; }
+    try {
+      const run = await this.importReportService.getRun(id);
+      if (!run) { res.status(404).json({ error: "Import not found" }); return; }
+      const issues = await this.importReportService.getFullReport(id);
+      res.setHeader("Content-Disposition", `attachment; filename="import-${id}-report.json"`);
+      res.json({ run, issues });
+    } catch (error: unknown) { handleInternalError(res, "ProductController.downloadImportReport", error); }
+  }
+}
+
+function parsePositiveId(value: unknown): number | null {
+  if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
 }

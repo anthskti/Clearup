@@ -1,5 +1,6 @@
 export type UserDailyCountRow = {
-  day: string | Date; // Written like this for sequelize unknown type just for safety.
+  /** UTC calendar day formatted as YYYY-MM-DD by the repository query. */
+  day: string;
   count: string | number;
 };
 
@@ -16,4 +17,10 @@ export type AdminUserListRow = {
   emailVerified: boolean;
   role: string;
   createdAt: string;
+  lastActiveAt: string | null;
+  routineCount: number;
+  banned: boolean;
+  banReason: string | null;
+  banExpires: string | null;
+  accountStatus: "active" | "suspended" | "banned";
 };
