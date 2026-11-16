@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronDown, Search } from "lucide-react";
 import AdminUsersList from "@/components/admin/AdminUsersList";
+import { AdminRefreshButton } from "@/components/admin/AdminRefreshButton";
 import { getAdminUsersServer } from "@/lib/admin-server";
 
 const PAGE_SIZE = 25;
@@ -64,8 +65,9 @@ export default async function AdminUsersPage({ searchParams }: Props) {
     });
   } catch (error: unknown) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-900" role="alert">
-        {error instanceof Error ? error.message : "Could not load users."}
+      <div className="space-y-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-900" role="alert">
+        <p>{error instanceof Error ? error.message : "Could not load users."}</p>
+        <AdminRefreshButton />
       </div>
     );
   }
@@ -77,10 +79,11 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <header>
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-600">
           Search accounts and review their routines and account status.
         </p>
+        <AdminRefreshButton />
       </header>
 
       <form
@@ -184,7 +187,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         />
       </div>
 
-      <AdminUsersList users={userPayload.users} />
+      <AdminUsersList users={userPayload.users} refreshedAt={userPayload.refreshedAt} />
 
       {totalPages > 1 && (
         <div className="flex justify-end">

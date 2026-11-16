@@ -91,6 +91,20 @@ export class UserController {
     }
   }
 
+  async recordActivity(req: Request, res: Response): Promise<void> {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      await this.userService.recordActivity(userId);
+      res.status(204).end();
+    } catch (error: unknown) {
+      handleInternalError(res, "UserController.recordActivity", error);
+    }
+  }
+
   async moderateUser(req: Request, res: Response): Promise<void> {
     const targetId = Array.isArray(req.params.userId)
       ? req.params.userId[0]

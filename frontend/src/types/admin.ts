@@ -5,6 +5,7 @@ export type AdminUserRow = {
   emailVerified: boolean;
   role: string;
   createdAt: string;
+  lastActiveAt: string | null;
   routineCount: number;
   accountStatus: "active" | "suspended" | "banned";
   banReason: string | null;

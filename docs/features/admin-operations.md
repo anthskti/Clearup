@@ -33,6 +33,7 @@ Frontend gate: `frontend/src/app/admin/layout.tsx` redirects to `/login` or `/` 
 | `POST /api/routines/admin/featured/:id` | Feature a guide |
 | `DELETE /api/routines/admin/featured/:id` | Unfeature |
 | `GET /api/users/admin` | Paginated users with `search`, `role`, `verified`, and account `status` filters and routine counts |
+| `POST /api/users/me/activity` | Record the signed-in account’s app activity; authenticated, mutation header required |
 | `PATCH /api/users/admin/:userId/moderation` | Suspend, permanently ban, or restore a non-admin account; requires a reason for restrictions |
 | `GET /api/products/admin/imports` | Paginated import history |
 | `GET /api/products/admin/imports/:id` | Persisted import summary |
@@ -58,7 +59,15 @@ Migration `012-featured-routine-order-active.ts` adds `position` and `isActive` 
 
 The moderation endpoint accepts `{ action: "suspend", durationDays: 1 | 7 | 30, reason }`, `{ action: "ban", reason }`, or `{ action: "restore" }`. It locks and reads the target user inside the transaction, validates the current role and admin email protection, then updates the restriction and sets all target sessions to expire. The row lock prevents concurrent role changes between validation and the update. It rejects self-targeting, missing users, database admins, and `ADMIN_EMAILS` accounts. Restore clears all restriction fields. The endpoint records actor, target, action, and expiry in security audit logs. Better Auth's direct ban/unban endpoints and moderation-field writes through `admin/update-user` are blocked so restrictions use this audited path.
 
-The UI preserves filters in pagination URLs and opens account details without navigating away. Details include a copyable ID, full UTC creation timestamp, status, and lazily loaded routine links. Phone cards and desktop tables share the same data. The users page no longer fetches dashboard analytics. Last activity tracking remains deferred.
+The UI preserves filters in pagination URLs and opens account details without navigating away. Details include a copyable ID, full UTC creation timestamp, status, and lazily loaded routine links. Phone cards and desktop tables share the same data. The users page no longer fetches dashboard analytics. The list, phone cards, and user details show Last active from the app-owned activity record, or “Not recorded yet” when no record exists. Refresh reloads data without changing the selected filters or page and recalculates relative activity labels even when timestamps are unchanged.
+
+### Last active
+
+`user_activity` stores the last recorded app activity separately from Better Auth’s session tables. The activity endpoint takes the account ID from the authenticated session and assigns server time; clients cannot report another account or choose a timestamp. Existing users are not backfilled from session or login timestamps. Migration `016-user-activity.ts` creates this app-owned table and retains it on rollback. Account IDs are retained without a foreign key so account deletion remains supported without deleting activity rows; the admin directory only displays records for existing users.
+
+The frontend records visible-page navigation and trusted user interactions, with requests throttled to once every five minutes per account in that tab. There is no continuous timer. A conditional database upsert also limits writes to once per five minutes per account, including concurrent requests from multiple tabs. Failed reports do not interrupt normal app use.
+
+Admin user reads include nullable `lastActiveAt`. The UI shows a relative time with an exact UTC timestamp, or “Not recorded yet”. This means last recorded app use, not online presence; the timestamp can lag activity by the throttle window and does not advance merely because a tab or session remains open.
 
 ## Imports & catalog maintenance
 
@@ -91,7 +100,7 @@ Imports return HTTP 202 after saving the upload, then run asynchronously inside 
 
 `GET /api/routines/admin/stats` returns lifetime totals, a zero-filled daily series, selected-period and preceding-period counts, and top contributors. The selected window covers completed UTC days, excluding today; repository grouping and query boundaries use UTC. Invalid day counts return 400. The API retains support for integer ranges such as 14 days for compatibility.
 
-The dashboard defaults to 30 days and stores its 7/30/90-day selection in `?days=`. A shared Daily/Cumulative control uses `mode=daily` (default) or `mode=cumulative` in the URL and preserves the selected date range. Cumulative values are running sums within that range, starting from zero before its first day; they exclude earlier activity and today’s partial UTC day. Lifetime cards and period comparisons do not change with chart mode. Line charts support pointer selection, arrow/Home/End keyboard inspection, and expandable tables showing values for the selected mode. Phone/tablet navigation uses a drawer; desktop keeps the sidebar. Types live in `routine-admin.ts` on both frontend and backend.
+The dashboard defaults to 30 days and stores its 7/30/90-day selection in `?days=`. Refresh reloads dashboard data while preserving the range and chart mode; neither dashboard nor users refresh automatically. A shared Daily/Cumulative control uses `mode=daily` (default) or `mode=cumulative` in the URL and preserves the selected date range. Cumulative values are running sums within that range, starting from zero before its first day; they exclude earlier activity and today’s partial UTC day. Lifetime cards and period comparisons do not change with chart mode. Line charts support pointer selection, arrow/Home/End keyboard inspection, and expandable tables showing values for the selected mode. Phone/tablet navigation uses a drawer; desktop keeps the sidebar. Types live in `routine-admin.ts` on both frontend and backend.
 
 ## Security considerations
 

@@ -31,6 +31,11 @@ erDiagram
         date    updatedAt
     }
 
+    USER_ACTIVITY {
+        string  userId      PK "retained account ID; no user FK"
+        date    lastActiveAt "server-assigned; throttled app activity"
+    }
+
     ACCOUNT {
         string  id                    PK
         string  accountId

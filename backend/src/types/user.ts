@@ -17,6 +17,7 @@ export type AdminUserListRow = {
   emailVerified: boolean;
   role: string;
   createdAt: string;
+  lastActiveAt: string | null;
   routineCount: number;
   banned: boolean;
   banReason: string | null;

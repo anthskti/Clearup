@@ -63,7 +63,7 @@ export async function getFeaturedRoutinesServer(): Promise<FeaturedRoutine[]> {
 
 export async function getAdminUsersServer(
   params: AdminUsersQuery,
-): Promise<AdminUsersPagePayload> {
+): Promise<AdminUsersPagePayload & { refreshedAt: number }> {
   const limit = params.limit ?? 25;
   const offset = params.offset ?? 0;
   const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
@@ -80,7 +80,9 @@ export async function getAdminUsersServer(
       (err as { error?: string }).error || "Failed to load users",
     );
   }
-  return res.json();
+  const payload: AdminUsersPagePayload = await res.json();
+  // Refresh relative labels even when the returned activity timestamps are unchanged.
+  return { ...payload, refreshedAt: Date.now() };
 }
 
 export async function getAllRoutinesServer(

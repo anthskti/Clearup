@@ -48,7 +48,22 @@ function UserStatus({ user }: { user: AdminUserRow }) {
   );
 }
 
-export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
+function RelativeLastActive({ value, now }: { value: string; now: number }) {
+  const elapsedSeconds = Math.min(0, Math.round((new Date(value).getTime() - now) / 1000));
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["year", 31_536_000], ["month", 2_592_000], ["day", 86_400],
+    ["hour", 3_600], ["minute", 60], ["second", 1],
+  ];
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  for (const [unit, seconds] of units) {
+    if (Math.abs(elapsedSeconds) >= seconds || unit === "second") {
+      return <>{formatter.format(Math.round(elapsedSeconds / seconds), unit)}</>;
+    }
+  }
+  return <>Recorded</>;
+}
+
+export default function AdminUsersList({ users, refreshedAt }: { users: AdminUserRow[]; refreshedAt: number }) {
   const router = useRouter();
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
   const [routines, setRoutines] = useState<RoutineWithProducts[] | null>(null);
@@ -60,6 +75,10 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
   const [moderationPending, setModerationPending] = useState(false);
   const [moderationError, setModerationError] = useState("");
   const openerRef = useRef<HTMLButtonElement | null>(null);
+
+  function exactUtc(value: string) {
+    return `${new Date(value).toISOString().replace("T", " ").slice(0, 19)} UTC`;
+  }
 
   useEffect(() => {
     if (!selectedUser) return;
@@ -173,6 +192,14 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                   <dd className="mb-2 min-w-0 break-words text-zinc-800">
                     <time dateTime={user.createdAt}>{formatUtc(user.createdAt)}</time>
                   </dd>
+                  <dt className="text-zinc-500">Last active</dt>
+                  <dd className="mb-2 min-w-0 break-words text-zinc-800">
+                    {user.lastActiveAt ? (
+                      <time dateTime={user.lastActiveAt} title={exactUtc(user.lastActiveAt)}>
+                        <RelativeLastActive value={user.lastActiveAt} now={refreshedAt} />
+                      </time>
+                    ) : "Not recorded yet"}
+                  </dd>
                   <dt className="text-zinc-500">Routines</dt>
                   <dd className="font-medium tabular-nums text-zinc-900">
                     {user.routineCount}
@@ -188,6 +215,7 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                 <tr className="border-b border-zinc-200 bg-zinc-50 text-xs font-medium uppercase tracking-wide text-zinc-500">
                   <th scope="col" className="px-4 py-3">Name and email</th>
                   <th scope="col" className="px-4 py-3">Joined</th>
+                  <th scope="col" className="px-4 py-3">Last active</th>
                   <th scope="col" className="px-4 py-3">Role</th>
                   <th scope="col" className="px-4 py-3">Account</th>
                   <th scope="col" className="px-4 py-3">Verification</th>
@@ -204,6 +232,13 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-600">
                       <time dateTime={user.createdAt}>{formatUtc(user.createdAt)}</time>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-600">
+                      {user.lastActiveAt ? (
+                        <time dateTime={user.lastActiveAt} title={exactUtc(user.lastActiveAt)}>
+                          <RelativeLastActive value={user.lastActiveAt} now={refreshedAt} />
+                        </time>
+                      ) : "Not recorded yet"}
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
@@ -310,6 +345,15 @@ export default function AdminUsersList({ users }: { users: AdminUserRow[] }) {
                       <time dateTime={selectedUser.createdAt}>
                         {formatUtc(selectedUser.createdAt, true)}
                       </time>
+                    </dd>
+                    <dt className="text-zinc-500">Last active</dt>
+                    <dd className="mb-3 break-words text-zinc-900 sm:mb-0">
+                      {selectedUser.lastActiveAt ? (
+                        <time dateTime={selectedUser.lastActiveAt} title={exactUtc(selectedUser.lastActiveAt)}>
+                          <RelativeLastActive value={selectedUser.lastActiveAt} now={refreshedAt} />
+                          <span className="sr-only">, {exactUtc(selectedUser.lastActiveAt)}</span>
+                        </time>
+                      ) : "Not recorded yet"}
                     </dd>
                     <dt className="text-zinc-500">Role</dt>
                     <dd className="mb-3 text-zinc-900 sm:mb-0">{selectedUser.role}</dd>

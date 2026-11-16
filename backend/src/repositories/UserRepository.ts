@@ -1,7 +1,7 @@
 import UserModel from "../models/User";
 import SessionModel from "../models/Session";
 import sequelize from "../db";
-import { Op, literal, type WhereOptions } from "sequelize";
+import { Op, QueryTypes, literal, type WhereOptions } from "sequelize";
 import { AdminUserListRow, BasicUserRow, UserDailyCountRow } from "../types/user";
 
 export type AdminUserFilters = {
@@ -121,7 +121,18 @@ export class UserRepository {
       raw: true,
     });
 
-    const mapped = (rows as unknown as AdminUserListRow[]).map((u) => {
+    const userRows = rows as unknown as AdminUserListRow[];
+    const activityRows = userRows.length
+      ? await sequelize.query<{ userId: string; lastActiveAt: Date | string }>(
+          'SELECT "userId", "lastActiveAt" FROM "user_activity" WHERE "userId" IN (:userIds)',
+          { replacements: { userIds: userRows.map((user) => user.id) }, type: QueryTypes.SELECT },
+        )
+      : [];
+    const activityByUserId = new Map(
+      activityRows.map((activity) => [activity.userId, activity.lastActiveAt]),
+    );
+
+    const mapped = userRows.map((u) => {
       const raw = u.createdAt as unknown;
       const createdAt =
         raw instanceof Date ? raw.toISOString() : String(raw ?? "");
@@ -131,6 +142,10 @@ export class UserRepository {
         : expiry
           ? new Date(String(expiry)).toISOString()
           : null;
+      const lastActive = activityByUserId.get(u.id);
+      const lastActiveAt = lastActive instanceof Date
+        ? lastActive.toISOString()
+        : lastActive ? new Date(String(lastActive)).toISOString() : null;
       const accountStatus: AdminUserListRow["accountStatus"] =
         u.banned && (!banExpires || new Date(banExpires) > now)
           ? banExpires
@@ -141,12 +156,24 @@ export class UserRepository {
         ...u,
         createdAt,
         banExpires,
+        lastActiveAt,
         accountStatus,
         routineCount: Number(u.routineCount ?? 0),
       };
     });
 
     return { rows: mapped, total: count };
+  }
+
+  async recordActivity(userId: string): Promise<void> {
+    await sequelize.query(
+      `INSERT INTO "user_activity" ("userId", "lastActiveAt")
+       VALUES (:userId, NOW())
+       ON CONFLICT ("userId") DO UPDATE
+       SET "lastActiveAt" = NOW()
+       WHERE "user_activity"."lastActiveAt" <= NOW() - INTERVAL '5 minutes'`,
+      { replacements: { userId } },
+    );
   }
 
   async findRestriction(userId: string): Promise<{

@@ -21,6 +21,10 @@ export class UserService {
     return this.userRepository.findAllPaginated(filters);
   }
 
+  async recordActivity(userId: string): Promise<void> {
+    return this.userRepository.recordActivity(userId);
+  }
+
   async moderateUser(
     targetId: string,
     actorId: string,
