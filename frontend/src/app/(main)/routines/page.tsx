@@ -60,7 +60,7 @@ export default async function CommunityRoutinesPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="relative min-h-screen w-full bg-[#F8F8F8]">
+    <div className="relative min-h-screen w-full bg-[#F8F8F8] mt-18">
       <ProceduralWave 
         seed={7}
         height={160} 
@@ -68,7 +68,7 @@ export default async function CommunityRoutinesPage({ searchParams }: Props) {
         gradientTo="#f0f8fc" 
         flip={true} 
       />
-      <div className="relative z-1 mx-auto max-w-7xl px-4 pt-34 pb-6 sm:px-6">
+      <div className="relative z-1 mx-auto max-w-7xl px-4 pt-8 pb-6 sm:px-6">
         <header className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
             Community Routines

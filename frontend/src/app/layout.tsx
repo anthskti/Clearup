@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Red_Hat_Display, Edu_QLD_Beginner } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import UserActivityTracker from "@/components/UserActivityTracker";
 import "./globals.css";
 
 const eduQldBeginner = Edu_QLD_Beginner({
@@ -32,6 +33,7 @@ export default function RootLayout({
       className={`h-full ${redHat.variable} ${eduQldBeginner.variable}`}
     >
       <body className="min-full antialiased">
+        <UserActivityTracker />
         <main className="flex flex-col min-h-screen bg-[#F8F8F8]">
           <div className="flex flex-col flex-1 text-black">{children}</div>
         </main>

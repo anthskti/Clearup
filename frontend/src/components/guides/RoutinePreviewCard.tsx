@@ -77,7 +77,7 @@ export default function RoutinePreviewCard({
           </div>
           {showFeaturedStar && <Star size={16} className="shrink-0 fill-amber-400 text-amber-500" aria-label="Featured routine" />}
         </div>
-        <div className="my-4 flex min-h-14 items-center gap-2" aria-label="Product preview">
+        <div className="my-4 flex min-h-14 flex-wrap items-center gap-2" aria-label="Product preview">
           {previewImageUrls.length > 0 ? previewImageUrls.slice(0, 4).map((url, i) => (
             <div
               key={`${routineId}-${i}`}

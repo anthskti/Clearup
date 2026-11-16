@@ -18,6 +18,12 @@ router.get("/admin/stats", requireAdmin, (req, res) =>
 router.get("/admin/featured", requireAdmin, (req, res) =>
   routineController.getFeaturedRoutines(req, res)
 );
+router.get("/admin/featured/candidate/:id", requireAdmin, (req, res) =>
+  routineController.getFeaturedCandidate(req, res)
+);
+router.put("/admin/featured", requireAdmin, (req, res) =>
+  routineController.saveFeaturedRoutineOrder(req, res)
+);
 router.post("/admin/featured/:id", requireAdmin, (req, res) =>
   routineController.addFeaturedRoutine(req, res)
 );

@@ -13,6 +13,14 @@ export type AdminStats = {
     users: number;
     routines: number;
   }[];
+  period: {
+    startDate: string;
+    endDate: string;
+    users: number;
+    routines: number;
+    previousUsers: number;
+    previousRoutines: number;
+  };
   topAuthors: {
     userId: string;
     name: string;
@@ -34,8 +42,18 @@ export type FeaturedRoutineView = {
   estimatedTotalPrice: number;
 };
 
+export type FeaturedRoutineCandidate = {
+  routineId: number;
+  name: string;
+  authorLabel: string;
+  skinTypeTags: SkinType[];
+  previewImageUrls: string[];
+  estimatedTotalPrice: number;
+};
+
 export type RoutineDailyCountRow = {
-  day: string | Date;
+  /** UTC calendar day formatted as YYYY-MM-DD by the repository query. */
+  day: string;
   count: string | number;
 };
 
@@ -47,5 +65,7 @@ export type TopAuthorCountRow = {
 export type FeaturedRoutineEntryRow = {
   routineId: number;
   pinnedBy: string;
+  position?: number;
+  isActive?: boolean;
   createdAt?: string | Date;
 };

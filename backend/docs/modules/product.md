@@ -33,12 +33,25 @@ To enforce strict type safety and prevent repetitive inline object declarations,
   - Same with **tags**.
 - CSV Analyzer (`csv.ts`): defines a data transfer object from CSV into the system.
 
-## Product Services (`ProductService.ts`)
+## Product Services
 
 The service layer contains the core business logic, acting as the bridge between the controllers and the database repositories.
 
-- Standard Operations: Organize product and merchant CRUD actions, alongside paginated search logic.
-- Admin Operations: Includes a dedicated method for parsing and pushing CSV data directly into the database via an admin endpoint. Given my current implementation of my datascraper, it follows that.
+- `ProductService.ts`: Product and merchant-offer CRUD, plus paginated catalog search.
+- `ProductImportService.ts`: Admin CSV imports (products, merchant offers, price refresh). Result helpers live in `lib/csvImportResults.ts`; field/document parsing stays in `lib/csvProductImport.ts`.
+- `ImportReportService.ts`: Persists import runs and row-level issues around those import flows.
+- `ImportProcessorService.ts`: Runs accepted imports sequentially in the API background and drains active work during shutdown.
+- `ImportJobService.ts` and `ImportJobRepository.ts`: Admin-only queued CSV submissions, source payload persistence, idempotency, progress status, and single-worker claims.
+
+### Queued CSV imports
+
+CSV endpoints enqueue the exact decoded UTF-8 source text and retained report row in one database transaction. Submission keys are scoped to the submitting account; reusing a key with a different import type or content returns HTTP 409. History/detail reads expose job status and provisional counters but never return the stored CSV payload.
+
+The API initializes `ImportProcessorService` after migrations and triggers background processing when an upload is accepted. Imports run sequentially without an idle polling loop or a separate command. Startup marks unfinished jobs `needs_review` rather than replaying them. SIGINT/SIGTERM stops new submissions and lets the active import finish before closing the database. This assumes one API instance. See [the data import pipeline](../../../docs/dataimport.md).
+
+Each imported catalog mutation locks and validates the owning attempt before committing, and renews its heartbeat. Progress checkpoints advance after a source record's issues have been persisted. A stale heartbeat is fenced and moved to `needs_review`; jobs are never automatically replayed. Since domain mutations, issue persistence, and progress are separately committed, interruption can leave partial changes for the last uncheckpointed row. Review the incomplete report and catalog state before taking any manual action. After reviewing partial results and any newer catalog edits, manually submit a corrected CSV as a new import if needed; interrupted jobs are never automatically retried.
+
+Queued CSV source text is retained in PostgreSQL with its report. No payload cleanup policy is implemented. Restrict database access and keep all job/report endpoints behind the admin guard.
 
 ## Product Controller (`productController.ts`)
 

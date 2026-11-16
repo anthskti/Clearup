@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "../config/auth";
 import UserModel from "../models/User";
+import { UserRepository } from "../repositories/UserRepository";
 import { reportError } from "../lib/logger";
 
 export type AppRole = "user" | "admin";
@@ -58,6 +59,19 @@ const applyAdminWhitelist = async (
   return { ...user, email: effectiveEmail, role: "admin" };
 };
 
+const rejectRestrictedAccount = async (userId: string, res: Response): Promise<boolean> => {
+  const user = await new UserRepository().findRestriction(userId);
+  if (!user?.banned || (user.banExpires && user.banExpires.getTime() <= Date.now())) return false;
+  const suspended = Boolean(user.banExpires);
+  res.status(403).json({
+    error: suspended ? "ACCOUNT_SUSPENDED" : "ACCOUNT_BANNED",
+    message: suspended
+      ? "Your account is temporarily restricted. Please contact support if you need help."
+      : "Your account is restricted. Please contact support if you need help.",
+  });
+  return true;
+};
+
 declare global {
   namespace Express {
     interface Request {
@@ -80,6 +94,8 @@ export const requireAuth = async (
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  if (await rejectRestrictedAccount(session.user.id, res)) return;
+
   const userWithRole =
     (session.user as AuthenticatedUser & { role?: AppRole }) || session.user;
   req.user = await applyAdminWhitelist(userWithRole);
@@ -99,6 +115,8 @@ export const requireAdmin = async (
   if (!session || !session.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+
+  if (await rejectRestrictedAccount(session.user.id, res)) return;
 
   const userWithRole = await applyAdminWhitelist(
     session.user as typeof session.user & { role?: AppRole },
