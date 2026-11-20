@@ -1,4 +1,4 @@
-name: string,logo: string
+name,logo
 YesStyle,https://www.google.com/s2/favicons?sz=48&domain_url=https%3A%2F%2Fwww.yesstyle.com%2F
 Amazon,https://www.google.com/s2/favicons?sz=48&domain_url=https%3A%2F%2Famazon.ca
 SKIN1004,https://www.google.com/s2/favicons?sz=48&domain_url=https%3A%2F%2Fwww.skin1004.com%2F%3Fsrsltid%3DAfmBOoqiHZYT4rSKNlPprHojxbY4XwzOTMQTU3MXGYEnRQYFvFXbw_5z
@@ -11,3 +11,4 @@ skin cupid,https://www.google.com/s2/favicons?sz=48&domain_url=https%3A%2F%2Fwww
 Olive Young,https://www.google.com/s2/favicons?sz=64&domain_url=https%3A%2F%2Foliveyoung.com%2F
 Stylevanna,https://www.google.com/s2/favicons?sz=64&domain_url=https%3A%2F%2Fwww.stylevana.com%2Fen_CA%2F
 Sephora,https://www.google.com/s2/favicons?sz=64&domain_url=https%3A%2F%2Fsephora.com%2F
+Sukoshi Mart,https://www.google.com/s2/favicons?sz=64&domain_url=https%3A%2F%2Fsukoshi.com%2F

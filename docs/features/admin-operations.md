@@ -94,8 +94,6 @@ Raw CSV uploads and paste requests use `text/csv`, the mutation header, and an e
 
 Imports return HTTP 202 after saving the upload, then run asynchronously inside the API process. The UI polls for provisional progress and the final report. Unfinished jobs are marked `needs_review` after a server restart and are not automatically replayed. See [the data import pipeline](../dataimport.md) for execution, shutdown, and manual reimport behavior.
 
-`bun run seed` in development uses `sequelize.sync({ force: true })` and is **destructive**—never run against production.
-
 ## Dashboard stats
 
 `GET /api/routines/admin/stats` returns lifetime totals, a zero-filled daily series, selected-period and preceding-period counts, and top contributors. The selected window covers completed UTC days, excluding today; repository grouping and query boundaries use UTC. Invalid day counts return 400. The API retains support for integer ranges such as 14 days for compatibility.

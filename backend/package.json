@@ -13,7 +13,6 @@
     "watch": "tsc --watch",
     "migrate:up": "bun scripts/migrateUp.ts",
     "migrate:down": "bun scripts/migrateDown.ts",
-    "seed": "bun src/scripts/seed.ts",
     "seed:merchants": "bun src/scripts/seedMerchants.ts",
     "test:ses": "bun scripts/testSesEmail.ts"
   },
