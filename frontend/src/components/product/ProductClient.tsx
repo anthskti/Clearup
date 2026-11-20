@@ -232,7 +232,11 @@ export default function ProductClient({
                         </div>
                       </td>
                       <td className="px-1 py-4 sm:px-4">
-                        {merchant.price == null ? (
+                        {merchant.stock === false ? (
+                          <span className="text-zinc-600 italic">
+                            Out of stock
+                          </span>
+                        ) : merchant.price == null ? (
                           <span className="text-zinc-600 italic">
                             Availability unverified
                           </span>
@@ -250,9 +254,11 @@ export default function ProductClient({
                         </div>
                       </td>
                       <td className="px-1 py-4 text-right font-bold text-zinc-900 sm:px-4">
-                        {merchant.price == null
-                          ? "Price unavailable"
-                          : `CA $${merchant.price.toFixed(2)}`}
+                        {merchant.stock === false
+                          ? "Out of stock"
+                          : merchant.price == null
+                            ? "Price unavailable"
+                            : `CA $${merchant.price.toFixed(2)}`}
                       </td>
                       <td className="px-1 py-4 text-right sm:px-4">
                         <a

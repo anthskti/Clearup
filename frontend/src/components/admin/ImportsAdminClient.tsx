@@ -359,7 +359,7 @@ export function ImportsAdminClient() {
                 <div className="space-y-2">
                   {issues.rows.map((issue) => (
                     <article key={issue.id} className="rounded-lg border border-zinc-200 p-3">
-                      <div className="flex flex-wrap justify-between gap-2"><p className="min-w-0 break-words font-medium text-zinc-900 [overflow-wrap:anywhere]">{issue.brand || "Unknown brand"} · {issue.name || "Unnamed record"}</p><span className="shrink-0 text-xs font-medium text-zinc-600">{issue.outcome.replaceAll("_", " ")}</span></div>
+                      <div className="flex flex-wrap justify-between gap-2"><p className="min-w-0 break-words font-medium text-zinc-900 [overflow-wrap:anywhere]">{issue.brand || "Unknown brand"}<span aria-hidden="true" className="mx-1 mb-[0.12em] inline-block size-0.5 shrink-0 rounded-full bg-zinc-500 align-middle" />{issue.name || "Unnamed record"}</p><span className="shrink-0 text-xs font-medium text-zinc-600">{issue.outcome.replaceAll("_", " ")}</span></div>
                       <p className="mt-1 break-words text-sm text-zinc-700 [overflow-wrap:anywhere]">{issue.reason}</p>
                       <p className="mt-2 break-words text-xs text-zinc-500">Record {issue.recordNumber || "—"} · source line{issue.sourceLineStart === issue.sourceLineEnd ? "" : "s"} {issue.sourceLineStart}{issue.sourceLineStart === issue.sourceLineEnd ? "" : `–${issue.sourceLineEnd}`} · {issue.stage} · {issue.code}</p>
                     </article>

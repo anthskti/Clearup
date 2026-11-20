@@ -94,7 +94,7 @@ Offer prices may be positive plain numbers or values prefixed with `$`, `CA`, `C
 - Backend processes CSV in `ProductImportService`, triggered asynchronously inside the API after the admin endpoint accepts the upload.
 - UI: `/admin/imports` (`ImportsAdminClient`) — file-first imports, pasted CSV, structured results, and persisted import history with row diagnostics. Imports run sequentially in the API background; the UI polls progress until the report is finalized. See [the data import pipeline](../dataimport.md). See [import reports](./admin-operations.md#import-reports) for retention, source line numbers, and downloadable JSON reports.
 
-A separate datascraper produces CSV aligned with `backend/src/types/csv.ts`. Merchant seed data also ships as `backend/src/data/merchant_table.csv` (`bun run seed:merchants`).
+A separate datascraper produces CSV aligned with `backend/src/types/csv.ts`. Merchant seed data lives in repo-root `data/merchant_table.csv` (`bun run seed:merchants`).
 
 ## Categories & skin types
 
